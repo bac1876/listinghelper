@@ -27,7 +27,9 @@
       "mcp__playwright__browser_wait_for",
       "Bash(find:*)",
       "mcp__playwright__browser_console_messages",
-      "mcp__playwright__browser_navigate_back"
+      "mcp__playwright__browser_navigate_back",
+      "Bash(python test_images/create_test_images.py:*)",
+      "Bash(python test_optimized_tour.py)"
     ],
     "deny": []
   },

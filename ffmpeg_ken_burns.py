@@ -29,6 +29,21 @@ def create_ken_burns_video(image_paths, output_path, job_id):
     # Try professional virtual tour first
     try:
         logger.info("Creating professional virtual tour...")
+        
+        # Set environment variable for Railway
+        if os.environ.get('RAILWAY_STATIC_URL') or os.environ.get('RAILWAY_GIT_COMMIT_SHA'):
+            logger.info("Detected Railway environment, using optimized tour")
+            os.environ['RAILWAY_ENVIRONMENT'] = '1'
+        
+        # Try to log memory usage if psutil is available
+        try:
+            import psutil
+            process = psutil.Process(os.getpid())
+            memory_info = process.memory_info()
+            logger.info(f"Current memory usage: {memory_info.rss / 1024 / 1024:.2f} MB")
+        except ImportError:
+            logger.info("psutil not available, continuing without memory monitoring")
+        
         from professional_virtual_tour import create_professional_tour
         return create_professional_tour(image_paths, output_path, job_id)
     except Exception as e:

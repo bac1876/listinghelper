@@ -316,6 +316,13 @@ class ProfessionalVirtualTour:
 def create_professional_tour(image_paths: List[str], output_path: str, job_id: str, style: str = 'luxury', quality: str = 'high') -> str:
     """Main entry point for creating professional virtual tour"""
     try:
+        # Check if running in memory-constrained environment
+        import os
+        if os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('USE_OPTIMIZED_TOUR'):
+            logger.info("Using optimized tour generator for deployment environment")
+            from optimized_virtual_tour import create_optimized_tour
+            return create_optimized_tour(image_paths, output_path, job_id, quality='deployment')
+        
         logger.info(f"Creating {style} style tour at {quality} quality")
         tour = ProfessionalVirtualTour(output_path, style=style, quality=quality)
         return tour.create_tour(image_paths)
