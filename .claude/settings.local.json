@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(ls:*)",
+      "Bash(npx:*)",
+      "Bash(npm:*)",
+      "Bash(claude mcp:*)",
+      "Bash(where playwright-mcp)",
+      "Bash(\"C:\\Users\\Owner\\Claude Code Projects\\listinghelper\\playwright-mcp.bat\" --version)",
+      "Bash(icacls:*)",
+      "Bash(powershell:*)",
+      "Bash(\"C:\\Users\\Owner\\Claude Code Projects\\listinghelper\\playwright-mcp.bat\")",
+      "Bash(grep:*)",
+      "Bash(mkdir:*)",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_snapshot",
+      "Bash(unzip:*)",
+      "mcp__playwright__browser_file_upload",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "mcp__playwright__browser_wait_for",
+      "Bash(find:*)"
+    ],
+    "deny": []
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "playwright"
+  ]
+}

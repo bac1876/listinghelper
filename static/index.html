@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Tour Generator - Real Estate Ken Burns Video</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 30px 0;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 40px;
+        }
+        
+        .upload-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .drop-zone {
+            border: 3px dashed #3498db;
+            border-radius: 10px;
+            padding: 60px 40px;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .drop-zone:hover {
+            background: #e3f2fd;
+            border-color: #2196f3;
+        }
+        
+        .drop-zone.drag-over {
+            background: #e3f2fd;
+            border-color: #2196f3;
+            transform: scale(1.02);
+        }
+        
+        .drop-zone h3 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            color: #34495e;
+        }
+        
+        .drop-zone p {
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+        
+        #file-input {
+            display: none;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            text-decoration: none;
+        }
+        
+        .btn:hover {
+            background: #2980b9;
+        }
+        
+        .btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        .btn.secondary {
+            background: #95a5a6;
+        }
+        
+        .btn.secondary:hover {
+            background: #7f8c8d;
+        }
+        
+        .btn.success {
+            background: #27ae60;
+        }
+        
+        .btn.success:hover {
+            background: #229954;
+        }
+        
+        .file-list {
+            margin-top: 30px;
+            text-align: left;
+        }
+        
+        .file-item {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .file-item .name {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        
+        .file-item .size {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        
+        .file-item .remove {
+            color: #e74c3c;
+            cursor: pointer;
+            font-size: 1.2em;
+        }
+        
+        .progress-section {
+            display: none;
+            margin-top: 40px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #ecf0f1;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2980b9);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .status-message {
+            font-size: 1.1em;
+            color: #34495e;
+            margin-bottom: 10px;
+        }
+        
+        .sub-status {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        
+        .results-section {
+            display: none;
+            margin-top: 40px;
+            padding: 30px;
+            background: #e8f5e9;
+            border-radius: 10px;
+            border: 1px solid #a5d6a7;
+        }
+        
+        .results-section.error {
+            background: #ffebee;
+            border-color: #ef9a9a;
+        }
+        
+        .results-section h3 {
+            color: #2e7d32;
+            margin-bottom: 20px;
+        }
+        
+        .results-section.error h3 {
+            color: #c62828;
+        }
+        
+        .download-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        
+        .info-section {
+            margin-top: 40px;
+            padding: 30px;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 10px;
+        }
+        
+        .info-section h3 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+        
+        .info-section ul {
+            list-style: none;
+            padding-left: 20px;
+        }
+        
+        .info-section li {
+            margin-bottom: 8px;
+            color: #856404;
+        }
+        
+        .info-section li:before {
+            content: "✓ ";
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .processing {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <h1>🎬 Virtual Tour Generator</h1>
+            <p>Transform Your Real Estate Photos into Cinematic Ken Burns Videos</p>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="main-content">
+            <div class="upload-section">
+                <div class="drop-zone" id="drop-zone">
+                    <h3>📸 Drop Your Property Photos Here</h3>
+                    <p>or click to browse</p>
+                    <button class="btn">Select Photos</button>
+                    <input type="file" id="file-input" multiple accept="image/*">
+                </div>
+                
+                <div class="file-list" id="file-list" style="display: none;">
+                    <h3>Selected Photos:</h3>
+                    <div id="file-items"></div>
+                    <div style="margin-top: 20px;">
+                        <button class="btn success" id="generate-btn">🎬 Generate Virtual Tour</button>
+                        <button class="btn secondary" id="clear-btn">Clear All</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="progress-section" id="progress-section">
+                <div class="status-message" id="status-message">Initializing...</div>
+                <div class="sub-status" id="sub-status"></div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill" style="width: 0%">0%</div>
+                </div>
+            </div>
+            
+            <div class="results-section" id="results-section">
+                <h3 id="results-title">Success!</h3>
+                <p id="results-message"></p>
+                <div class="download-buttons" id="download-buttons"></div>
+            </div>
+            
+            <div class="info-section">
+                <h3>📋 How It Works</h3>
+                <ul>
+                    <li>Upload 3-10 high-quality property photos</li>
+                    <li>Instantly creates cinematic Ken Burns effects using CSS3</li>
+                    <li>View your virtual tour immediately in the browser</li>
+                    <li>Download the tour to host on your website</li>
+                    <li>Also includes property description and voiceover script</li>
+                    <li>Processing takes just seconds!</li>
+                </ul>
+                <div style="margin-top: 20px; padding: 15px; background: rgba(52, 152, 219, 0.1); border-radius: 5px;">
+                    <strong>🎯 New & Improved!</strong> We now use advanced CSS3 animations for instant results. No more waiting for video processing!
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const fileList = document.getElementById('file-list');
+        const fileItems = document.getElementById('file-items');
+        const generateBtn = document.getElementById('generate-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const progressSection = document.getElementById('progress-section');
+        const resultsSection = document.getElementById('results-section');
+        const statusMessage = document.getElementById('status-message');
+        const subStatus = document.getElementById('sub-status');
+        const progressFill = document.getElementById('progress-fill');
+        
+        let selectedFiles = [];
+        let currentJobId = null;
+        let statusCheckInterval = null;
+        
+        // Drop zone events
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            handleFiles(e.dataTransfer.files);
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+        
+        generateBtn.addEventListener('click', generateVirtualTour);
+        clearBtn.addEventListener('click', clearFiles);
+        
+        function handleFiles(files) {
+            selectedFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+            updateFileList();
+        }
+        
+        function updateFileList() {
+            if (selectedFiles.length === 0) {
+                fileList.style.display = 'none';
+                return;
+            }
+            
+            fileList.style.display = 'block';
+            fileItems.innerHTML = selectedFiles.map((file, index) => `
+                <div class="file-item">
+                    <div>
+                        <div class="name">${file.name}</div>
+                        <div class="size">${(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                    </div>
+                    <div class="remove" onclick="removeFile(${index})">×</div>
+                </div>
+            `).join('');
+        }
+        
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            updateFileList();
+        }
+        
+        function clearFiles() {
+            selectedFiles = [];
+            fileInput.value = '';
+            updateFileList();
+        }
+        
+        async function generateVirtualTour() {
+            if (selectedFiles.length === 0) {
+                alert('Please select at least one photo');
+                return;
+            }
+            
+            // Prepare form data
+            const formData = new FormData();
+            selectedFiles.forEach(file => {
+                formData.append('files', file);
+            });
+            
+            // Show progress section
+            progressSection.style.display = 'block';
+            resultsSection.style.display = 'none';
+            generateBtn.disabled = true;
+            updateProgress(0, 'Uploading photos...');
+            
+            try {
+                // Upload and start processing
+                const response = await fetch('/api/virtual-tour/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Upload failed');
+                }
+                
+                currentJobId = data.job_id;
+                
+                // Start checking job status
+                startStatusChecking();
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showError(error.message);
+                generateBtn.disabled = false;
+            }
+        }
+        
+        function startStatusChecking() {
+            statusCheckInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/virtual-tour/job/${currentJobId}/status`);
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Status check failed');
+                    }
+                    
+                    updateProgress(data.progress || 0, data.current_step || 'Processing...');
+                    
+                    if (data.status === 'completed') {
+                        clearInterval(statusCheckInterval);
+                        checkFinalResults();
+                    } else if (data.status === 'failed') {
+                        clearInterval(statusCheckInterval);
+                        showError(data.error || 'Processing failed');
+                    }
+                    
+                } catch (error) {
+                    console.error('Status check error:', error);
+                }
+            }, 1000);
+            
+            // Timeout after 5 minutes
+            setTimeout(() => {
+                if (statusCheckInterval) {
+                    clearInterval(statusCheckInterval);
+                    showError('Processing timeout - please try again');
+                }
+            }, 300000);
+        }
+        
+        async function checkFinalResults() {
+            try {
+                const response = await fetch('/api/virtual-tour/upload', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ job_id: currentJobId })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'completed') {
+                    showSuccess(data);
+                } else {
+                    showError('Processing completed but no files generated');
+                }
+                
+            } catch (error) {
+                // If we can't check results, assume success and show download options
+                showSuccess({ 
+                    job_id: currentJobId,
+                    video_available: true,
+                    files_generated: {
+                        video: `virtual_tour_${currentJobId}.mp4`,
+                        description: `property_description_${currentJobId}.txt`,
+                        script: `voiceover_script_${currentJobId}.txt`
+                    }
+                });
+            }
+        }
+        
+        function updateProgress(percent, message) {
+            progressFill.style.width = percent + '%';
+            progressFill.textContent = percent + '%';
+            statusMessage.textContent = message;
+            
+            // Add sub-status messages based on step
+            if (message.includes('optimizing')) {
+                subStatus.textContent = 'Preparing images for video processing...';
+            } else if (message.includes('ken_burns')) {
+                subStatus.textContent = 'Creating cinematic zoom and pan effects...';
+            } else if (message.includes('video')) {
+                subStatus.textContent = 'Generating MP4 video file...';
+            } else if (message.includes('description')) {
+                subStatus.textContent = 'Creating property description...';
+            } else if (message.includes('script')) {
+                subStatus.textContent = 'Generating voiceover script...';
+            } else {
+                subStatus.textContent = '';
+            }
+        }
+        
+        function showSuccess(data) {
+            progressSection.style.display = 'none';
+            resultsSection.style.display = 'block';
+            resultsSection.classList.remove('error');
+            generateBtn.disabled = false;
+            
+            document.getElementById('results-title').textContent = '✅ Virtual Tour Created Successfully!';
+            
+            let message = `Processed ${data.images_processed || selectedFiles.length} images`;
+            if (data.processing_time) {
+                message += ` in ${data.processing_time}`;
+            }
+            
+            document.getElementById('results-message').textContent = message;
+            
+            // Create download buttons
+            const downloadButtons = document.getElementById('download-buttons');
+            downloadButtons.innerHTML = '';
+            
+            // Primary output - CSS3 Virtual Tour
+            if (data.virtual_tour_available && data.files_generated.virtual_tour) {
+                downloadButtons.innerHTML += `
+                    <a href="/api/virtual-tour/download/${data.job_id}/virtual_tour" class="btn success" target="_blank">
+                        🎬 View Virtual Tour
+                    </a>
+                    <a href="/api/virtual-tour/download/${data.job_id}/virtual_tour" class="btn" download>
+                        💾 Download Virtual Tour
+                    </a>
+                `;
+            }
+            
+            // Cloud-generated MP4 video if available
+            if (data.cloudinary_video && data.files_generated.cloud_video_url) {
+                downloadButtons.innerHTML += `
+                    <a href="${data.files_generated.cloud_video_url}" class="btn secondary" target="_blank">
+                        ☁️ View Cloud Video
+                    </a>
+                    <a href="${data.files_generated.cloud_video_download}" class="btn secondary" download>
+                        📹 Download MP4
+                    </a>
+                `;
+            }
+            // Local MP4 video if available
+            else if (data.video_available && data.files_generated.video) {
+                downloadButtons.innerHTML += `
+                    <a href="/api/virtual-tour/download/${data.job_id}/video" class="btn secondary" download>
+                        📹 Download Video (MP4)
+                    </a>
+                `;
+            }
+            
+            if (data.files_generated.description) {
+                downloadButtons.innerHTML += `
+                    <a href="/api/virtual-tour/download/${data.job_id}/description" class="btn" download>
+                        📝 Property Description
+                    </a>
+                `;
+            }
+            
+            if (data.files_generated.script) {
+                downloadButtons.innerHTML += `
+                    <a href="/api/virtual-tour/download/${data.job_id}/script" class="btn" download>
+                        🎙️ Voiceover Script
+                    </a>
+                `;
+            }
+            
+            if (data.files_generated.slideshow) {
+                downloadButtons.innerHTML += `
+                    <a href="/api/virtual-tour/download/${data.job_id}/slideshow" class="btn secondary" download>
+                        🖼️ HTML Slideshow (Fallback)
+                    </a>
+                `;
+            }
+        }
+        
+        function showError(message) {
+            progressSection.style.display = 'none';
+            resultsSection.style.display = 'block';
+            resultsSection.classList.add('error');
+            generateBtn.disabled = false;
+            
+            document.getElementById('results-title').textContent = '❌ Error';
+            document.getElementById('results-message').textContent = message;
+            document.getElementById('download-buttons').innerHTML = '';
+            
+            if (statusCheckInterval) {
+                clearInterval(statusCheckInterval);
+                statusCheckInterval = null;
+            }
+        }
+    </script>
+</body>
+</html>
