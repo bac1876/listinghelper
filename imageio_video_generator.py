@@ -30,17 +30,20 @@ def create_imageio_video(image_paths, output_path, fps=24, duration_per_image=3.
     ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
     logger.info(f"Using FFmpeg: {ffmpeg_exe}")
     
-    # Create writer with explicit codec settings
+    # Create writer with explicit codec settings for maximum compatibility
     writer = imageio.get_writer(
         output_path,
         fps=fps,
         codec='libx264',
         quality=8,
         ffmpeg_params=[
-            '-pix_fmt', 'yuv420p',
+            '-pix_fmt', 'yuv420p',  # Standard pixel format
+            '-profile:v', 'baseline',  # Most compatible H.264 profile
+            '-level', '3.0',  # Compatible with most devices
             '-crf', '23',
             '-preset', 'medium',
-            '-movflags', '+faststart'
+            '-movflags', '+faststart',
+            '-vf', 'format=yuv420p'  # Force pixel format conversion
         ]
     )
     

@@ -58,14 +58,14 @@ def get_working_video_writer(output_path, fps, width, height):
             logger.warning(f"Failed with codec {codec_name}: {e}")
             continue
     
-    # Last resort - try uncompressed AVI
+    # Last resort - try MJPEG which is widely supported
     if not output_path.endswith('.avi'):
         output_path = output_path.rsplit('.', 1)[0] + '.avi'
     
-    fourcc = cv2.VideoWriter_fourcc(*'RGBA')  # Uncompressed
+    fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # Motion JPEG
     writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height), True)
     if writer.isOpened():
-        logger.warning("Using uncompressed AVI format as last resort")
+        logger.warning("Using MJPEG AVI format as last resort")
         return writer, output_path
     
     return None, None

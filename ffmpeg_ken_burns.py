@@ -304,6 +304,16 @@ def create_ken_burns_video(image_paths, output_path, job_id):
             file_size = os.path.getsize(output_path)
             if file_size > 0:
                 logger.info(f"Ken Burns video created: {output_path} (size: {file_size / 1024 / 1024:.2f} MB)")
+                
+                # Ensure video is playable
+                try:
+                    from ensure_playable_video import ensure_video_is_playable
+                    final_path = ensure_video_is_playable(output_path)
+                    if final_path:
+                        return final_path
+                except Exception as e:
+                    logger.warning(f"Could not verify video compatibility: {e}")
+                
                 return output_path
             else:
                 logger.error(f"Output file is empty: {output_path}")

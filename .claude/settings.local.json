@@ -34,7 +34,9 @@
       "Bash(python test_video_playback.py:*)",
       "Bash(python:*)",
       "Bash(git reset:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "WebFetch(domain:app.screencast.com)",
+      "Bash(playwright install:*)"
     ],
     "deny": []
   },
