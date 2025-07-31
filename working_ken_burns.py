@@ -68,12 +68,21 @@ def health_check():
         'ffmpeg_version': None,
         'ffmpeg_test_passed': False,
         'storage_writable': False,
-        'storage_path': STORAGE_DIR
+        'storage_path': STORAGE_DIR,
+        'ffmpeg_binary': None
     }
     
-    # Check FFmpeg
+    # Check FFmpeg - try imageio-ffmpeg first
+    ffmpeg_cmd = 'ffmpeg'
     try:
-        result = subprocess.run(['ffmpeg', '-version'], 
+        import imageio_ffmpeg as ffmpeg
+        ffmpeg_cmd = ffmpeg.get_ffmpeg_exe()
+        health_status['ffmpeg_binary'] = 'imageio-ffmpeg'
+    except:
+        health_status['ffmpeg_binary'] = 'system'
+    
+    try:
+        result = subprocess.run([ffmpeg_cmd, '-version'], 
                               capture_output=True, 
                               text=True, 
                               timeout=5)

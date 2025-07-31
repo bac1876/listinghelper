@@ -12,6 +12,14 @@ from PIL import Image
 
 logger = logging.getLogger(__name__)
 
+try:
+    import imageio_ffmpeg as ffmpeg
+    FFMPEG_BINARY = ffmpeg.get_ffmpeg_exe()
+    logger.info(f"Using imageio-ffmpeg binary: {FFMPEG_BINARY}")
+except:
+    FFMPEG_BINARY = 'ffmpeg'
+    logger.info("Using system ffmpeg")
+
 def create_ken_burns_video(image_paths, output_path, job_id):
     """
     Create a Ken Burns effect video using FFmpeg
@@ -107,7 +115,7 @@ def create_ken_burns_video(image_paths, output_path, job_id):
             
             # Create segment with Ken Burns effect
             cmd = [
-                'ffmpeg',
+                FFMPEG_BINARY,
                 '-loop', '1',
                 '-i', img_path,
                 '-vf', zoompan,
@@ -144,7 +152,7 @@ def create_ken_burns_video(image_paths, output_path, job_id):
         # First, concatenate without transitions
         temp_output = os.path.join(temp_dir, 'temp_concat.mp4')
         concat_cmd = [
-            'ffmpeg',
+            FFMPEG_BINARY,
             '-f', 'concat',
             '-safe', '0',
             '-i', segments_file,
@@ -162,7 +170,7 @@ def create_ken_burns_video(image_paths, output_path, job_id):
         else:
             # Add fade transitions between segments
             final_cmd = [
-                'ffmpeg',
+                FFMPEG_BINARY,
                 '-i', temp_output,
                 '-vf', 'fade=t=in:st=0:d=0.5,fade=t=out:st=3.5:d=0.5',
                 '-c:v', 'libx264',

@@ -1,8 +1,13 @@
 [phases.setup]
 nixPkgs = ["ffmpeg"]
+aptPkgs = ["ffmpeg"]
 
 [phases.install]
-cmds = ["pip install -r requirements.txt"]
+cmds = [
+    "apt-get update && apt-get install -y ffmpeg",
+    "pip install -r requirements.txt",
+    "ffmpeg -version"
+]
 
 [start]
 cmd = "gunicorn main:app --bind 0.0.0.0:$PORT"
