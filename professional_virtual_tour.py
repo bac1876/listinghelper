@@ -383,18 +383,13 @@ class ProfessionalVirtualTour:
 def create_professional_tour(image_paths: List[str], output_path: str, job_id: str, style: str = 'luxury', quality: str = 'high') -> str:
     """Main entry point for creating professional virtual tour"""
     try:
-        # Check if running in memory-constrained environment
-        import os
-        if os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('USE_OPTIMIZED_TOUR'):
-            logger.info("Using optimized tour generator for deployment environment")
-            from optimized_virtual_tour import create_optimized_tour
-            return create_optimized_tour(image_paths, output_path, job_id, quality='deployment')
+        # Always use optimized tour generator with smart quality detection
+        logger.info("Using optimized tour generator with quality auto-detection")
+        from optimized_virtual_tour import create_optimized_tour
         
-        logger.info(f"Creating {style} style tour at {quality} quality")
-        logger.info(f"OpenCV version: {cv2.__version__}")
+        # Pass None for quality to trigger auto-detection
+        return create_optimized_tour(image_paths, output_path, job_id, quality=None)
         
-        tour = ProfessionalVirtualTour(output_path, style=style, quality=quality)
-        return tour.create_tour(image_paths)
     except Exception as e:
         logger.error(f"Error creating professional tour: {e}")
         import traceback

@@ -14,7 +14,7 @@ import gc  # For garbage collection
 
 logger = logging.getLogger(__name__)
 
-# Memory-optimized quality presets
+# Quality presets - now with premium option for best results
 OPTIMIZED_QUALITY_PRESETS = {
     "deployment": {
         "fps": 24,
@@ -25,20 +25,28 @@ OPTIMIZED_QUALITY_PRESETS = {
         "crf": 28
     },
     "medium": {
-        "fps": 24,
+        "fps": 30,
         "resolution": (1280, 720),
-        "bitrate": "3M",
+        "bitrate": "4M",
         "codec": "libx264",
-        "preset": "faster",
-        "crf": 25
+        "preset": "medium",
+        "crf": 23
     },
     "high": {
         "fps": 30,
         "resolution": (1920, 1080),
-        "bitrate": "5M",
+        "bitrate": "8M",
         "codec": "libx264",
-        "preset": "fast",
-        "crf": 23
+        "preset": "medium",
+        "crf": 20
+    },
+    "premium": {
+        "fps": 60,  # Smooth 60fps for professional quality
+        "resolution": (1920, 1080),  # Full HD
+        "bitrate": "12M",
+        "codec": "libx264",
+        "preset": "slow",  # Better quality encoding
+        "crf": 18  # Higher quality (lower = better)
     }
 }
 
@@ -55,6 +63,7 @@ class OptimizedVirtualTour:
     def __init__(self, output_path: str, quality: str = 'deployment'):
         self.output_path = output_path
         self.quality = OPTIMIZED_QUALITY_PRESETS.get(quality, OPTIMIZED_QUALITY_PRESETS['deployment'])
+        self.quality['name'] = quality  # Store quality name for duration calculation
         
         self.fps = self.quality['fps']
         self.width, self.height = self.quality['resolution']
@@ -77,12 +86,20 @@ class OptimizedVirtualTour:
             logger.warning("Using fallback mp4v codec")
     
     def get_simple_movement(self, index: int) -> SimpleMovement:
-        """Get a simple movement pattern that looks professional but uses less computation"""
+        """Get movement patterns with configurable duration based on quality"""
+        # Longer durations for higher quality
+        base_duration = {
+            'deployment': 3.0,
+            'medium': 4.5,
+            'high': 6.0,
+            'premium': 8.0  # 8 seconds per image for premium quality
+        }.get(self.quality.get('name', 'high'), 5.0)
+        
         movements = [
-            SimpleMovement(1.0, 1.2, 0.1, 0.0, 3.0),    # Slow zoom in with slight pan right
-            SimpleMovement(1.2, 1.0, -0.1, 0.0, 3.0),   # Zoom out with pan left
-            SimpleMovement(1.0, 1.15, 0.0, 0.1, 3.0),   # Zoom in with pan down
-            SimpleMovement(1.15, 1.0, 0.0, -0.1, 3.0),  # Zoom out with pan up
+            SimpleMovement(1.0, 1.2, 0.05, 0.0, base_duration),    # Slower, smoother zoom in
+            SimpleMovement(1.2, 1.0, -0.05, 0.0, base_duration),   # Gentle zoom out
+            SimpleMovement(1.0, 1.15, 0.0, 0.05, base_duration),   # Subtle vertical movement
+            SimpleMovement(1.15, 1.0, 0.0, -0.05, base_duration),  # Return movement
         ]
         return movements[index % len(movements)]
     
@@ -93,9 +110,21 @@ class OptimizedVirtualTour:
             if img.mode != 'RGB':
                 img = img.convert('RGB')
             
-            # Light color enhancement only
+            # Better color enhancement for premium quality
+            quality_enhancement = {
+                'deployment': 1.05,
+                'medium': 1.08,
+                'high': 1.10,
+                'premium': 1.12
+            }.get(self.quality.get('name', 'high'), 1.10)
+            
             enhancer = ImageEnhance.Color(img)
-            img = enhancer.enhance(1.05)
+            img = enhancer.enhance(quality_enhancement)
+            
+            # Add subtle sharpness for premium
+            if self.quality.get('name') in ['high', 'premium']:
+                enhancer = ImageEnhance.Sharpness(img)
+                img = enhancer.enhance(1.1)
             
             # Calculate scaling - use smaller buffer for movement
             img_aspect = img.width / img.height
@@ -205,8 +234,12 @@ class OptimizedVirtualTour:
         gc.collect()
     
     def ease_in_out(self, t: float) -> float:
-        """Simple ease in-out function"""
-        return t * t * (3.0 - 2.0 * t)
+        """Smooth cubic ease in-out for professional movement"""
+        if t < 0.5:
+            return 4 * t * t * t
+        else:
+            p = 2 * t - 2
+            return 1 + p * p * p / 2
     
     def write_black_frames(self, count: int):
         """Write black frames"""
@@ -257,7 +290,16 @@ class OptimizedVirtualTour:
         # Resize to output size
         return cv2.resize(cropped, (self.width, self.height), interpolation=cv2.INTER_LINEAR)
     
-    def write_simple_transition(self, image1_path: str, image2_path: str, duration: float = 0.8):
+    def write_simple_transition(self, image1_path: str, image2_path: str, duration: float = None):
+        """Write a smooth crossfade transition between two images"""
+        if duration is None:
+            # Longer transitions for higher quality
+            duration = {
+                'deployment': 0.6,
+                'medium': 0.8,
+                'high': 1.0,
+                'premium': 1.2
+            }.get(self.quality.get('name', 'high'), 0.8)
         """Write a simple crossfade transition between two images"""
         # Load both images
         img1 = self.prepare_image_lightweight(image1_path)
@@ -362,12 +404,29 @@ class OptimizedVirtualTour:
             raise ValueError("Failed to create video file")
 
 
-def create_optimized_tour(image_paths: List[str], output_path: str, job_id: str, quality: str = 'deployment') -> str:
-    """Main entry point for creating memory-optimized virtual tour"""
+def create_optimized_tour(image_paths: List[str], output_path: str, job_id: str, quality: str = None) -> str:
+    """Main entry point for creating virtual tour with auto quality detection"""
     try:
-        logger.info(f"Creating optimized tour at {quality} quality for job {job_id}")
-        logger.info(f"OpenCV version: {cv2.__version__}")
-        logger.info(f"Available video backends: {cv2.getBuildInformation()}")
+        # Auto-detect quality based on environment
+        if quality is None:
+            if os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('RAILWAY_STATIC_URL'):
+                quality = 'deployment'  # Use optimized for Railway
+                logger.info("Detected Railway environment, using deployment quality")
+            else:
+                # Use premium quality when not on Railway
+                quality = 'premium'
+                logger.info("Using premium quality for best results (this may take 1-2 minutes)")
+        
+        logger.info(f"Creating virtual tour at {quality} quality for job {job_id}")
+        
+        # Log expected time
+        expected_times = {
+            'deployment': '10-20 seconds',
+            'medium': '30-45 seconds',
+            'high': '45-60 seconds',
+            'premium': '60-120 seconds'
+        }
+        logger.info(f"Expected processing time: {expected_times.get(quality, '60 seconds')}")
         
         tour = OptimizedVirtualTour(output_path, quality=quality)
         return tour.create_optimized_tour(image_paths)

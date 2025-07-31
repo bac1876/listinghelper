@@ -319,10 +319,10 @@
                     <li>Cinematic zoom and pan movements</li>
                     <li>High-quality video output ready for any platform</li>
                     <li>Also includes property description and voiceover script</li>
-                    <li>Processing takes just seconds!</li>
+                    <li>Premium quality processing (1-2 minutes for best results)</li>
                 </ul>
                 <div style="margin-top: 20px; padding: 15px; background: rgba(52, 152, 219, 0.1); border-radius: 5px;">
-                    <strong>🎯 Professional Quality!</strong> Creates real MP4 videos with stunning Ken Burns effects - perfect for MLS listings and social media.
+                    <strong>🎯 Premium Quality Mode!</strong> Creates smooth 60fps HD videos with professional camera movements. Worth the wait for exceptional results!
                 </div>
             </div>
         </div>
@@ -417,7 +417,7 @@
             progressSection.style.display = 'block';
             resultsSection.style.display = 'none';
             generateBtn.disabled = true;
-            updateProgress(0, 'Uploading photos...');
+            updateProgress(0, 'Uploading photos for premium quality processing...');
             
             try {
                 // Upload and start processing
@@ -433,6 +433,9 @@
                 }
                 
                 currentJobId = data.job_id;
+                
+                // Show premium quality message
+                updateProgress(5, 'Creating premium 60fps HD virtual tour (this may take 1-2 minutes for best quality)...');
                 
                 // Start checking job status
                 startStatusChecking();
@@ -514,6 +517,14 @@
             progressFill.style.width = percent + '%';
             progressFill.textContent = percent + '%';
             statusMessage.textContent = message;
+            
+            // Add quality indicator for premium processing
+            if (percent > 5 && percent < 95) {
+                const subStatusDiv = document.querySelector('.sub-status');
+                if (subStatusDiv) {
+                    subStatusDiv.textContent = '✨ Premium Quality: 60fps • Full HD • 8-second scenes • Smooth cinematic movements';
+                }
+            }
             
             // Add sub-status messages based on step
             if (message.includes('optimizing')) {

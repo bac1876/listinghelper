@@ -8,12 +8,12 @@ TOUR_STYLES = {
     "luxury": {
         "name": "Luxury Estate",
         "description": "Slow, elegant movements for high-end properties",
-        "base_duration": 5.5,  # seconds per image
-        "transition_duration": 1.2,
-        "zoom_range": (1.0, 1.3),
-        "movement_speed": 0.7,  # multiplier for movement speed
-        "vignette_strength": 0.25,
-        "color_enhancement": 1.1,
+        "base_duration": 8.0,  # 8 seconds per image for premium experience
+        "transition_duration": 1.5,  # Smooth, unhurried transitions
+        "zoom_range": (1.0, 1.25),  # Subtle zoom for elegance
+        "movement_speed": 0.5,  # Very slow movement for luxury feel
+        "vignette_strength": 0.20,
+        "color_enhancement": 1.12,
         "preferred_movements": ["slow_zoom_in", "elegant_pan", "reveal"]
     },
     "modern": {
