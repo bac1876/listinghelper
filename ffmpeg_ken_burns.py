@@ -26,6 +26,14 @@ def create_ken_burns_video(image_paths, output_path, job_id):
     Returns the path to the generated MP4 file
     """
     
+    # Try professional virtual tour first
+    try:
+        logger.info("Creating professional virtual tour...")
+        from professional_virtual_tour import create_professional_tour
+        return create_professional_tour(image_paths, output_path, job_id)
+    except Exception as e:
+        logger.warning(f"Professional tour failed, trying FFmpeg: {e}")
+    
     # Video parameters
     fps = 25
     duration_per_image = 4  # seconds
