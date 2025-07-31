@@ -29,7 +29,12 @@
       "mcp__playwright__browser_console_messages",
       "mcp__playwright__browser_navigate_back",
       "Bash(python test_images/create_test_images.py:*)",
-      "Bash(python test_optimized_tour.py)"
+      "Bash(python test_optimized_tour.py)",
+      "Bash(pip install:*)",
+      "Bash(python test_video_playback.py:*)",
+      "Bash(python:*)",
+      "Bash(git reset:*)",
+      "Bash(git rm:*)"
     ],
     "deny": []
   },

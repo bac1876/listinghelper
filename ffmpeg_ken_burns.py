@@ -12,13 +12,54 @@ from PIL import Image
 
 logger = logging.getLogger(__name__)
 
-try:
-    import imageio_ffmpeg as ffmpeg
-    FFMPEG_BINARY = ffmpeg.get_ffmpeg_exe()
-    logger.info(f"Using imageio-ffmpeg binary: {FFMPEG_BINARY}")
-except:
-    FFMPEG_BINARY = 'ffmpeg'
-    logger.info("Using system ffmpeg")
+def get_ffmpeg_binary():
+    """Get FFmpeg binary with multiple fallback options"""
+    ffmpeg_binary = None
+    
+    # Try imageio-ffmpeg first
+    try:
+        import imageio_ffmpeg as ffmpeg
+        ffmpeg_binary = ffmpeg.get_ffmpeg_exe()
+        # Test if it actually works
+        result = subprocess.run([ffmpeg_binary, '-version'], capture_output=True, text=True)
+        if result.returncode == 0:
+            logger.info(f"Using imageio-ffmpeg binary: {ffmpeg_binary}")
+            return ffmpeg_binary
+    except Exception as e:
+        logger.warning(f"imageio-ffmpeg not available or not working: {e}")
+    
+    # Try system ffmpeg
+    for cmd in ['ffmpeg', 'ffmpeg.exe']:
+        try:
+            result = subprocess.run([cmd, '-version'], capture_output=True, text=True)
+            if result.returncode == 0:
+                logger.info(f"Using system ffmpeg: {cmd}")
+                return cmd
+        except Exception as e:
+            logger.warning(f"System ffmpeg '{cmd}' not available: {e}")
+    
+    # Try common installation paths
+    common_paths = [
+        '/usr/bin/ffmpeg',
+        '/usr/local/bin/ffmpeg',
+        'C:\\ffmpeg\\bin\\ffmpeg.exe',
+        'C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe'
+    ]
+    
+    for path in common_paths:
+        if os.path.exists(path):
+            try:
+                result = subprocess.run([path, '-version'], capture_output=True, text=True)
+                if result.returncode == 0:
+                    logger.info(f"Using ffmpeg at: {path}")
+                    return path
+            except Exception as e:
+                logger.warning(f"FFmpeg at '{path}' not working: {e}")
+    
+    logger.error("No working FFmpeg binary found")
+    return None
+
+FFMPEG_BINARY = get_ffmpeg_binary()
 
 def create_ken_burns_video(image_paths, output_path, job_id):
     """
@@ -47,7 +88,14 @@ def create_ken_burns_video(image_paths, output_path, job_id):
         from professional_virtual_tour import create_professional_tour
         return create_professional_tour(image_paths, output_path, job_id)
     except Exception as e:
-        logger.warning(f"Professional tour failed, trying FFmpeg: {e}")
+        logger.warning(f"Professional tour failed, trying imageio: {e}")
+        
+        # Try imageio as second option
+        try:
+            from imageio_video_generator import create_imageio_video
+            return create_imageio_video(image_paths, output_path)
+        except Exception as imageio_error:
+            logger.warning(f"Imageio failed, trying FFmpeg: {imageio_error}")
     
     # Video parameters
     fps = 25
@@ -57,6 +105,11 @@ def create_ken_burns_video(image_paths, output_path, job_id):
     
     # Create a temporary directory for processed images
     temp_dir = tempfile.mkdtemp()
+    
+    # Check if FFmpeg is available
+    if not FFMPEG_BINARY:
+        logger.error("FFmpeg binary not found, cannot create video with FFmpeg")
+        raise Exception("FFmpeg not available")
     
     # Log FFmpeg binary being used
     logger.info(f"Using FFmpeg binary: {FFMPEG_BINARY}")
@@ -155,15 +208,25 @@ def create_ken_burns_video(image_paths, output_path, job_id):
             ]
             
             logger.info(f"Creating segment {i} with Ken Burns effect...")
-            logger.info(f"FFmpeg command: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, text=True, shell=(os.name == 'nt'))
+            logger.debug(f"FFmpeg command: {' '.join(cmd)}")
             
-            if result.returncode != 0:
-                logger.error(f"FFmpeg error for segment {i}: {result.stderr}")
-                logger.error(f"FFmpeg stdout: {result.stdout}")
+            try:
+                result = subprocess.run(cmd, capture_output=True, text=True, shell=(os.name == 'nt'))
+                
+                if result.returncode != 0:
+                    logger.error(f"FFmpeg error for segment {i}: {result.stderr}")
+                    logger.error(f"FFmpeg stdout: {result.stdout}")
+                    continue
+                
+                # Verify segment was created and has size
+                if os.path.exists(segment_path) and os.path.getsize(segment_path) > 0:
+                    segments.append(segment_path)
+                    logger.info(f"Segment {i} created successfully: {os.path.getsize(segment_path) / 1024:.2f} KB")
+                else:
+                    logger.error(f"Segment {i} was not created or is empty")
+            except Exception as e:
+                logger.error(f"Error creating segment {i}: {e}")
                 continue
-            
-            segments.append(segment_path)
         
         if not segments:
             raise Exception("No video segments could be created")
@@ -189,36 +252,65 @@ def create_ken_burns_video(image_paths, output_path, job_id):
             temp_output
         ]
         
-        result = subprocess.run(concat_cmd, capture_output=True, text=True, shell=(os.name == 'nt'))
-        
-        if result.returncode != 0:
-            logger.error(f"Concatenation error: {result.stderr}")
-            # Fallback to simple concat without transitions
-            shutil.copy(segments[0], output_path)
-        else:
-            # Add fade transitions between segments
-            final_cmd = [
-                FFMPEG_BINARY,
-                '-i', temp_output,
-                '-vf', 'fade=t=in:st=0:d=0.5,fade=t=out:st=3.5:d=0.5',
-                '-c:v', 'libx264',
-                '-preset', 'fast',
-                '-crf', '20',
-                '-pix_fmt', 'yuv420p',
-                '-movflags', '+faststart',
-                '-y',
-                output_path
-            ]
-            
-            result = subprocess.run(final_cmd, capture_output=True, text=True, shell=(os.name == 'nt'))
+        try:
+            result = subprocess.run(concat_cmd, capture_output=True, text=True, shell=(os.name == 'nt'))
             
             if result.returncode != 0:
-                logger.error(f"Final processing error: {result.stderr}")
-                # Use temp output as fallback
-                shutil.copy(temp_output, output_path)
+                logger.error(f"Concatenation error: {result.stderr}")
+                # Fallback to simple concat without transitions
+                if segments:
+                    shutil.copy(segments[0], output_path)
+                    logger.warning("Used first segment as fallback output")
+                else:
+                    raise Exception("No segments available for concatenation")
+            else:
+                # Add fade transitions between segments
+                final_cmd = [
+                    FFMPEG_BINARY,
+                    '-i', temp_output,
+                    '-vf', 'fade=t=in:st=0:d=0.5,fade=t=out:st=3.5:d=0.5',
+                    '-c:v', 'libx264',
+                    '-preset', 'fast',
+                    '-crf', '20',
+                    '-pix_fmt', 'yuv420p',
+                    '-movflags', '+faststart',
+                    '-y',
+                    output_path
+                ]
+            
+                try:
+                    result = subprocess.run(final_cmd, capture_output=True, text=True, shell=(os.name == 'nt'))
+                    
+                    if result.returncode != 0:
+                        logger.error(f"Final processing error: {result.stderr}")
+                        # Use temp output as fallback
+                        if os.path.exists(temp_output):
+                            shutil.copy(temp_output, output_path)
+                            logger.warning("Used concatenated output without fade effects")
+                        else:
+                            raise Exception("No temporary output available")
+                except Exception as e:
+                    logger.error(f"Error in final processing: {e}")
+                    if os.path.exists(temp_output):
+                        shutil.copy(temp_output, output_path)
+                    else:
+                        raise
+        except Exception as e:
+            logger.error(f"Error in FFmpeg processing: {e}")
+            raise
         
-        logger.info(f"Ken Burns video created: {output_path}")
-        return output_path
+        # Verify final output
+        if os.path.exists(output_path):
+            file_size = os.path.getsize(output_path)
+            if file_size > 0:
+                logger.info(f"Ken Burns video created: {output_path} (size: {file_size / 1024 / 1024:.2f} MB)")
+                return output_path
+            else:
+                logger.error(f"Output file is empty: {output_path}")
+                raise ValueError("Generated video file is empty")
+        else:
+            logger.error(f"Output file not found: {output_path}")
+            raise ValueError("Failed to create video file")
         
     except Exception as e:
         logger.error(f"Error creating Ken Burns video: {e}")

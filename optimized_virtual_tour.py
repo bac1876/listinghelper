@@ -59,20 +59,22 @@ class OptimizedVirtualTour:
         self.fps = self.quality['fps']
         self.width, self.height = self.quality['resolution']
         
-        # Video writer setup with optimized codec settings
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # More compatible codec
-        self.writer = cv2.VideoWriter(
-            output_path, 
-            fourcc, 
-            self.fps, 
-            (self.width, self.height),
-            isColor=True
+        # Video writer setup with robust codec detection
+        from video_codec_fix import get_working_video_writer
+        
+        self.writer, self.actual_output_path = get_working_video_writer(
+            output_path, self.fps, self.width, self.height
         )
         
-        if not self.writer.isOpened():
-            # Fallback to another codec
-            fourcc = cv2.VideoWriter_fourcc(*'XVID')
-            self.writer = cv2.VideoWriter(output_path, fourcc, self.fps, (self.width, self.height))
+        if not self.writer:
+            # Fallback to simple approach
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            self.writer = cv2.VideoWriter(output_path, fourcc, self.fps, (self.width, self.height), True)
+            self.actual_output_path = output_path
+            
+            if not self.writer.isOpened():
+                raise ValueError("Could not open video writer with any available codec")
+            logger.warning("Using fallback mp4v codec")
     
     def get_simple_movement(self, index: int) -> SimpleMovement:
         """Get a simple movement pattern that looks professional but uses less computation"""
@@ -143,8 +145,22 @@ class OptimizedVirtualTour:
         # Convert RGB to BGR for OpenCV
         frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         
-        # Write frame immediately
-        self.writer.write(frame_bgr)
+        # Validate frame before writing
+        if frame_bgr.shape[:2] != (self.height, self.width):
+            logger.error(f"Frame size mismatch: expected {(self.height, self.width)}, got {frame_bgr.shape[:2]}")
+            frame_bgr = cv2.resize(frame_bgr, (self.width, self.height), interpolation=cv2.INTER_LINEAR)
+        
+        # Ensure frame is uint8
+        if frame_bgr.dtype != np.uint8:
+            frame_bgr = frame_bgr.astype(np.uint8)
+        
+        # Write frame with error handling
+        try:
+            success = self.writer.write(frame_bgr)
+            if not success:
+                logger.error("Failed to write frame to video")
+        except Exception as e:
+            logger.error(f"Error writing frame: {e}")
     
     def add_simple_vignette(self, frame: np.ndarray) -> np.ndarray:
         """Add simple vignette effect with minimal computation"""
@@ -196,7 +212,10 @@ class OptimizedVirtualTour:
         """Write black frames"""
         black_frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)
         for _ in range(count):
-            self.writer.write(black_frame)
+            try:
+                self.writer.write(black_frame)
+            except Exception as e:
+                logger.error(f"Error writing black frame: {e}")
     
     def write_fade_in(self, image_path: str, duration: float = 0.5):
         """Write fade in from black"""
@@ -208,7 +227,10 @@ class OptimizedVirtualTour:
         for i in range(num_frames):
             alpha = i / num_frames
             faded_frame = (frame_bgr * alpha).astype(np.uint8)
-            self.writer.write(faded_frame)
+            try:
+                self.writer.write(faded_frame)
+            except Exception as e:
+                logger.error(f"Error writing faded frame: {e}")
         
         del image, frame_rgb, frame_bgr
         gc.collect()
@@ -257,7 +279,10 @@ class OptimizedVirtualTour:
             
             # Crossfade
             frame = cv2.addWeighted(frame1_bgr, 1 - alpha, frame2_bgr, alpha, 0)
-            self.writer.write(frame)
+            try:
+                self.writer.write(frame)
+            except Exception as e:
+                logger.error(f"Error writing transition frame: {e}")
         
         # Free memory
         del img1, img2, frame1_rgb, frame2_rgb, frame1_bgr, frame2_bgr
@@ -295,7 +320,10 @@ class OptimizedVirtualTour:
             for j in range(fade_frames):
                 alpha = 1 - (j / fade_frames)
                 frame = (frame_bgr * alpha).astype(np.uint8)
-                self.writer.write(frame)
+                try:
+                    self.writer.write(frame)
+                except Exception as e:
+                    logger.error(f"Error writing fade out frame: {e}")
             
             del last_image, frame_rgb, frame_bgr
             gc.collect()
@@ -304,19 +332,47 @@ class OptimizedVirtualTour:
         self.write_black_frames(int(0.5 * self.fps))
         
         # Clean up
-        self.writer.release()
-        cv2.destroyAllWindows()
+        try:
+            self.writer.release()
+            cv2.destroyAllWindows()
+        except Exception as e:
+            logger.error(f"Error releasing video writer: {e}")
         
-        logger.info(f"Optimized virtual tour created: {self.output_path}")
-        return self.output_path
+        # Verify output file (check actual output path which might be different)
+        output_to_check = getattr(self, 'actual_output_path', self.output_path)
+        if os.path.exists(output_to_check):
+            file_size = os.path.getsize(output_to_check)
+            if file_size > 0:
+                logger.info(f"Optimized virtual tour created: {output_to_check} (size: {file_size / 1024 / 1024:.2f} MB)")
+                # If output path changed (e.g., to AVI), rename to requested MP4
+                if output_to_check != self.output_path and output_to_check.endswith('.avi'):
+                    try:
+                        os.rename(output_to_check, self.output_path)
+                        logger.info(f"Renamed {output_to_check} to {self.output_path}")
+                        return self.output_path
+                    except:
+                        logger.warning(f"Could not rename to MP4, returning {output_to_check}")
+                        return output_to_check
+                return output_to_check
+            else:
+                logger.error(f"Output file is empty: {output_to_check}")
+                raise ValueError("Generated video file is empty")
+        else:
+            logger.error(f"Output file not found: {output_to_check}")
+            raise ValueError("Failed to create video file")
 
 
 def create_optimized_tour(image_paths: List[str], output_path: str, job_id: str, quality: str = 'deployment') -> str:
     """Main entry point for creating memory-optimized virtual tour"""
     try:
         logger.info(f"Creating optimized tour at {quality} quality for job {job_id}")
+        logger.info(f"OpenCV version: {cv2.__version__}")
+        logger.info(f"Available video backends: {cv2.getBuildInformation()}")
+        
         tour = OptimizedVirtualTour(output_path, quality=quality)
         return tour.create_optimized_tour(image_paths)
     except Exception as e:
         logger.error(f"Error creating optimized tour: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         raise

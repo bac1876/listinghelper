@@ -43,9 +43,43 @@ class ProfessionalVirtualTour:
         # Get style-specific movement patterns
         self.movement_pool = [MOVEMENT_PATTERNS[m] for m in self.style['preferred_movements'] if m in MOVEMENT_PATTERNS]
         
-        # Video writer setup with H.264 codec
-        fourcc = cv2.VideoWriter_fourcc(*'avc1')  # H.264 codec
-        self.writer = cv2.VideoWriter(output_path, fourcc, self.fps, (self.width, self.height))
+        # Video writer setup with robust codec detection
+        self.writer = None
+        codecs_to_try = [
+            ('H264', 'avc1'),  # H.264 - most compatible
+            ('H264', 'h264'),
+            ('H264', 'H264'),
+            ('MPEG-4', 'mp4v'),
+            ('MPEG-4', 'MP4V'),
+            ('MJPEG', 'mjpeg')
+        ]
+        
+        for codec_name, fourcc_code in codecs_to_try:
+            try:
+                fourcc = cv2.VideoWriter_fourcc(*fourcc_code)
+                self.writer = cv2.VideoWriter(
+                    output_path, 
+                    fourcc, 
+                    self.fps, 
+                    (self.width, self.height),
+                    isColor=True
+                )
+                
+                if self.writer.isOpened():
+                    logger.info(f"Successfully opened video writer with codec: {codec_name} ({fourcc_code})")
+                    break
+                else:
+                    logger.warning(f"Failed to open writer with codec: {codec_name} ({fourcc_code})")
+                    self.writer.release()
+                    self.writer = None
+            except Exception as e:
+                logger.warning(f"Error trying codec {codec_name}: {e}")
+                if self.writer:
+                    self.writer.release()
+                self.writer = None
+        
+        if not self.writer or not self.writer.isOpened():
+            raise ValueError("Could not open video writer with any available codec")
         
     def ease_in_out(self, t: float) -> float:
         """Smooth easing function for natural motion"""
@@ -300,17 +334,50 @@ class ProfessionalVirtualTour:
         for _ in range(int(0.5 * self.fps)):
             all_frames.append(black_frame)
         
-        # Write all frames
+        # Write all frames with validation
         logger.info(f"Writing {len(all_frames)} frames to video...")
-        for frame in all_frames:
-            self.writer.write(frame)
+        frames_written = 0
+        for i, frame in enumerate(all_frames):
+            # Validate frame
+            if frame.shape[:2] != (self.height, self.width):
+                logger.warning(f"Frame {i} size mismatch: expected {(self.height, self.width)}, got {frame.shape[:2]}")
+                frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_LANCZOS4)
+            
+            # Ensure frame is uint8
+            if frame.dtype != np.uint8:
+                frame = frame.astype(np.uint8)
+            
+            # Write frame with error handling
+            try:
+                success = self.writer.write(frame)
+                if success:
+                    frames_written += 1
+                else:
+                    logger.error(f"Failed to write frame {i}")
+            except Exception as e:
+                logger.error(f"Error writing frame {i}: {e}")
+        
+        logger.info(f"Successfully wrote {frames_written}/{len(all_frames)} frames")
         
         # Clean up
-        self.writer.release()
-        cv2.destroyAllWindows()
+        try:
+            self.writer.release()
+            cv2.destroyAllWindows()
+        except Exception as e:
+            logger.error(f"Error releasing video writer: {e}")
         
-        logger.info(f"Professional virtual tour created: {self.output_path}")
-        return self.output_path
+        # Verify output file
+        if os.path.exists(self.output_path):
+            file_size = os.path.getsize(self.output_path)
+            if file_size > 0:
+                logger.info(f"Professional virtual tour created: {self.output_path} (size: {file_size / 1024 / 1024:.2f} MB)")
+                return self.output_path
+            else:
+                logger.error(f"Output file is empty: {self.output_path}")
+                raise ValueError("Generated video file is empty")
+        else:
+            logger.error(f"Output file not found: {self.output_path}")
+            raise ValueError("Failed to create video file")
 
 
 def create_professional_tour(image_paths: List[str], output_path: str, job_id: str, style: str = 'luxury', quality: str = 'high') -> str:
@@ -324,8 +391,12 @@ def create_professional_tour(image_paths: List[str], output_path: str, job_id: s
             return create_optimized_tour(image_paths, output_path, job_id, quality='deployment')
         
         logger.info(f"Creating {style} style tour at {quality} quality")
+        logger.info(f"OpenCV version: {cv2.__version__}")
+        
         tour = ProfessionalVirtualTour(output_path, style=style, quality=quality)
         return tour.create_tour(image_paths)
     except Exception as e:
         logger.error(f"Error creating professional tour: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         raise
