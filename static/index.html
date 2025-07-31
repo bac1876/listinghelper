@@ -315,14 +315,14 @@
                 <h3>📋 How It Works</h3>
                 <ul>
                     <li>Upload 3-10 high-quality property photos</li>
-                    <li>Instantly creates cinematic Ken Burns effects using CSS3</li>
-                    <li>View your virtual tour immediately in the browser</li>
-                    <li>Download the tour to host on your website</li>
+                    <li>Creates professional MP4 video with Ken Burns effects</li>
+                    <li>Cinematic zoom and pan movements</li>
+                    <li>High-quality video output ready for any platform</li>
                     <li>Also includes property description and voiceover script</li>
                     <li>Processing takes just seconds!</li>
                 </ul>
                 <div style="margin-top: 20px; padding: 15px; background: rgba(52, 152, 219, 0.1); border-radius: 5px;">
-                    <strong>🎯 New & Improved!</strong> We now use advanced CSS3 animations for instant results. No more waiting for video processing!
+                    <strong>🎯 Professional Quality!</strong> Creates real MP4 videos with stunning Ken Burns effects - perfect for MLS listings and social media.
                 </div>
             </div>
         </div>
@@ -550,14 +550,11 @@
             const downloadButtons = document.getElementById('download-buttons');
             downloadButtons.innerHTML = '';
             
-            // Primary output - CSS3 Virtual Tour
-            if (data.virtual_tour_available && data.files_generated.virtual_tour) {
+            // Primary output - MP4 Video
+            if (data.video_available || data.virtual_tour_available) {
                 downloadButtons.innerHTML += `
-                    <a href="/api/virtual-tour/download/${data.job_id}/virtual_tour" class="btn success" target="_blank">
-                        🎬 View Virtual Tour
-                    </a>
-                    <a href="/api/virtual-tour/download/${data.job_id}/virtual_tour" class="btn" download>
-                        💾 Download Virtual Tour
+                    <a href="/api/virtual-tour/download/${data.job_id}/video" class="btn success" download>
+                        🎬 Download MP4 Video
                     </a>
                 `;
             }
@@ -573,14 +570,7 @@
                     </a>
                 `;
             }
-            // Local MP4 video if available
-            else if (data.video_available && data.files_generated.video) {
-                downloadButtons.innerHTML += `
-                    <a href="/api/virtual-tour/download/${data.job_id}/video" class="btn secondary" download>
-                        📹 Download Video (MP4)
-                    </a>
-                `;
-            }
+            // Remove redundant local MP4 section since we handle it above
             
             if (data.files_generated.description) {
                 downloadButtons.innerHTML += `
@@ -597,14 +587,7 @@
                     </a>
                 `;
             }
-            
-            if (data.files_generated.slideshow) {
-                downloadButtons.innerHTML += `
-                    <a href="/api/virtual-tour/download/${data.job_id}/slideshow" class="btn secondary" download>
-                        🖼️ HTML Slideshow (Fallback)
-                    </a>
-                `;
-            }
+            // No HTML slideshow - only MP4 videos
         }
         
         function showError(message) {

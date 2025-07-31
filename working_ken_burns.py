@@ -9,7 +9,7 @@ import base64
 import shutil
 import threading
 import logging
-from css3_ken_burns import create_css3_ken_burns_slideshow
+from ffmpeg_ken_burns import create_ken_burns_video
 from cloudinary_integration import generate_cloudinary_video
 
 virtual_tour_bp = Blueprint('virtual_tour', __name__, url_prefix='/api/virtual-tour')
@@ -197,27 +197,28 @@ def upload_images():
                 logger.error(f"Error optimizing image {path}: {e}")
                 optimized_paths.append(path)  # Use original if optimization fails
         
-        # Create CSS3 Ken Burns virtual tour
+        # Create Ken Burns MP4 video
         try:
-            logger.info("Creating CSS3 Ken Burns virtual tour...")
-            update_job_progress(job_id, 'processing', 'creating_virtual_tour', 30)
+            logger.info("Creating Ken Burns MP4 video...")
+            update_job_progress(job_id, 'processing', 'creating_video', 30)
             
-            # Create the professional CSS3 virtual tour
-            virtual_tour_path = create_css3_ken_burns_slideshow(
+            # Create the professional Ken Burns video
+            video_path = os.path.join(job_dir, f'virtual_tour_{job_id}.mp4')
+            created_video_path = create_ken_burns_video(
                 optimized_paths, 
-                job_dir, 
-                job_id,
-                title="Luxury Property Showcase"
+                video_path, 
+                job_id
             )
             
-            if os.path.exists(virtual_tour_path):
-                active_jobs[job_id]['virtual_tour_available'] = True
-                active_jobs[job_id]['files_generated']['virtual_tour'] = os.path.basename(virtual_tour_path)
-                logger.info(f"CSS3 virtual tour created: {virtual_tour_path}")
-                update_job_progress(job_id, 'processing', 'virtual_tour_complete', 50)
+            if os.path.exists(created_video_path):
+                active_jobs[job_id]['video_available'] = True
+                active_jobs[job_id]['files_generated']['video'] = os.path.basename(created_video_path)
+                logger.info(f"Ken Burns video created: {created_video_path}")
+                update_job_progress(job_id, 'processing', 'video_complete', 50)
             
         except Exception as e:
-            logger.error(f"Error creating CSS3 virtual tour: {e}")
+            logger.error(f"Error creating Ken Burns video: {e}")
+            active_jobs[job_id]['error'] = f"Video generation failed: {str(e)}"
         
         # Try Cloudinary video generation
         try:
@@ -279,7 +280,7 @@ def upload_images():
             'job_id': job_id,
             'status': 'completed',
             'video_available': active_jobs[job_id]['video_available'],
-            'virtual_tour_available': active_jobs[job_id]['virtual_tour_available'],
+            'virtual_tour_available': active_jobs[job_id]['video_available'],  # For backward compatibility
             'cloudinary_video': active_jobs[job_id]['cloudinary_video'],
             'images_processed': len(saved_paths),
             'processing_time': f"{processing_time:.1f} seconds",
@@ -343,71 +344,7 @@ Thank you for taking this virtual tour with us today. This property offers an ex
 Note: This script can be customized based on the specific features visible in each image. Consider adding specific details about rooms, architectural features, or unique selling points as they appear in the tour.
 """
 
-def create_html_slideshow(images, job_id):
-    """Create a simple HTML slideshow as fallback"""
-    html_content = f"""<!DOCTYPE html>
-<html>
-<head>
-    <title>Virtual Tour - Job {job_id}</title>
-    <style>
-        body {{ margin: 0; padding: 0; background: #000; overflow: hidden; }}
-        .slideshow {{ position: relative; width: 100vw; height: 100vh; }}
-        .slide {{ position: absolute; width: 100%; height: 100%; display: none; }}
-        .slide img {{ width: 100%; height: 100%; object-fit: contain; }}
-        .slide.active {{ display: block; animation: fadeIn 1s; }}
-        @keyframes fadeIn {{ from {{ opacity: 0; }} to {{ opacity: 1; }} }}
-        .controls {{ position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); }}
-        .controls button {{ margin: 0 10px; padding: 10px 20px; }}
-    </style>
-</head>
-<body>
-    <div class="slideshow">
-        {"".join([f'<div class="slide {"active" if i == 0 else ""}"><img src="data:image/jpeg;base64,{img}" alt="Slide {i+1}"></div>' for i, img in enumerate(images)])}
-    </div>
-    <div class="controls">
-        <button onclick="previousSlide()">Previous</button>
-        <button onclick="nextSlide()">Next</button>
-        <button onclick="toggleFullscreen()">Fullscreen</button>
-    </div>
-    <script>
-        let currentSlide = 0;
-        const slides = document.querySelectorAll('.slide');
-        
-        function showSlide(n) {{
-            slides[currentSlide].classList.remove('active');
-            currentSlide = (n + slides.length) % slides.length;
-            slides[currentSlide].classList.add('active');
-        }}
-        
-        function nextSlide() {{ showSlide(currentSlide + 1); }}
-        function previousSlide() {{ showSlide(currentSlide - 1); }}
-        
-        function toggleFullscreen() {{
-            if (!document.fullscreenElement) {{
-                document.documentElement.requestFullscreen();
-            }} else {{
-                document.exitFullscreen();
-            }}
-        }}
-        
-        // Auto-advance slides
-        setInterval(nextSlide, 5000);
-        
-        // Keyboard controls
-        document.addEventListener('keydown', (e) => {{
-            if (e.key === 'ArrowRight') nextSlide();
-            if (e.key === 'ArrowLeft') previousSlide();
-            if (e.key === 'f') toggleFullscreen();
-        }});
-    </script>
-</body>
-</html>"""
-    
-    slideshow_path = os.path.join(os.path.dirname(images[0]), f'slideshow_{job_id}.html')
-    with open(slideshow_path, 'w') as f:
-        f.write(html_content)
-    
-    return slideshow_path
+# Removed HTML slideshow function - we only generate MP4 videos
 
 @virtual_tour_bp.route('/download/<job_id>/<file_type>', methods=['GET'])
 def download_file(job_id, file_type):
@@ -421,10 +358,9 @@ def download_file(job_id, file_type):
         # Map file types to actual filenames
         file_mapping = {
             'video': f'virtual_tour_{job_id}.mp4',
-            'virtual_tour': f'virtual_tour_{job_id}.html',
+            'virtual_tour': f'virtual_tour_{job_id}.mp4',  # For backward compatibility
             'description': f'property_description_{job_id}.txt',
-            'script': f'voiceover_script_{job_id}.txt',
-            'slideshow': f'slideshow_{job_id}.html'
+            'script': f'voiceover_script_{job_id}.txt'
         }
         
         if file_type not in file_mapping:
@@ -432,15 +368,7 @@ def download_file(job_id, file_type):
         
         filepath = os.path.join(job_dir, file_mapping[file_type])
         
-        if not os.path.exists(filepath) and file_type == 'slideshow':
-            # Generate slideshow on demand if not exists
-            image_files = sorted([f for f in os.listdir(job_dir) if f.startswith('opt_') and f.endswith('.jpg')])
-            if image_files:
-                images = []
-                for img_file in image_files:
-                    with open(os.path.join(job_dir, img_file), 'rb') as f:
-                        images.append(base64.b64encode(f.read()).decode('utf-8'))
-                filepath = create_html_slideshow(images, job_id)
+        # No HTML slideshow generation - only MP4 videos
         
         if os.path.exists(filepath):
             return send_file(
