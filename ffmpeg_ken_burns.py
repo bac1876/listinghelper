@@ -35,6 +35,9 @@ def create_ken_burns_video(image_paths, output_path, job_id):
     # Create a temporary directory for processed images
     temp_dir = tempfile.mkdtemp()
     
+    # Log FFmpeg binary being used
+    logger.info(f"Using FFmpeg binary: {FFMPEG_BINARY}")
+    
     try:
         # First, prepare images for video processing
         processed_images = []
@@ -129,10 +132,12 @@ def create_ken_burns_video(image_paths, output_path, job_id):
             ]
             
             logger.info(f"Creating segment {i} with Ken Burns effect...")
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            logger.info(f"FFmpeg command: {' '.join(cmd)}")
+            result = subprocess.run(cmd, capture_output=True, text=True, shell=(os.name == 'nt'))
             
             if result.returncode != 0:
                 logger.error(f"FFmpeg error for segment {i}: {result.stderr}")
+                logger.error(f"FFmpeg stdout: {result.stdout}")
                 continue
             
             segments.append(segment_path)
@@ -161,7 +166,7 @@ def create_ken_burns_video(image_paths, output_path, job_id):
             temp_output
         ]
         
-        result = subprocess.run(concat_cmd, capture_output=True, text=True)
+        result = subprocess.run(concat_cmd, capture_output=True, text=True, shell=(os.name == 'nt'))
         
         if result.returncode != 0:
             logger.error(f"Concatenation error: {result.stderr}")
@@ -182,7 +187,7 @@ def create_ken_burns_video(image_paths, output_path, job_id):
                 output_path
             ]
             
-            result = subprocess.run(final_cmd, capture_output=True, text=True)
+            result = subprocess.run(final_cmd, capture_output=True, text=True, shell=(os.name == 'nt'))
             
             if result.returncode != 0:
                 logger.error(f"Final processing error: {result.stderr}")
@@ -194,7 +199,15 @@ def create_ken_burns_video(image_paths, output_path, job_id):
         
     except Exception as e:
         logger.error(f"Error creating Ken Burns video: {e}")
-        raise
+        
+        # Try simple video generation as fallback
+        try:
+            logger.info("Attempting simple video generation as fallback...")
+            from simple_video_generator import create_simple_video
+            return create_simple_video(image_paths, output_path, job_id)
+        except Exception as fallback_error:
+            logger.error(f"Fallback video generation also failed: {fallback_error}")
+            raise e
     
     finally:
         # Clean up temporary files
