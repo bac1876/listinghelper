@@ -61,10 +61,16 @@ def get_ffmpeg_binary():
 
 FFMPEG_BINARY = get_ffmpeg_binary()
 
-def create_ken_burns_video(image_paths, output_path, job_id):
+def create_ken_burns_video(image_paths, output_path, job_id, quality=None):
     """
     Create a Ken Burns effect video using FFmpeg
     Returns the path to the generated MP4 file
+    
+    Args:
+        image_paths: List of image file paths
+        output_path: Output video file path
+        job_id: Job ID for tracking
+        quality: Quality preset ('deployment', 'medium', 'high', 'premium') or None for auto-detection
     """
     
     # Try professional virtual tour first
@@ -86,7 +92,7 @@ def create_ken_burns_video(image_paths, output_path, job_id):
             logger.info("psutil not available, continuing without memory monitoring")
         
         from professional_virtual_tour import create_professional_tour
-        return create_professional_tour(image_paths, output_path, job_id)
+        return create_professional_tour(image_paths, output_path, job_id, quality=quality)
     except Exception as e:
         logger.warning(f"Professional tour failed, trying imageio: {e}")
         
@@ -94,8 +100,14 @@ def create_ken_burns_video(image_paths, output_path, job_id):
         try:
             from imageio_video_generator import create_imageio_video
             
-            # Use premium settings for better quality
-            if not os.environ.get('RAILWAY_ENVIRONMENT'):
+            # Use quality settings if specified
+            if quality == 'premium':
+                logger.info("Using premium imageio settings")
+                return create_imageio_video(image_paths, output_path, fps=60, duration_per_image=8.0)
+            elif quality in ['deployment', 'medium']:
+                logger.info(f"Using {quality} imageio settings")
+                return create_imageio_video(image_paths, output_path, fps=24, duration_per_image=3.0)
+            elif not os.environ.get('RAILWAY_ENVIRONMENT'):
                 logger.info("Using premium imageio settings for best quality")
                 return create_imageio_video(image_paths, output_path, fps=60, duration_per_image=8.0)
             else:

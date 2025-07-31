@@ -409,7 +409,11 @@ def create_optimized_tour(image_paths: List[str], output_path: str, job_id: str,
     try:
         # Auto-detect quality based on environment
         if quality is None:
-            if os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('RAILWAY_STATIC_URL'):
+            # Check for forced premium quality first
+            if os.environ.get('FORCE_PREMIUM_QUALITY', '').lower() in ['true', '1', 'yes']:
+                quality = 'premium'
+                logger.info("FORCE_PREMIUM_QUALITY enabled - using premium quality")
+            elif os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('RAILWAY_STATIC_URL'):
                 quality = 'deployment'  # Use optimized for Railway
                 logger.info("Detected Railway environment, using deployment quality")
             else:

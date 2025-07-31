@@ -290,6 +290,16 @@
                 <div class="file-list" id="file-list" style="display: none;">
                     <h3>Selected Photos:</h3>
                     <div id="file-items"></div>
+                    <div style="margin-top: 20px; margin-bottom: 15px;">
+                        <label for="quality-select" style="font-weight: 600; margin-right: 10px;">Quality:</label>
+                        <select id="quality-select" style="padding: 8px 15px; border-radius: 5px; border: 1px solid #ddd; font-size: 16px;">
+                            <option value="">Auto-detect (Recommended)</option>
+                            <option value="premium">Premium (60fps, 8 sec/image) - 1-2 minutes</option>
+                            <option value="high">High (30fps, 6 sec/image) - 45-60 seconds</option>
+                            <option value="medium">Medium (30fps, 4.5 sec/image) - 30-45 seconds</option>
+                            <option value="deployment">Fast (24fps, 3 sec/image) - 10-20 seconds</option>
+                        </select>
+                    </div>
                     <div style="margin-top: 20px;">
                         <button class="btn success" id="generate-btn">🎬 Generate Virtual Tour</button>
                         <button class="btn secondary" id="clear-btn">Clear All</button>
@@ -413,6 +423,12 @@
                 formData.append('files', file);
             });
             
+            // Add quality preference
+            const qualitySelect = document.getElementById('quality-select');
+            if (qualitySelect && qualitySelect.value) {
+                formData.append('quality', qualitySelect.value);
+            }
+            
             // Show progress section
             progressSection.style.display = 'block';
             resultsSection.style.display = 'none';
@@ -434,8 +450,16 @@
                 
                 currentJobId = data.job_id;
                 
-                // Show premium quality message
-                updateProgress(5, 'Creating premium 60fps HD virtual tour (this may take 1-2 minutes for best quality)...');
+                // Show quality-specific message
+                const qualityMessages = {
+                    'premium': 'Creating premium 60fps HD virtual tour (this may take 1-2 minutes for best quality)...',
+                    'high': 'Creating high quality 30fps HD virtual tour (45-60 seconds)...',
+                    'medium': 'Creating medium quality virtual tour (30-45 seconds)...',
+                    'deployment': 'Creating fast virtual tour (10-20 seconds)...',
+                    '': 'Creating virtual tour with auto-detected quality settings...'
+                };
+                const selectedQuality = qualitySelect ? qualitySelect.value : '';
+                updateProgress(5, qualityMessages[selectedQuality] || qualityMessages['']);
                 
                 // Start checking job status
                 startStatusChecking();

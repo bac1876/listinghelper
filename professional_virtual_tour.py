@@ -380,15 +380,15 @@ class ProfessionalVirtualTour:
             raise ValueError("Failed to create video file")
 
 
-def create_professional_tour(image_paths: List[str], output_path: str, job_id: str, style: str = 'luxury', quality: str = 'high') -> str:
+def create_professional_tour(image_paths: List[str], output_path: str, job_id: str, style: str = 'luxury', quality: str = None) -> str:
     """Main entry point for creating professional virtual tour"""
     try:
         # Always use optimized tour generator with smart quality detection
         logger.info("Using optimized tour generator with quality auto-detection")
         from optimized_virtual_tour import create_optimized_tour
         
-        # Pass None for quality to trigger auto-detection
-        return create_optimized_tour(image_paths, output_path, job_id, quality=None)
+        # Pass quality parameter (None triggers auto-detection)
+        return create_optimized_tour(image_paths, output_path, job_id, quality=quality)
         
     except Exception as e:
         logger.error(f"Error creating professional tour: {e}")

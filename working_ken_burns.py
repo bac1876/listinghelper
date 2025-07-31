@@ -149,6 +149,11 @@ def upload_images():
                     'progress': progress
                 })
         
+        # Get quality preference from form data
+        quality_preference = request.form.get('quality', None)
+        if quality_preference and quality_preference not in ['deployment', 'medium', 'high', 'premium']:
+            quality_preference = None  # Invalid quality, use auto-detection
+        
         # Get uploaded files
         if 'files' not in request.files:
             active_jobs[job_id]['status'] = 'failed'
@@ -216,7 +221,8 @@ def upload_images():
             created_video_path = create_ken_burns_video(
                 optimized_paths, 
                 video_path, 
-                job_id
+                job_id,
+                quality=quality_preference
             )
             
             if os.path.exists(created_video_path):
