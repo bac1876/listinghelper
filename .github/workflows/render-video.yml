@@ -105,50 +105,51 @@ jobs:
       run: |
         echo "Uploading video to Cloudinary..."
         
-        # Install Python and Cloudinary SDK
-        pip install cloudinary
+        # Install cloudinary SDK
+        npm install cloudinary
         
-        # Upload using Python script for better error handling
-        python -c "
-import cloudinary
-import cloudinary.uploader
-import os
-import sys
-
-# Configure Cloudinary
-cloudinary.config(
-    cloud_name = os.environ['CLOUDINARY_CLOUD_NAME'],
-    api_key = os.environ['CLOUDINARY_API_KEY'],
-    api_secret = os.environ['CLOUDINARY_API_SECRET']
-)
-
-# Upload video
-try:
-    video_path = os.environ['VIDEO_PATH']
-    job_id = os.environ['JOB_ID']
-    
-    print(f'Uploading {video_path}...')
-    
-    response = cloudinary.uploader.upload(
-        video_path,
-        public_id=f'tours/tour-{job_id}',
-        resource_type='video',
-        folder='tours'
-    )
-    
-    video_url = response.get('secure_url', '')
-    print(f'VIDEO_URL={video_url}')
-    
-    # Write to GITHUB_ENV
-    with open(os.environ['GITHUB_ENV'], 'a') as f:
-        f.write(f'VIDEO_URL={video_url}\n')
-    
-    print(f'Successfully uploaded to: {video_url}')
-    
-except Exception as e:
-    print(f'Error uploading to Cloudinary: {e}')
-    sys.exit(1)
-"
+        # Create and run upload script
+        cat > upload.js << 'EOF'
+        const cloudinary = require('cloudinary').v2;
+        const fs = require('fs');
+        
+        // Configure Cloudinary
+        cloudinary.config({
+          cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+          api_key: process.env.CLOUDINARY_API_KEY,
+          api_secret: process.env.CLOUDINARY_API_SECRET
+        });
+        
+        // Upload video
+        const videoPath = process.env.VIDEO_PATH;
+        const jobId = process.env.JOB_ID;
+        
+        console.log(`Uploading ${videoPath}...`);
+        
+        cloudinary.uploader.upload(videoPath, 
+          {
+            public_id: `tours/tour-${jobId}`,
+            resource_type: 'video',
+            folder: 'tours'
+          },
+          (error, result) => {
+            if (error) {
+              console.error('Upload failed:', error);
+              process.exit(1);
+            }
+            
+            const videoUrl = result.secure_url;
+            console.log(`VIDEO_URL=${videoUrl}`);
+            
+            // Write to GITHUB_ENV
+            fs.appendFileSync(process.env.GITHUB_ENV, `VIDEO_URL=${videoUrl}\n`);
+            
+            console.log(`Successfully uploaded to: ${videoUrl}`);
+          }
+        );
+        EOF
+        
+        node upload.js
     
     - name: Create result artifact
       run: |
