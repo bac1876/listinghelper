@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 from ffmpeg_ken_burns import create_ken_burns_video
 from cloudinary_integration import generate_cloudinary_video
 from github_actions_integration import GitHubActionsIntegration
+from upload_to_cloudinary import upload_files_to_cloudinary
 
 virtual_tour_bp = Blueprint('virtual_tour', __name__, url_prefix='/api/virtual-tour')
 
@@ -269,16 +270,38 @@ def upload_images():
         # Check if we should use GitHub Actions for high-quality rendering
         use_github_actions = os.environ.get('USE_GITHUB_ACTIONS', 'false').lower() == 'true' and github_actions
         
-        if use_github_actions and (image_urls or active_jobs[job_id].get('video_available')):
+        # Prepare image URLs for GitHub Actions
+        github_image_urls = image_urls or []
+        
+        # If we have uploaded files but no URLs, upload them to Cloudinary first
+        if use_github_actions and 'saved_files' in locals() and saved_files and not image_urls:
+            try:
+                active_jobs[job_id]['current_step'] = 'Uploading images to Cloudinary for GitHub Actions'
+                active_jobs[job_id]['progress'] = 40
+                
+                # Upload files to Cloudinary
+                logger.info(f"Uploading {len(saved_files)} files to Cloudinary...")
+                github_image_urls = upload_files_to_cloudinary(saved_files)
+                
+                if github_image_urls:
+                    logger.info(f"Successfully uploaded {len(github_image_urls)} images to Cloudinary")
+                    active_jobs[job_id]['current_step'] = f'Uploaded {len(github_image_urls)} images to cloud'
+                    active_jobs[job_id]['progress'] = 50
+                else:
+                    logger.error("Failed to upload images to Cloudinary")
+                    
+            except Exception as e:
+                logger.error(f"Error uploading to Cloudinary: {e}")
+                github_image_urls = []
+        
+        if use_github_actions and github_image_urls:
             try:
                 active_jobs[job_id]['current_step'] = 'Triggering GitHub Actions for high-quality rendering'
                 active_jobs[job_id]['progress'] = 60
                 
-                # If we have local files, upload them to a temporary cloud storage first
-                # For now, we'll use the provided image URLs or skip if only local files
-                if image_urls:
+                if github_image_urls:
                     github_result = github_actions.trigger_video_render(
-                        images=image_urls,
+                        images=github_image_urls,
                         property_details={
                             'address': address,
                             'city': city,
