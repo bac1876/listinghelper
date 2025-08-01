@@ -9,9 +9,19 @@ import base64
 import shutil
 import threading
 import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 from ffmpeg_ken_burns import create_ken_burns_video
 from cloudinary_integration import generate_cloudinary_video
-from creatomate_integration_v2 import create_real_estate_video
+try:
+    from creatomate_integration_v2 import create_real_estate_video
+    CREATOMATE_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Creatomate integration not available: {e}")
+    CREATOMATE_AVAILABLE = False
 
 virtual_tour_bp = Blueprint('virtual_tour', __name__, url_prefix='/api/virtual-tour')
 
@@ -22,10 +32,6 @@ if not os.path.exists(STORAGE_DIR):
 
 # In-memory job tracking with detailed status
 active_jobs = {}
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 def cleanup_old_files():
     """Clean up files older than 24 hours"""
@@ -227,7 +233,7 @@ def upload_images():
         # Create Ken Burns MP4 video
         try:
             # Check if we should use Creatomate
-            use_creatomate = os.environ.get('USE_CREATOMATE', 'false').lower() == 'true'
+            use_creatomate = os.environ.get('USE_CREATOMATE', 'false').lower() == 'true' and CREATOMATE_AVAILABLE
             
             if use_creatomate:
                 logger.info("Using Creatomate for professional video generation...")
