@@ -34,19 +34,19 @@ class CreatomateAPI:
         # Build modifications object
         modifications = {}
         
-        # Use example images if no URLs provided
+        # Log template being used
+        logger.info(f"Using template ID: {self.template_id}")
+        logger.info(f"Processing {len(image_urls)} image URLs")
+        
+        # Don't use example images - require actual uploads
         if not image_urls:
-            image_urls = [
-                "https://creatomate.com/files/assets/353ba980-9f13-4613-a8c5-f3aca0c41324",
-                "https://creatomate.com/files/assets/f1cedfdd-eb93-4bda-a2f0-9171e3c71c41",
-                "https://creatomate.com/files/assets/a2fc1725-f761-4d68-a6e8-001aa890c126",
-                "https://creatomate.com/files/assets/cc72d7f3-ae1a-494e-af46-f080fa2c5d85",
-                "https://creatomate.com/files/assets/9fc100e8-cbb5-451d-8c5e-d9f75b190cb1"
-            ]
+            logger.error("No image URLs provided to Creatomate")
+            raise Exception("No images provided for video generation")
         
         # Add property photos/videos (up to 4 for this template)
         for i, url in enumerate(image_urls[:4], 1):
             modifications[f'Video-{i}.source'] = url
+            logger.info(f"Added Video-{i}: {url}")
         
         # If less than 4 images, repeat the last one
         if len(image_urls) < 4:
