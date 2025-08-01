@@ -1,0 +1,17 @@
+ADD THESE ENVIRONMENT VARIABLES TO RAILWAY:
+
+USE_CREATOMATE=true
+CREATOMATE_API_KEY=561802cc18514993874255b2dc4fcd1d0150ff961f26aab7d0aee02464704eac33aa94e133e90fa1bb8ac2742c165ab3
+CREATOMATE_TEMPLATE_ID=5c2eca01-84b8-4302-bad2-9189db4dae70
+CLOUDINARY_CLOUD_NAME=dib3kbifc
+CLOUDINARY_API_KEY=245376524171559
+CLOUDINARY_API_SECRET=vyExHjrHT59ssOXXB9c43vEuqTY
+
+HOW TO ADD TO RAILWAY:
+1. Go to your Railway project
+2. Click on the "Variables" tab
+3. Click "New Variable" for each one
+4. Copy and paste the name and value
+5. Railway will auto-deploy after adding
+
+Your app URL: https://virtual-tour-generator-production.up.railway.app/

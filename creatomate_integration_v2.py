@@ -47,12 +47,15 @@ class CreatomateAPI:
         # Add property photos (up to 5)
         for i, url in enumerate(image_urls[:5], 1):
             modifications[f'Photo-{i}.source'] = url
+            # Try to set duration per photo (24 seconds each for 2-minute video)
+            modifications[f'Photo-{i}.duration'] = 24
         
         # If less than 5 images, repeat the last one
         if len(image_urls) < 5:
             last_url = image_urls[-1]
             for i in range(len(image_urls) + 1, 6):
                 modifications[f'Photo-{i}.source'] = last_url
+                modifications[f'Photo-{i}.duration'] = 24
         
         # Add property details with defaults
         modifications.update({
@@ -69,7 +72,11 @@ class CreatomateAPI:
         # Create render request
         render_data = {
             'template_id': self.template_id,
-            'modifications': modifications
+            'modifications': modifications,
+            # Try to set custom duration (may or may not work with this template)
+            'options': {
+                'duration': 120  # Try 2 minutes instead of 1 minute
+            }
         }
         
         try:
