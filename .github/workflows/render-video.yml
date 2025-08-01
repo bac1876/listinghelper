@@ -105,26 +105,50 @@ jobs:
       run: |
         echo "Uploading video to Cloudinary..."
         
-        # Install Cloudinary CLI or use curl
-        npm install -g cloudinary-cli
+        # Install Python and Cloudinary SDK
+        pip install cloudinary
         
-        # Upload video
-        # Using curl for now (replace with proper Cloudinary SDK if needed)
-        TIMESTAMP=$(date +%s)
-        SIGNATURE=$(echo -n "public_id=tours/tour-${{ inputs.jobId }}&timestamp=${TIMESTAMP}${CLOUDINARY_API_SECRET}" | sha1sum | cut -d' ' -f1)
-        
-        RESPONSE=$(curl -X POST \
-          -F "file=@${VIDEO_PATH}" \
-          -F "public_id=tours/tour-${{ inputs.jobId }}" \
-          -F "timestamp=${TIMESTAMP}" \
-          -F "api_key=${CLOUDINARY_API_KEY}" \
-          -F "signature=${SIGNATURE}" \
-          "https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload")
-        
-        # Extract URL from response
-        VIDEO_URL=$(echo $RESPONSE | grep -o '"secure_url":"[^"]*' | cut -d'"' -f4)
-        echo "VIDEO_URL=${VIDEO_URL}" >> $GITHUB_ENV
-        echo "Uploaded to: ${VIDEO_URL}"
+        # Upload using Python script for better error handling
+        python -c "
+import cloudinary
+import cloudinary.uploader
+import os
+import sys
+
+# Configure Cloudinary
+cloudinary.config(
+    cloud_name = os.environ['CLOUDINARY_CLOUD_NAME'],
+    api_key = os.environ['CLOUDINARY_API_KEY'],
+    api_secret = os.environ['CLOUDINARY_API_SECRET']
+)
+
+# Upload video
+try:
+    video_path = os.environ['VIDEO_PATH']
+    job_id = os.environ['JOB_ID']
+    
+    print(f'Uploading {video_path}...')
+    
+    response = cloudinary.uploader.upload(
+        video_path,
+        public_id=f'tours/tour-{job_id}',
+        resource_type='video',
+        folder='tours'
+    )
+    
+    video_url = response.get('secure_url', '')
+    print(f'VIDEO_URL={video_url}')
+    
+    # Write to GITHUB_ENV
+    with open(os.environ['GITHUB_ENV'], 'a') as f:
+        f.write(f'VIDEO_URL={video_url}\n')
+    
+    print(f'Successfully uploaded to: {video_url}')
+    
+except Exception as e:
+    print(f'Error uploading to Cloudinary: {e}')
+    sys.exit(1)
+"
     
     - name: Create result artifact
       run: |
