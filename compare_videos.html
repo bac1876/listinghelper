@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Creatomate Template Comparison</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .video-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        video {
+            width: 100%;
+            max-width: 600px;
+            display: block;
+            margin: 10px auto;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        h2 {
+            color: #2c3e50;
+        }
+        .description {
+            color: #666;
+            margin: 10px 0;
+        }
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .comparison {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Creatomate Template Comparison</h1>
+        
+        <div class="comparison">
+            <div class="video-section">
+                <h2>NEW Template (31b06afe)</h2>
+                <p class="description">This is the template you're currently using - check if it has movement</p>
+                <video controls autoplay muted>
+                    <source src="https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/fca7c0b5-c018-49b7-a34f-e148d65cdf5e.mp4" type="video/mp4">
+                </video>
+                <p><strong>Uses:</strong> Video-1 through Video-4 elements</p>
+            </div>
+            
+            <div class="video-section">
+                <h2>ORIGINAL Template (5c2eca01)</h2>
+                <p class="description">This template had Ken Burns effects with movement</p>
+                <video controls autoplay muted>
+                    <source src="https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/db5f129b-813b-4122-81b9-298196061a28.mp4" type="video/mp4">
+                </video>
+                <p><strong>Uses:</strong> Photo-1 through Photo-5 elements</p>
+            </div>
+        </div>
+        
+        <div class="video-section">
+            <h2>What to Look For:</h2>
+            <ul>
+                <li><strong>Ken Burns Effects:</strong> Does the new template have zoom and pan movements?</li>
+                <li><strong>Transitions:</strong> How do images transition between each other?</li>
+                <li><strong>Duration:</strong> How long does each image display?</li>
+                <li><strong>Overall Feel:</strong> Which one feels more like a virtual tour?</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
