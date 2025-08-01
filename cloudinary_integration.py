@@ -35,6 +35,26 @@ try:
 except Exception as e:
     logger.error(f"Error configuring Cloudinary: {e}")
 
+def upload_to_cloudinary(image_path, public_id=None):
+    """
+    Upload a single image to Cloudinary and return its URL
+    """
+    if not CLOUDINARY_CONFIGURED:
+        logger.warning("Cloudinary not configured")
+        return None
+    
+    try:
+        result = cloudinary.uploader.upload(
+            image_path,
+            public_id=public_id,
+            overwrite=True,
+            resource_type="image"
+        )
+        return result.get('secure_url')
+    except Exception as e:
+        logger.error(f"Error uploading to Cloudinary: {e}")
+        return None
+
 def generate_cloudinary_video(image_paths, job_id):
     """
     Generate a professional Ken Burns video using Cloudinary's video generation API

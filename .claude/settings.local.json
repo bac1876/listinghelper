@@ -36,7 +36,10 @@
       "Bash(git reset:*)",
       "Bash(git rm:*)",
       "WebFetch(domain:app.screencast.com)",
-      "Bash(playwright install:*)"
+      "Bash(playwright install:*)",
+      "Bash(del:*)",
+      "Bash(rm:*)",
+      "Bash(git log:*)"
     ],
     "deny": []
   },

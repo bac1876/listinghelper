@@ -1,5 +1,5 @@
 """
-Creatomate API Integration v2 - Works with URLs
+Creatomate API Integration for Professional Real Estate Videos
 """
 import os
 import logging
@@ -21,40 +21,72 @@ class CreatomateAPI:
             'Authorization': f'Bearer {self.api_key}',
             'Content-Type': 'application/json'
         }
+        
+    def upload_image(self, image_path: str) -> Optional[str]:
+        """Upload an image to Creatomate and return the asset URL"""
+        try:
+            # First, create an upload URL
+            upload_response = requests.post(
+                f'{self.base_url}/assets',
+                headers=self.headers,
+                json={
+                    'filename': os.path.basename(image_path),
+                    'type': 'image'
+                }
+            )
+            upload_response.raise_for_status()
+            upload_data = upload_response.json()
+            
+            # Upload the file to the provided URL
+            with open(image_path, 'rb') as f:
+                files = {'file': (os.path.basename(image_path), f, 'image/jpeg')}
+                upload_result = requests.post(
+                    upload_data['upload_url'],
+                    files=files
+                )
+                upload_result.raise_for_status()
+            
+            # Return the asset URL
+            asset_url = upload_data.get('url')
+            logger.info(f"Uploaded {os.path.basename(image_path)} to Creatomate: {asset_url}")
+            return asset_url
+            
+        except Exception as e:
+            logger.error(f"Error uploading image {image_path}: {e}")
+            return None
     
     def create_render(self, 
-                     image_urls: List[str],
+                     image_paths_or_urls: List[str],
                      property_details: Dict[str, str] = None) -> Optional[str]:
         """Create a render job with the real estate template"""
         
         # Default property details if not provided
         if property_details is None:
-            property_details = {}
+            property_details = {
+                'address': 'Beautiful Property\nYour City, State',
+                'details1': '2,500 sqft\n3 Bedrooms\n2 Bathrooms',
+                'details2': 'Modern Home\nMove-in Ready\nCall for Price',
+                'agent_name': 'Your Real Estate Agent',
+                'agent_email': 'agent@realestate.com',
+                'agent_phone': '(555) 123-4567',
+                'brand_name': 'Premium Real Estate',
+                'agent_photo': 'https://creatomate.com/files/assets/08322d05-9717-402a-b267-5f49fb511f95'
+            }
         
         # Build modifications object
         modifications = {}
         
-        # Use example images if no URLs provided
-        if not image_urls:
-            image_urls = [
-                "https://creatomate.com/files/assets/353ba980-9f13-4613-a8c5-f3aca0c41324",
-                "https://creatomate.com/files/assets/f1cedfdd-eb93-4bda-a2f0-9171e3c71c41",
-                "https://creatomate.com/files/assets/a2fc1725-f761-4d68-a6e8-001aa890c126",
-                "https://creatomate.com/files/assets/cc72d7f3-ae1a-494e-af46-f080fa2c5d85",
-                "https://creatomate.com/files/assets/9fc100e8-cbb5-451d-8c5e-d9f75b190cb1"
-            ]
-        
         # Add property photos (up to 5)
-        for i, url in enumerate(image_urls[:5], 1):
+        for i, url in enumerate(image_paths_or_urls[:5], 1):
             modifications[f'Photo-{i}.source'] = url
         
         # If less than 5 images, repeat the last one
-        if len(image_urls) < 5:
-            last_url = image_urls[-1]
-            for i in range(len(image_urls) + 1, 6):
+        if len(image_paths_or_urls) < 5:
+            last_url = image_paths_or_urls[-1]
+            for i in range(len(image_paths_or_urls) + 1, 6):
                 modifications[f'Photo-{i}.source'] = last_url
         
-        # Add property details with defaults
+        # Add property details
         modifications.update({
             'Address.text': property_details.get('address', 'Beautiful Property\nYour City, State'),
             'Details-1.text': property_details.get('details1', '2,500 sqft\n3 Bedrooms\n2 Bathrooms'),
@@ -79,9 +111,8 @@ class CreatomateAPI:
                 headers=self.headers,
                 json=render_data
             )
-            
             if response.status_code not in [200, 201, 202]:
-                raise Exception(f"API returned status {response.status_code}: {response.text}")
+                raise Exception(f"API returned status {response.status_code}")
             
             # Handle response - could be array or single object
             data = response.json()
@@ -95,6 +126,8 @@ class CreatomateAPI:
             
         except Exception as e:
             logger.error(f"Error creating render: {e}")
+            if hasattr(e, 'response') and e.response:
+                logger.error(f"Response: {e.response.text}")
             return None
     
     def get_render_status(self, render_id: str) -> Tuple[str, Optional[str], Optional[int]]:
@@ -140,12 +173,28 @@ class CreatomateAPI:
         return None
 
 
-def create_real_estate_video_from_urls(image_urls: List[str], 
-                                      property_details: Optional[Dict[str, str]] = None,
-                                      job_id: str = None) -> Optional[str]:
-    """Create a real estate video using Creatomate with image URLs"""
+def create_real_estate_video(image_paths: List[str], 
+                           property_details: Optional[Dict[str, str]] = None,
+                           job_id: str = None) -> Optional[str]:
+    """Main function to create a real estate video using Creatomate"""
     
     api = CreatomateAPI()
+    
+    # Upload all images
+    logger.info(f"Uploading {len(image_paths)} images to Creatomate...")
+    image_urls = []
+    
+    for i, image_path in enumerate(image_paths):
+        logger.info(f"Uploading image {i+1}/{len(image_paths)}...")
+        url = api.upload_image(image_path)
+        if url:
+            image_urls.append(url)
+        else:
+            logger.error(f"Failed to upload {image_path}")
+    
+    if not image_urls:
+        logger.error("No images uploaded successfully")
+        return None
     
     # Create render
     render_id = api.create_render(image_urls, property_details)
@@ -158,43 +207,25 @@ def create_real_estate_video_from_urls(image_urls: List[str],
     return video_url
 
 
-def create_real_estate_video(image_paths: List[str], 
-                           property_details: Optional[Dict[str, str]] = None,
-                           job_id: str = None) -> Optional[str]:
-    """Main function to create a real estate video with actual images"""
+# Test function
+if __name__ == "__main__":
+    # Test with sample images
+    import glob
+    test_images = glob.glob("test_images/*.jpg")[:3]
     
-    # Upload images to Cloudinary first
-    try:
-        from cloudinary_integration import upload_to_cloudinary
-        
-        logger.info(f"Uploading {len(image_paths)} images to Cloudinary...")
-        image_urls = []
-        
-        for i, image_path in enumerate(image_paths):
-            logger.info(f"Uploading image {i+1}/{len(image_paths)}...")
-            try:
-                cloudinary_url = upload_to_cloudinary(image_path, f"creatomate_{job_id}_{i}")
-                if cloudinary_url:
-                    image_urls.append(cloudinary_url)
-                else:
-                    logger.error(f"Failed to upload {image_path} to Cloudinary")
-            except Exception as e:
-                logger.error(f"Error uploading {image_path}: {e}")
-        
-        if not image_urls:
-            logger.error("No images uploaded successfully to Cloudinary")
-            return None
-        
-        logger.info(f"Successfully uploaded {len(image_urls)} images to Cloudinary")
-        return create_real_estate_video_from_urls(image_urls, property_details, job_id)
-        
-    except ImportError:
-        logger.error("Cloudinary integration not available")
-        return None
-    except Exception as e:
-        logger.error(f"Error in create_real_estate_video: {e}")
-        return None
-
-
-# Export the v2 version
-__all__ = ['CreatomateAPI', 'create_real_estate_video', 'create_real_estate_video_from_urls']
+    if test_images:
+        print("Testing Creatomate integration...")
+        result = create_real_estate_video(
+            test_images,
+            {
+                'address': 'Test Property\nLos Angeles, CA',
+                'details1': '1,500 sqft\n2 Bedrooms\n1 Bathroom',
+                'details2': 'Built in 2020\n1 Garage\n$750,000'
+            }
+        )
+        if result:
+            print(f"Success! Video URL: {result}")
+        else:
+            print("Failed to create video")
+    else:
+        print("No test images found")
