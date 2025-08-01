@@ -436,6 +436,49 @@ def view_tour(job_id):
         logger.error(f"Error viewing tour: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@virtual_tour_bp.route('/job/<job_id>/status', methods=['GET'])
+def get_job_status(job_id):
+    """Get status of a specific job"""
+    if job_id not in active_jobs:
+        # Check if job directory exists
+        job_dir = os.path.join(STORAGE_DIR, f'job_{job_id}')
+        if os.path.exists(job_dir):
+            # Job exists but not in memory (server restarted)
+            return jsonify({
+                'job_id': job_id,
+                'status': 'completed',
+                'message': 'Job completed (retrieved from storage)'
+            })
+        return jsonify({'error': 'Job not found'}), 404
+    
+    job = active_jobs[job_id]
+    
+    # Check GitHub Actions status if applicable
+    if job.get('github_job_id') and github_actions:
+        try:
+            github_status = github_actions.check_job_status(job['github_job_id'])
+            if github_status.get('status') == 'completed' and github_status.get('video_url'):
+                job['cloudinary_video'] = True
+                job['files_generated']['cloudinary_url'] = github_status['video_url']
+                job['status'] = 'completed'
+                job['progress'] = 100
+        except Exception as e:
+            logger.error(f"Error checking GitHub job status: {e}")
+    
+    return jsonify({
+        'job_id': job_id,
+        'status': job.get('status', 'unknown'),
+        'progress': job.get('progress', 0),
+        'current_step': job.get('current_step', ''),
+        'video_available': job.get('video_available', False),
+        'virtual_tour_available': job.get('virtual_tour_available', False),
+        'cloudinary_video': job.get('cloudinary_video', False),
+        'images_processed': job.get('images_processed', 0),
+        'processing_time': job.get('processing_time', ''),
+        'error': job.get('error', None),
+        'github_job_id': job.get('github_job_id', None)
+    })
+
 def generate_virtual_tour_html(job_id, job_data):
     """Generate HTML for virtual tour viewer"""
     video_url = ""

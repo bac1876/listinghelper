@@ -1,0 +1,42 @@
+SETUP CHECKLIST - Check off each item as you complete it:
+
+PART 1: CLOUDINARY CREDENTIALS
+[ ] Logged into Cloudinary.com
+[ ] Found Dashboard
+[ ] Copied Cloud Name: ________________
+[ ] Copied API Key: ________________
+[ ] Copied API Secret: ________________
+
+PART 2: GITHUB SECRETS
+[ ] Went to: https://github.com/bac1876/listinghelper/settings/secrets/actions
+[ ] Added CLOUDINARY_CLOUD_NAME secret
+[ ] Added CLOUDINARY_API_KEY secret
+[ ] Added CLOUDINARY_API_SECRET secret
+[ ] Verified all 3 secrets show in the list
+
+PART 3: GITHUB TOKEN
+[ ] Went to: https://github.com/settings/tokens/new
+[ ] Named token: "Railway Video Render - listinghelper"
+[ ] Set expiration to 90 days
+[ ] Checked "repo" permission box
+[ ] Checked "workflow" permission box
+[ ] Clicked "Generate token"
+[ ] COPIED TOKEN: ________________
+[ ] Saved token somewhere safe
+
+PART 4: RAILWAY VARIABLES
+[ ] Logged into Railway.app
+[ ] Found listinghelper project
+[ ] Went to Variables/Environment Variables
+[ ] Added USE_GITHUB_ACTIONS = true
+[ ] Added GITHUB_TOKEN = (pasted token)
+[ ] Added GITHUB_OWNER = bac1876
+[ ] Added GITHUB_REPO = listinghelper
+[ ] Railway started redeploying
+
+PART 5: VERIFICATION
+[ ] Railway finished deploying
+[ ] Checked health endpoint OR
+[ ] Checked GitHub Actions page
+
+ALL DONE: [ ]
