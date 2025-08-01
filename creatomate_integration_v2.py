@@ -15,7 +15,7 @@ class CreatomateAPI:
     
     def __init__(self):
         self.api_key = os.environ.get('CREATOMATE_API_KEY', '561802cc18514993874255b2dc4fcd1d0150ff961f26aab7d0aee02464704eac33aa94e133e90fa1bb8ac2742c165ab3')
-        self.template_id = os.environ.get('CREATOMATE_TEMPLATE_ID', '5c2eca01-84b8-4302-bad2-9189db4dae70')
+        self.template_id = os.environ.get('CREATOMATE_TEMPLATE_ID', '31b06afe-9073-4f68-a329-0e910a8be6a7')
         self.base_url = 'https://api.creatomate.com/v1'
         self.headers = {
             'Authorization': f'Bearer {self.api_key}',
@@ -43,25 +43,25 @@ class CreatomateAPI:
             logger.error("No image URLs provided to Creatomate")
             raise Exception("No images provided for video generation")
         
-        # Add property photos (up to 5 for this template)
-        for i, url in enumerate(image_urls[:5], 1):
-            modifications[f'Photo-{i}.source'] = url
-            logger.info(f"Added Photo-{i}: {url}")
+        # Add property videos (up to 4 for this template)
+        for i, url in enumerate(image_urls[:4], 1):
+            modifications[f'Video-{i}.source'] = url
+            logger.info(f"Added Video-{i}: {url}")
         
-        # If less than 5 images, repeat the last one
-        if len(image_urls) < 5:
+        # If less than 4 images, repeat the last one
+        if len(image_urls) < 4:
             last_url = image_urls[-1]
-            for i in range(len(image_urls) + 1, 6):
-                modifications[f'Photo-{i}.source'] = last_url
+            for i in range(len(image_urls) + 1, 5):
+                modifications[f'Video-{i}.source'] = last_url
         
-        # Add property details with defaults (matching Ken Burns template fields)
+        # Add property details with defaults (matching this template's fields)
         modifications.update({
-            'Address.text': property_details.get('address', 'Beautiful Property\nYour City, State'),
-            'Details-1.text': property_details.get('details1', '2,500 sqft\n3 Bedrooms\n2 Bathrooms'),
-            'Details-2.text': property_details.get('details2', 'Modern Home\nMove-in Ready\nCall for Price'),
+            'Description.text': property_details.get('address', 'Los Angeles, CA 90045') + '\n' + 
+                               property_details.get('details1', 'Call (123) 555-1234 to arrange a viewing today'),
+            'Subtext.text': property_details.get('details2', 'Just Listed'),
             'Name.text': property_details.get('agent_name', 'Your Real Estate Agent'),
             'Email.text': property_details.get('agent_email', 'agent@realestate.com'),
-            'Phone-Number.text': property_details.get('agent_phone', '(555) 123-4567'),
+            'Phone-Number.text': property_details.get('agent_phone', '(123) 555-1234'),
             'Brand-Name.text': property_details.get('brand_name', 'Premium Real Estate'),
             'Picture.source': property_details.get('agent_photo', 'https://creatomate.com/files/assets/08322d05-9717-402a-b267-5f49fb511f95')
         })
