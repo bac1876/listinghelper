@@ -78,7 +78,7 @@ jobs:
         mkdir -p out
         
         # Render the video
-        npx remotion render RealEstateTour out/tour-${{ inputs.jobId }}.mp4 \
+        npx remotion render RealEstateTour out/${{ inputs.jobId }}.mp4 \
           --props="$(node -e "
             const images = JSON.parse(process.env.REMOTION_IMAGES);
             const propertyDetails = JSON.parse(process.env.REMOTION_PROPERTY_DETAILS);
@@ -87,9 +87,9 @@ jobs:
           ")"
         
         # Check if video was created
-        if [ -f "out/tour-${{ inputs.jobId }}.mp4" ]; then
+        if [ -f "out/${{ inputs.jobId }}.mp4" ]; then
           echo "Video rendered successfully!"
-          echo "VIDEO_PATH=out/tour-${{ inputs.jobId }}.mp4" >> $GITHUB_ENV
+          echo "VIDEO_PATH=out/${{ inputs.jobId }}.mp4" >> $GITHUB_ENV
         else
           echo "Error: Video file not found!"
           exit 1
@@ -131,7 +131,7 @@ jobs:
         
         cloudinary.uploader.upload(videoPath, 
           {
-            public_id: `tour-${jobId}`,
+            public_id: jobId,
             resource_type: 'video',
             folder: 'tours'
           },
