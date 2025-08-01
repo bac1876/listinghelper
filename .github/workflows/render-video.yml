@@ -35,10 +35,10 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
-        cache-dependency-path: 'remotion/package-lock.json'
+        cache-dependency-path: 'remotion-tours/package-lock.json'
     
     - name: Install dependencies
-      working-directory: ./remotion
+      working-directory: ./remotion-tours
       run: |
         npm ci
         # Install additional dependencies for GitHub Actions
@@ -58,7 +58,7 @@ jobs:
         echo '${{ inputs.settings }}' > /tmp/settings.json
     
     - name: Render video with Remotion
-      working-directory: ./remotion
+      working-directory: ./remotion-tours
       env:
         REMOTION_IMAGES: ${{ inputs.images }}
         REMOTION_PROPERTY_DETAILS: ${{ inputs.propertyDetails }}

@@ -7,8 +7,12 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Import the blueprint from working_ken_burns.py
-from working_ken_burns import virtual_tour_bp
+# Import the blueprint - use GitHub Actions version if configured
+use_github_actions = os.environ.get('USE_GITHUB_ACTIONS', 'false').lower() == 'true'
+if use_github_actions and all([os.environ.get('GITHUB_TOKEN'), os.environ.get('GITHUB_OWNER'), os.environ.get('GITHUB_REPO')]):
+    from working_ken_burns_github import virtual_tour_bp
+else:
+    from working_ken_burns import virtual_tour_bp
 
 # Configure logging
 logging.basicConfig(
