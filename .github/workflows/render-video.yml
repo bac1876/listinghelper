@@ -96,6 +96,7 @@ jobs:
         fi
     
     - name: Upload to Cloudinary
+      working-directory: ./remotion-tours
       env:
         CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
         CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
@@ -104,6 +105,8 @@ jobs:
         JOB_ID: ${{ inputs.jobId }}
       run: |
         echo "Uploading video to Cloudinary..."
+        echo "Current directory: $(pwd)"
+        echo "Video path: ${VIDEO_PATH}"
         
         # Install cloudinary SDK
         npm install cloudinary
