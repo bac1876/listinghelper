@@ -128,7 +128,7 @@ jobs:
         
         cloudinary.uploader.upload(videoPath, 
           {
-            public_id: `tours/tour-${jobId}`,
+            public_id: `tour-${jobId}`,
             resource_type: 'video',
             folder: 'tours'
           },
