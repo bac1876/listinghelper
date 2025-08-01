@@ -39,7 +39,9 @@
       "Bash(playwright install:*)",
       "Bash(del:*)",
       "Bash(rm:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "WebFetch(domain:www.remotion.dev)",
+      "Bash(node:*)"
     ],
     "deny": []
   },

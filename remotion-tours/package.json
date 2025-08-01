@@ -1,0 +1,25 @@
+{
+  "name": "remotion-tours",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "remotion studio",
+    "build": "remotion render RealEstateTour out/video.mp4",
+    "preview": "remotion preview RealEstateTour --props='{\"images\":[],\"propertyDetails\":{}}'",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Real estate virtual tours with custom Ken Burns effects",
+  "dependencies": {
+    "@remotion/cli": "^4.0.331",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "remotion": "^4.0.331"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.23",
+    "typescript": "^5.9.2"
+  }
+}

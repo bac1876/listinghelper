@@ -1,0 +1,150 @@
+name: Render Real Estate Video
+
+on:
+  workflow_dispatch:
+    inputs:
+      images:
+        description: 'JSON array of image URLs'
+        required: true
+        type: string
+      propertyDetails:
+        description: 'JSON object with property details'
+        required: true
+        type: string
+      settings:
+        description: 'JSON object with render settings'
+        required: false
+        type: string
+        default: '{"durationPerImage":8,"effectSpeed":"medium","transitionDuration":1.5}'
+      jobId:
+        description: 'Unique job identifier'
+        required: true
+        type: string
+
+jobs:
+  render-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'remotion/package-lock.json'
+    
+    - name: Install dependencies
+      working-directory: ./remotion
+      run: |
+        npm ci
+        # Install additional dependencies for GitHub Actions
+        npm install -g @remotion/cli
+    
+    - name: Parse inputs
+      id: parse
+      run: |
+        echo "Parsing inputs..."
+        echo "Images: ${{ inputs.images }}"
+        echo "Property Details: ${{ inputs.propertyDetails }}"
+        echo "Settings: ${{ inputs.settings }}"
+        
+        # Save inputs to files for the render script
+        echo '${{ inputs.images }}' > /tmp/images.json
+        echo '${{ inputs.propertyDetails }}' > /tmp/propertyDetails.json
+        echo '${{ inputs.settings }}' > /tmp/settings.json
+    
+    - name: Render video with Remotion
+      working-directory: ./remotion
+      env:
+        REMOTION_IMAGES: ${{ inputs.images }}
+        REMOTION_PROPERTY_DETAILS: ${{ inputs.propertyDetails }}
+        REMOTION_SETTINGS: ${{ inputs.settings }}
+        JOB_ID: ${{ inputs.jobId }}
+      run: |
+        echo "Starting Remotion render..."
+        
+        # Create output directory
+        mkdir -p out
+        
+        # Render the video
+        npx remotion render RealEstateTour out/tour-${{ inputs.jobId }}.mp4 \
+          --props="$(node -e "
+            const images = JSON.parse(process.env.REMOTION_IMAGES);
+            const propertyDetails = JSON.parse(process.env.REMOTION_PROPERTY_DETAILS);
+            const settings = JSON.parse(process.env.REMOTION_SETTINGS);
+            console.log(JSON.stringify({ images, propertyDetails, settings }));
+          ")"
+        
+        # Check if video was created
+        if [ -f "out/tour-${{ inputs.jobId }}.mp4" ]; then
+          echo "Video rendered successfully!"
+          echo "VIDEO_PATH=out/tour-${{ inputs.jobId }}.mp4" >> $GITHUB_ENV
+        else
+          echo "Error: Video file not found!"
+          exit 1
+        fi
+    
+    - name: Upload to Cloudinary
+      env:
+        CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+        CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+        CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+        VIDEO_PATH: ${{ env.VIDEO_PATH }}
+        JOB_ID: ${{ inputs.jobId }}
+      run: |
+        echo "Uploading video to Cloudinary..."
+        
+        # Install Cloudinary CLI or use curl
+        npm install -g cloudinary-cli
+        
+        # Upload video
+        # Using curl for now (replace with proper Cloudinary SDK if needed)
+        TIMESTAMP=$(date +%s)
+        SIGNATURE=$(echo -n "public_id=tours/tour-${{ inputs.jobId }}&timestamp=${TIMESTAMP}${CLOUDINARY_API_SECRET}" | sha1sum | cut -d' ' -f1)
+        
+        RESPONSE=$(curl -X POST \
+          -F "file=@${VIDEO_PATH}" \
+          -F "public_id=tours/tour-${{ inputs.jobId }}" \
+          -F "timestamp=${TIMESTAMP}" \
+          -F "api_key=${CLOUDINARY_API_KEY}" \
+          -F "signature=${SIGNATURE}" \
+          "https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload")
+        
+        # Extract URL from response
+        VIDEO_URL=$(echo $RESPONSE | grep -o '"secure_url":"[^"]*' | cut -d'"' -f4)
+        echo "VIDEO_URL=${VIDEO_URL}" >> $GITHUB_ENV
+        echo "Uploaded to: ${VIDEO_URL}"
+    
+    - name: Create result artifact
+      run: |
+        # Create a result file with the video URL and metadata
+        cat > result.json << EOF
+        {
+          "success": true,
+          "jobId": "${{ inputs.jobId }}",
+          "videoUrl": "${VIDEO_URL}",
+          "duration": $(node -e "const s = JSON.parse('${{ inputs.settings }}'); const i = JSON.parse('${{ inputs.images }}'); console.log(s.durationPerImage * i.length)"),
+          "renderTime": "${{ steps.render.outputs.duration }}",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        }
+        EOF
+        
+        cat result.json
+    
+    - name: Upload result as artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: render-result-${{ inputs.jobId }}
+        path: result.json
+        retention-days: 7
+    
+    - name: Notify completion (webhook)
+      if: always()
+      run: |
+        # If you have a webhook URL, notify the Railway app
+        # For now, the app will poll for the artifact
+        echo "Render job completed with status: ${{ job.status }}"
