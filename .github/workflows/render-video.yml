@@ -48,14 +48,21 @@ jobs:
       id: parse
       run: |
         echo "Parsing inputs..."
-        echo "Images: ${{ inputs.images }}"
-        echo "Property Details: ${{ inputs.propertyDetails }}"
-        echo "Settings: ${{ inputs.settings }}"
         
-        # Save inputs to files for the render script
-        echo '${{ inputs.images }}' > /tmp/images.json
-        echo '${{ inputs.propertyDetails }}' > /tmp/propertyDetails.json
-        echo '${{ inputs.settings }}' > /tmp/settings.json
+        # Save inputs to files using cat with heredoc to avoid shell interpretation
+        cat > /tmp/images.json << 'EOF'
+        ${{ inputs.images }}
+        EOF
+        
+        cat > /tmp/propertyDetails.json << 'EOF'
+        ${{ inputs.propertyDetails }}
+        EOF
+        
+        cat > /tmp/settings.json << 'EOF'
+        ${{ inputs.settings }}
+        EOF
+        
+        echo "Inputs saved to temporary files"
     
     - name: Render video with Remotion
       working-directory: ./remotion-tours
