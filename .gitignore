@@ -80,3 +80,4 @@ upload/*.jpeg
 # Storage directory for Railway
 storage/
 !storage/.gitkeep*.mp4
+.env

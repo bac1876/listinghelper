@@ -11,6 +11,7 @@ import threading
 import logging
 from ffmpeg_ken_burns import create_ken_burns_video
 from cloudinary_integration import generate_cloudinary_video
+from creatomate_integration_v2 import create_real_estate_video
 
 virtual_tour_bp = Blueprint('virtual_tour', __name__, url_prefix='/api/virtual-tour')
 
@@ -154,6 +155,18 @@ def upload_images():
         if quality_preference and quality_preference not in ['deployment', 'medium', 'high', 'premium']:
             quality_preference = None  # Invalid quality, use auto-detection
         
+        # Get property details if provided
+        property_details = {
+            'address': request.form.get('address', 'Beautiful Property\nYour City, State'),
+            'details1': request.form.get('details1', '2,500 sqft\n3 Bedrooms\n2 Bathrooms'),
+            'details2': request.form.get('details2', 'Modern Home\nMove-in Ready\nCall for Price'),
+            'agent_name': request.form.get('agent_name', 'Your Real Estate Agent'),
+            'agent_email': request.form.get('agent_email', 'agent@realestate.com'),
+            'agent_phone': request.form.get('agent_phone', '(555) 123-4567'),
+            'brand_name': request.form.get('brand_name', 'Premium Real Estate'),
+            'agent_photo': request.form.get('agent_photo', '')
+        }
+        
         # Get uploaded files
         if 'files' not in request.files:
             active_jobs[job_id]['status'] = 'failed'
@@ -213,17 +226,51 @@ def upload_images():
         
         # Create Ken Burns MP4 video
         try:
-            logger.info("Creating Ken Burns MP4 video...")
-            update_job_progress(job_id, 'processing', 'creating_video', 30)
+            # Check if we should use Creatomate
+            use_creatomate = os.environ.get('USE_CREATOMATE', 'false').lower() == 'true'
             
-            # Create the professional Ken Burns video
-            video_path = os.path.join(job_dir, f'virtual_tour_{job_id}.mp4')
-            created_video_path = create_ken_burns_video(
-                optimized_paths, 
-                video_path, 
-                job_id,
-                quality=quality_preference
-            )
+            if use_creatomate:
+                logger.info("Using Creatomate for professional video generation...")
+                update_job_progress(job_id, 'processing', 'creating_professional_video', 30)
+                
+                # Use Creatomate API
+                video_url = create_real_estate_video(
+                    optimized_paths,
+                    property_details,
+                    job_id
+                )
+                
+                if video_url:
+                    # Download the video from Creatomate
+                    video_path = os.path.join(job_dir, f'virtual_tour_{job_id}.mp4')
+                    try:
+                        import requests
+                        response = requests.get(video_url, stream=True)
+                        response.raise_for_status()
+                        
+                        with open(video_path, 'wb') as f:
+                            for chunk in response.iter_content(chunk_size=8192):
+                                f.write(chunk)
+                        
+                        created_video_path = video_path
+                        logger.info(f"Downloaded Creatomate video to {video_path}")
+                    except Exception as e:
+                        logger.error(f"Error downloading Creatomate video: {e}")
+                        created_video_path = None
+                else:
+                    created_video_path = None
+            else:
+                logger.info("Creating Ken Burns MP4 video...")
+                update_job_progress(job_id, 'processing', 'creating_video', 30)
+                
+                # Create the professional Ken Burns video
+                video_path = os.path.join(job_dir, f'virtual_tour_{job_id}.mp4')
+                created_video_path = create_ken_burns_video(
+                    optimized_paths, 
+                    video_path, 
+                    job_id,
+                    quality=quality_preference
+                )
             
             if os.path.exists(created_video_path):
                 active_jobs[job_id]['video_available'] = True
