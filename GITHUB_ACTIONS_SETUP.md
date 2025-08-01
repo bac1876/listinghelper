@@ -3,6 +3,34 @@
 ## Overview
 This guide will help you set up GitHub Actions to render your real estate videos using Remotion, providing 2,000 free minutes per month.
 
+## 🚀 Automated Setup (Recommended)
+
+We provide automation scripts to make setup easier:
+
+### Option 1: Python/Playwright Script (Cross-platform)
+```bash
+python setup_github_secrets.py
+```
+This script will:
+- Log into GitHub using Playwright
+- Add all Cloudinary secrets automatically
+- Guide you through Personal Access Token creation
+- Generate Railway environment variables
+
+### Option 2: PowerShell Script (Windows)
+```powershell
+.\setup_github_secrets.ps1
+```
+This script will:
+- Use GitHub CLI to add secrets
+- Install GitHub CLI if needed
+- Guide you through the setup process
+- Save environment variables to a file
+
+## 📝 Manual Setup
+
+If you prefer to set up manually, follow these steps:
+
 ## Step 1: GitHub Repository Setup
 
 1. Push this code to your GitHub repository if you haven't already
