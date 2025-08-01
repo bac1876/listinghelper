@@ -42,7 +42,6 @@ env/
 
 # Node modules (for Playwright MCP)
 node_modules/
-package-lock.json
 
 # Flask
 instance/
