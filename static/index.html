@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virtual Tour Generator - Real Estate Ken Burns Video</title>
+    <title>Virtual Tour Generator - Professional Real Estate Videos</title>
     <style>
         * {
             margin: 0;
@@ -11,11 +11,25 @@
             box-sizing: border-box;
         }
         
+        :root {
+            --primary: #3498db;
+            --primary-dark: #2980b9;
+            --secondary: #2c3e50;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --warning: #f39c12;
+            --light-bg: #ecf0f1;
+            --text-dark: #2c3e50;
+            --text-light: #7f8c8d;
+            --border: #bdc3c7;
+        }
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
-            color: #333;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: var(--text-dark);
             line-height: 1.6;
+            min-height: 100vh;
         }
         
         .container {
@@ -25,64 +39,126 @@
         }
         
         .header {
-            background: #2c3e50;
+            background: linear-gradient(135deg, var(--secondary) 0%, #34495e 100%);
             color: white;
-            padding: 30px 0;
+            padding: 40px 0;
             text-align: center;
             margin-bottom: 40px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         
         .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
+            font-size: 3em;
+            margin-bottom: 15px;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
         }
         
         .header p {
-            font-size: 1.2em;
-            opacity: 0.9;
+            font-size: 1.3em;
+            opacity: 0.95;
+            max-width: 600px;
+            margin: 0 auto;
         }
         
         .main-content {
             background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 50px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .main-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--success) 100%);
         }
         
         .upload-section {
-            text-align: center;
             margin-bottom: 40px;
         }
         
+        .section-title {
+            font-size: 1.8em;
+            color: var(--secondary);
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-title::before {
+            content: '';
+            width: 5px;
+            height: 30px;
+            background: var(--primary);
+            border-radius: 3px;
+        }
+        
         .drop-zone {
-            border: 3px dashed #3498db;
-            border-radius: 10px;
-            padding: 60px 40px;
-            background: #f8f9fa;
+            border: 3px dashed var(--primary);
+            border-radius: 15px;
+            padding: 80px 40px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
             cursor: pointer;
             transition: all 0.3s ease;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .drop-zone::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(52, 152, 219, 0.1) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .drop-zone:hover::before,
+        .drop-zone.drag-over::before {
+            opacity: 1;
         }
         
         .drop-zone:hover {
-            background: #e3f2fd;
-            border-color: #2196f3;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border-color: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.2);
         }
         
         .drop-zone.drag-over {
-            background: #e3f2fd;
-            border-color: #2196f3;
+            background: linear-gradient(135deg, #e3f2fd 0%, #90caf9 100%);
+            border-color: var(--primary-dark);
             transform: scale(1.02);
         }
         
+        .drop-zone-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+        
         .drop-zone h3 {
-            font-size: 1.5em;
+            font-size: 1.8em;
             margin-bottom: 15px;
-            color: #34495e;
+            color: var(--secondary);
         }
         
         .drop-zone p {
-            color: #7f8c8d;
-            margin-bottom: 20px;
+            color: var(--text-light);
+            margin-bottom: 25px;
+            font-size: 1.1em;
         }
         
         #file-input {
@@ -91,36 +167,46 @@
         
         .btn {
             display: inline-block;
-            padding: 12px 30px;
-            background: #3498db;
+            padding: 14px 35px;
+            background: var(--primary);
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
-            transition: background 0.3s ease;
+            transition: all 0.3s ease;
             text-decoration: none;
+            box-shadow: 0 4px 6px rgba(52, 152, 219, 0.2);
         }
         
         .btn:hover {
-            background: #2980b9;
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(52, 152, 219, 0.2);
         }
         
         .btn:disabled {
-            background: #95a5a6;
+            background: var(--border);
             cursor: not-allowed;
+            box-shadow: none;
         }
         
         .btn.secondary {
-            background: #95a5a6;
+            background: var(--text-light);
         }
         
         .btn.secondary:hover {
-            background: #7f8c8d;
+            background: #5a6c7d;
         }
         
         .btn.success {
-            background: #27ae60;
+            background: var(--success);
         }
         
         .btn.success:hover {
@@ -129,246 +215,558 @@
         
         .file-list {
             margin-top: 30px;
-            text-align: left;
+        }
+        
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
         }
         
         .file-item {
-            background: #f8f9fa;
-            border: 1px solid #e0e0e0;
-            border-radius: 5px;
+            background: var(--light-bg);
+            border: 2px solid transparent;
+            border-radius: 10px;
             padding: 15px;
-            margin-bottom: 10px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            gap: 15px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
         
-        .file-item .name {
-            font-weight: 500;
-            color: #2c3e50;
+        .file-item:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         
-        .file-item .size {
-            color: #7f8c8d;
+        .file-preview {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .file-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .file-name {
+            font-weight: 600;
+            color: var(--secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .file-size {
+            color: var(--text-light);
+            font-size: 0.9em;
+            margin-top: 4px;
+        }
+        
+        .file-remove {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 25px;
+            height: 25px;
+            background: var(--error);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.2em;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .file-item:hover .file-remove {
+            opacity: 1;
+        }
+        
+        .file-remove:hover {
+            background: #c0392b;
+            transform: scale(1.1);
+        }
+        
+        .property-details {
+            margin-top: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #f0f8ff 0%, #e0f2ff 100%);
+            border-radius: 12px;
+            border: 1px solid #b3d9ff;
+        }
+        
+        .property-details h4 {
+            color: var(--secondary);
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group label {
+            font-weight: 600;
+            color: var(--secondary);
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+        
+        .quality-options {
+            margin: 30px 0;
+            text-align: center;
+        }
+        
+        .quality-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .quality-option {
+            padding: 20px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .quality-option:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .quality-option.selected {
+            border-color: var(--primary);
+            background: var(--light-bg);
+        }
+        
+        .quality-option h5 {
+            color: var(--secondary);
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+        
+        .quality-option p {
+            color: var(--text-light);
             font-size: 0.9em;
         }
         
-        .file-item .remove {
-            color: #e74c3c;
-            cursor: pointer;
-            font-size: 1.2em;
+        .action-buttons {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
         }
         
         .progress-section {
             display: none;
             margin-top: 40px;
-            padding: 30px;
-            background: #f8f9fa;
-            border-radius: 10px;
+            padding: 40px;
+            background: linear-gradient(135deg, var(--light-bg) 0%, #d5dbdb 100%);
+            border-radius: 15px;
             text-align: center;
+        }
+        
+        .progress-icon {
+            font-size: 3em;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.1); }
         }
         
         .progress-bar {
             width: 100%;
-            height: 30px;
-            background: #ecf0f1;
-            border-radius: 15px;
+            height: 35px;
+            background: white;
+            border-radius: 20px;
             overflow: hidden;
-            margin: 20px 0;
+            margin: 25px 0;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
         }
         
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #3498db, #2980b9);
-            transition: width 0.3s ease;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--success) 100%);
+            transition: width 0.5s ease;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             font-weight: bold;
+            font-size: 1.1em;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .progress-fill::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
         }
         
         .status-message {
-            font-size: 1.1em;
-            color: #34495e;
+            font-size: 1.3em;
+            color: var(--secondary);
             margin-bottom: 10px;
+            font-weight: 600;
         }
         
         .sub-status {
-            color: #7f8c8d;
-            font-size: 0.9em;
+            color: var(--text-light);
+            font-size: 1em;
         }
         
         .results-section {
             display: none;
             margin-top: 40px;
-            padding: 30px;
-            background: #e8f5e9;
-            border-radius: 10px;
-            border: 1px solid #a5d6a7;
+            padding: 40px;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            border-radius: 15px;
+            border: 2px solid #a5d6a7;
+            text-align: center;
         }
         
         .results-section.error {
-            background: #ffebee;
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
             border-color: #ef9a9a;
         }
         
-        .results-section h3 {
-            color: #2e7d32;
+        .results-icon {
+            font-size: 4em;
             margin-bottom: 20px;
         }
         
+        .results-section h3 {
+            color: var(--success);
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+        
         .results-section.error h3 {
-            color: #c62828;
+            color: var(--error);
+        }
+        
+        .video-preview {
+            margin: 30px 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .video-preview video {
+            width: 100%;
+            max-width: 800px;
+            height: auto;
         }
         
         .download-buttons {
             display: flex;
             gap: 15px;
             flex-wrap: wrap;
-            margin-top: 20px;
+            justify-content: center;
+            margin-top: 30px;
         }
         
         .info-section {
-            margin-top: 40px;
-            padding: 30px;
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 10px;
+            margin-top: 50px;
+            padding: 40px;
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border: 2px solid #ffc107;
+            border-radius: 15px;
         }
         
         .info-section h3 {
             color: #856404;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+        }
+        
+        .info-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .info-card-icon {
+            font-size: 2.5em;
             margin-bottom: 15px;
+            color: var(--primary);
         }
         
-        .info-section ul {
-            list-style: none;
-            padding-left: 20px;
+        .info-card h4 {
+            color: var(--secondary);
+            margin-bottom: 10px;
         }
         
-        .info-section li {
-            margin-bottom: 8px;
-            color: #856404;
+        .info-card p {
+            color: var(--text-light);
+            font-size: 0.95em;
         }
         
-        .info-section li:before {
-            content: "✓ ";
-            font-weight: bold;
-            margin-right: 5px;
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .main-content {
+                padding: 30px 20px;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .quality-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
         }
         
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
         }
         
-        .processing {
-            animation: pulse 2s infinite;
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="container">
-            <h1>🎬 Virtual Tour Generator</h1>
-            <p>Transform Your Real Estate Photos into Cinematic Ken Burns Videos</p>
+            <h1>🏠 Virtual Tour Generator</h1>
+            <p>Transform Your Real Estate Photos into Cinematic Video Tours with Professional Ken Burns Effects</p>
         </div>
     </div>
     
     <div class="container">
         <div class="main-content">
             <div class="upload-section">
+                <h2 class="section-title">Upload Property Photos</h2>
+                
                 <div class="drop-zone" id="drop-zone">
-                    <h3>📸 Drop Your Property Photos Here</h3>
-                    <p>or click to browse</p>
+                    <div class="drop-zone-icon">📸</div>
+                    <h3>Drop Your Property Photos Here</h3>
+                    <p>or click to browse from your computer</p>
                     <button class="btn">Select Photos</button>
                     <input type="file" id="file-input" multiple accept="image/*">
                 </div>
                 
                 <div class="file-list" id="file-list" style="display: none;">
                     <h3>Selected Photos:</h3>
-                    <div id="file-items"></div>
+                    <div class="file-grid" id="file-items"></div>
                     
-                    <!-- Property Details (Optional) -->
-                    <div style="margin-top: 30px; padding: 20px; background: #f0f8ff; border-radius: 8px;">
-                        <h4 style="margin-bottom: 15px; color: #2c3e50;">Property Details (Optional)</h4>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                            <div>
-                                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Property Address:</label>
-                                <textarea id="property-address" placeholder="123 Main Street&#10;Los Angeles, CA 90001" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: none;" rows="2"></textarea>
+                    <div class="property-details">
+                        <h4>Property Information</h4>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="property-address">Property Address *</label>
+                                <textarea id="property-address" placeholder="123 Main Street&#10;Los Angeles, CA 90001" rows="2"></textarea>
                             </div>
-                            <div>
-                                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Call to Action:</label>
-                                <textarea id="property-details1" placeholder="Call (123) 555-1234 to arrange a viewing today" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: none;" rows="2"></textarea>
+                            <div class="form-group">
+                                <label for="property-price">Listing Price</label>
+                                <input type="text" id="property-price" placeholder="$2,495,000">
                             </div>
-                            <div>
-                                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Status:</label>
-                                <textarea id="property-details2" placeholder="Just Listed" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: none;" rows="1"></textarea>
+                            <div class="form-group">
+                                <label for="property-beds">Bedrooms</label>
+                                <input type="text" id="property-beds" placeholder="4 Beds">
                             </div>
-                            <div>
-                                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Agent Name:</label>
-                                <input type="text" id="agent-name" placeholder="John Smith" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <div class="form-group">
+                                <label for="property-baths">Bathrooms</label>
+                                <input type="text" id="property-baths" placeholder="3 Baths">
                             </div>
-                            <div>
-                                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Agent Email:</label>
-                                <input type="email" id="agent-email" placeholder="john@realestate.com" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <div class="form-group">
+                                <label for="property-sqft">Square Footage</label>
+                                <input type="text" id="property-sqft" placeholder="3,200 sq ft">
                             </div>
-                            <div>
-                                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Agent Phone:</label>
-                                <input type="tel" id="agent-phone" placeholder="(555) 123-4567" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <div class="form-group">
+                                <label for="property-status">Status</label>
+                                <select id="property-status">
+                                    <option value="Just Listed">Just Listed</option>
+                                    <option value="Open House">Open House</option>
+                                    <option value="Price Reduced">Price Reduced</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Coming Soon">Coming Soon</option>
+                                </select>
                             </div>
-                            <div style="grid-column: 1 / -1;">
-                                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Brokerage Name:</label>
-                                <input type="text" id="brand-name" placeholder="Premium Real Estate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                        
+                        <h4 style="margin-top: 30px;">Agent Information</h4>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="agent-name">Agent Name *</label>
+                                <input type="text" id="agent-name" placeholder="John Smith">
+                            </div>
+                            <div class="form-group">
+                                <label for="agent-phone">Phone Number *</label>
+                                <input type="tel" id="agent-phone" placeholder="(555) 123-4567">
+                            </div>
+                            <div class="form-group">
+                                <label for="agent-email">Email</label>
+                                <input type="email" id="agent-email" placeholder="john@realestate.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="brand-name">Brokerage</label>
+                                <input type="text" id="brand-name" placeholder="Premium Real Estate">
                             </div>
                         </div>
                     </div>
                     
-                    <div style="margin-top: 20px; margin-bottom: 15px;">
-                        <label for="quality-select" style="font-weight: 600; margin-right: 10px;">Quality:</label>
-                        <select id="quality-select" style="padding: 8px 15px; border-radius: 5px; border: 1px solid #ddd; font-size: 16px;">
-                            <option value="">Auto-detect (Recommended)</option>
-                            <option value="premium">Premium (60fps, 8 sec/image) - 1-2 minutes</option>
-                            <option value="high">High (30fps, 6 sec/image) - 45-60 seconds</option>
-                            <option value="medium">Medium (30fps, 4.5 sec/image) - 30-45 seconds</option>
-                            <option value="deployment">Fast (24fps, 3 sec/image) - 10-20 seconds</option>
-                        </select>
+                    <div class="quality-options">
+                        <h3>Video Quality</h3>
+                        <div class="quality-grid">
+                            <div class="quality-option" data-quality="fast">
+                                <h5>⚡ Fast</h5>
+                                <p>3 sec/image • Quick preview</p>
+                            </div>
+                            <div class="quality-option selected" data-quality="medium">
+                                <h5>🎬 Standard</h5>
+                                <p>6 sec/image • Recommended</p>
+                            </div>
+                            <div class="quality-option" data-quality="premium">
+                                <h5>💎 Premium</h5>
+                                <p>8 sec/image • Best quality</p>
+                            </div>
+                        </div>
                     </div>
-                    <div style="margin-top: 20px;">
-                        <button class="btn success" id="generate-btn">🎬 Generate Virtual Tour</button>
+                    
+                    <div class="action-buttons">
+                        <button class="btn success" id="generate-btn">
+                            🎬 Generate Virtual Tour
+                        </button>
                         <button class="btn secondary" id="clear-btn">Clear All</button>
                     </div>
                 </div>
             </div>
             
             <div class="progress-section" id="progress-section">
+                <div class="progress-icon">⚙️</div>
                 <div class="status-message" id="status-message">Initializing...</div>
                 <div class="sub-status" id="sub-status"></div>
                 <div class="progress-bar">
                     <div class="progress-fill" id="progress-fill" style="width: 0%">0%</div>
                 </div>
+                <button class="btn secondary" id="cancel-btn" style="margin-top: 20px;">Cancel</button>
             </div>
             
             <div class="results-section" id="results-section">
+                <div class="results-icon">✅</div>
                 <h3 id="results-title">Success!</h3>
                 <p id="results-message"></p>
+                <div class="video-preview" id="video-preview"></div>
                 <div class="download-buttons" id="download-buttons"></div>
+                <button class="btn" id="new-video-btn" style="margin-top: 20px;">Create Another Video</button>
             </div>
-            
-            <div class="info-section">
-                <h3>📋 How It Works</h3>
-                <ul>
-                    <li>Upload 3-10 high-quality property photos</li>
-                    <li>Creates professional MP4 video with Ken Burns effects</li>
-                    <li>Cinematic zoom and pan movements</li>
-                    <li>High-quality video output ready for any platform</li>
-                    <li>Also includes property description and voiceover script</li>
-                    <li>Premium quality processing (1-2 minutes for best results)</li>
-                </ul>
-                <div style="margin-top: 20px; padding: 15px; background: rgba(52, 152, 219, 0.1); border-radius: 5px;">
-                    <strong>🎯 Premium Quality Mode!</strong> Creates smooth 60fps HD videos with professional camera movements. Worth the wait for exceptional results!
+        </div>
+        
+        <div class="info-section">
+            <h3>How It Works</h3>
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon">📸</div>
+                    <h4>Upload Photos</h4>
+                    <p>Select 3-15 high-quality property photos</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon">🎬</div>
+                    <h4>Ken Burns Effect</h4>
+                    <p>Professional pan & zoom movements</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon">🎵</div>
+                    <h4>Add Details</h4>
+                    <p>Property info and agent branding</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon">💾</div>
+                    <h4>Download & Share</h4>
+                    <p>HD MP4 ready for any platform</p>
                 </div>
             </div>
         </div>
@@ -381,6 +779,8 @@
         const fileItems = document.getElementById('file-items');
         const generateBtn = document.getElementById('generate-btn');
         const clearBtn = document.getElementById('clear-btn');
+        const cancelBtn = document.getElementById('cancel-btn');
+        const newVideoBtn = document.getElementById('new-video-btn');
         const progressSection = document.getElementById('progress-section');
         const resultsSection = document.getElementById('results-section');
         const statusMessage = document.getElementById('status-message');
@@ -390,6 +790,16 @@
         let selectedFiles = [];
         let currentJobId = null;
         let statusCheckInterval = null;
+        let selectedQuality = 'medium';
+        
+        // Quality selection
+        document.querySelectorAll('.quality-option').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.quality-option').forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+                selectedQuality = option.dataset.quality;
+            });
+        });
         
         // Drop zone events
         dropZone.addEventListener('click', () => fileInput.click());
@@ -412,9 +822,12 @@
         
         generateBtn.addEventListener('click', generateVirtualTour);
         clearBtn.addEventListener('click', clearFiles);
+        cancelBtn.addEventListener('click', cancelJob);
+        newVideoBtn.addEventListener('click', resetForm);
         
         function handleFiles(files) {
-            selectedFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+            const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+            selectedFiles = [...selectedFiles, ...imageFiles].slice(0, 15); // Max 15 files
             updateFileList();
         }
         
@@ -425,15 +838,19 @@
             }
             
             fileList.style.display = 'block';
-            fileItems.innerHTML = selectedFiles.map((file, index) => `
-                <div class="file-item">
-                    <div>
-                        <div class="name">${file.name}</div>
-                        <div class="size">${(file.size / 1024 / 1024).toFixed(2)} MB</div>
+            fileItems.innerHTML = selectedFiles.map((file, index) => {
+                const url = URL.createObjectURL(file);
+                return `
+                    <div class="file-item">
+                        <img src="${url}" alt="${file.name}" class="file-preview">
+                        <div class="file-info">
+                            <div class="file-name">${file.name}</div>
+                            <div class="file-size">${(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                        </div>
+                        <div class="file-remove" onclick="removeFile(${index})">×</div>
                     </div>
-                    <div class="remove" onclick="removeFile(${index})">×</div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
         
         function removeFile(index) {
@@ -447,9 +864,33 @@
             updateFileList();
         }
         
+        function resetForm() {
+            clearFiles();
+            resultsSection.style.display = 'none';
+            progressSection.style.display = 'none';
+            document.getElementById('property-address').value = '';
+            document.getElementById('property-price').value = '';
+            document.getElementById('property-beds').value = '';
+            document.getElementById('property-baths').value = '';
+            document.getElementById('property-sqft').value = '';
+            document.getElementById('agent-name').value = '';
+            document.getElementById('agent-phone').value = '';
+            document.getElementById('agent-email').value = '';
+            document.getElementById('brand-name').value = '';
+        }
+        
         async function generateVirtualTour() {
             if (selectedFiles.length === 0) {
                 alert('Please select at least one photo');
+                return;
+            }
+            
+            const address = document.getElementById('property-address').value.trim();
+            const agentName = document.getElementById('agent-name').value.trim();
+            const agentPhone = document.getElementById('agent-phone').value.trim();
+            
+            if (!address || !agentName || !agentPhone) {
+                alert('Please fill in required fields: Property Address, Agent Name, and Phone Number');
                 return;
             }
             
@@ -459,35 +900,42 @@
                 formData.append('files', file);
             });
             
-            // Add quality preference
-            const qualitySelect = document.getElementById('quality-select');
-            if (qualitySelect && qualitySelect.value) {
-                formData.append('quality', qualitySelect.value);
-            }
-            
             // Add property details
-            const propertyFields = {
-                'address': document.getElementById('property-address').value,
-                'details1': document.getElementById('property-details1').value,
-                'details2': document.getElementById('property-details2').value,
-                'agent_name': document.getElementById('agent-name').value,
-                'agent_email': document.getElementById('agent-email').value,
-                'agent_phone': document.getElementById('agent-phone').value,
-                'brand_name': document.getElementById('brand-name').value
+            formData.append('address', address);
+            formData.append('details1', `Call ${agentPhone} to schedule a showing`);
+            formData.append('details2', document.getElementById('property-status').value);
+            formData.append('agent_name', agentName);
+            formData.append('agent_email', document.getElementById('agent-email').value);
+            formData.append('agent_phone', agentPhone);
+            formData.append('brand_name', document.getElementById('brand-name').value || 'Real Estate Professional');
+            
+            // Add optional property details
+            const price = document.getElementById('property-price').value;
+            const beds = document.getElementById('property-beds').value;
+            const baths = document.getElementById('property-baths').value;
+            const sqft = document.getElementById('property-sqft').value;
+            
+            if (price) formData.append('property_price', price);
+            if (beds) formData.append('property_beds', beds);
+            if (baths) formData.append('property_baths', baths);
+            if (sqft) formData.append('property_sqft', sqft);
+            
+            // Add quality settings
+            const qualitySettings = {
+                'fast': { duration: 3, speed: 'fast' },
+                'medium': { duration: 6, speed: 'medium' },
+                'premium': { duration: 8, speed: 'slow' }
             };
             
-            // Only add non-empty fields
-            for (const [key, value] of Object.entries(propertyFields)) {
-                if (value && value.trim()) {
-                    formData.append(key, value.trim());
-                }
-            }
+            const settings = qualitySettings[selectedQuality];
+            formData.append('duration_per_image', settings.duration);
+            formData.append('effect_speed', settings.speed);
             
             // Show progress section
             progressSection.style.display = 'block';
             resultsSection.style.display = 'none';
             generateBtn.disabled = true;
-            updateProgress(0, 'Uploading photos for premium quality processing...');
+            updateProgress(0, 'Uploading photos...');
             
             try {
                 // Upload and start processing
@@ -504,17 +952,6 @@
                 
                 currentJobId = data.job_id;
                 
-                // Show quality-specific message
-                const qualityMessages = {
-                    'premium': 'Creating premium 60fps HD virtual tour (this may take 1-2 minutes for best quality)...',
-                    'high': 'Creating high quality 30fps HD virtual tour (45-60 seconds)...',
-                    'medium': 'Creating medium quality virtual tour (30-45 seconds)...',
-                    'deployment': 'Creating fast virtual tour (10-20 seconds)...',
-                    '': 'Creating virtual tour with auto-detected quality settings...'
-                };
-                const selectedQuality = qualitySelect ? qualitySelect.value : '';
-                updateProgress(5, qualityMessages[selectedQuality] || qualityMessages['']);
-                
                 // Start checking job status
                 startStatusChecking();
                 
@@ -526,6 +963,8 @@
         }
         
         function startStatusChecking() {
+            let lastProgress = 0;
+            
             statusCheckInterval = setInterval(async () => {
                 try {
                     const response = await fetch(`/api/virtual-tour/job/${currentJobId}/status`);
@@ -535,11 +974,18 @@
                         throw new Error(data.error || 'Status check failed');
                     }
                     
-                    updateProgress(data.progress || 0, data.current_step || 'Processing...');
+                    // Update progress
+                    const progress = data.progress || lastProgress;
+                    if (progress > lastProgress) {
+                        lastProgress = progress;
+                    }
                     
+                    updateProgress(progress, data.current_step || 'Processing...');
+                    
+                    // Check if completed
                     if (data.status === 'completed') {
                         clearInterval(statusCheckInterval);
-                        checkFinalResults();
+                        showSuccess(data);
                     } else if (data.status === 'failed') {
                         clearInterval(statusCheckInterval);
                         showError(data.error || 'Processing failed');
@@ -548,47 +994,15 @@
                 } catch (error) {
                     console.error('Status check error:', error);
                 }
-            }, 1000);
+            }, 2000); // Check every 2 seconds
             
-            // Timeout after 5 minutes
+            // Timeout after 10 minutes
             setTimeout(() => {
                 if (statusCheckInterval) {
                     clearInterval(statusCheckInterval);
                     showError('Processing timeout - please try again');
                 }
-            }, 300000);
-        }
-        
-        async function checkFinalResults() {
-            try {
-                const response = await fetch('/api/virtual-tour/upload', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ job_id: currentJobId })
-                });
-                
-                const data = await response.json();
-                
-                if (data.status === 'completed') {
-                    showSuccess(data);
-                } else {
-                    showError('Processing completed but no files generated');
-                }
-                
-            } catch (error) {
-                // If we can't check results, assume success and show download options
-                showSuccess({ 
-                    job_id: currentJobId,
-                    video_available: true,
-                    files_generated: {
-                        video: `virtual_tour_${currentJobId}.mp4`,
-                        description: `property_description_${currentJobId}.txt`,
-                        script: `voiceover_script_${currentJobId}.txt`
-                    }
-                });
-            }
+            }, 600000);
         }
         
         function updateProgress(percent, message) {
@@ -596,27 +1010,17 @@
             progressFill.textContent = percent + '%';
             statusMessage.textContent = message;
             
-            // Add quality indicator for premium processing
-            if (percent > 5 && percent < 95) {
-                const subStatusDiv = document.querySelector('.sub-status');
-                if (subStatusDiv) {
-                    subStatusDiv.textContent = '✨ Premium Quality: 60fps • Full HD • 8-second scenes • Smooth cinematic movements';
-                }
-            }
-            
-            // Add sub-status messages based on step
-            if (message.includes('optimizing')) {
-                subStatus.textContent = 'Preparing images for video processing...';
-            } else if (message.includes('ken_burns')) {
-                subStatus.textContent = 'Creating cinematic zoom and pan effects...';
-            } else if (message.includes('video')) {
-                subStatus.textContent = 'Generating MP4 video file...';
-            } else if (message.includes('description')) {
-                subStatus.textContent = 'Creating property description...';
-            } else if (message.includes('script')) {
-                subStatus.textContent = 'Generating voiceover script...';
+            // Update sub-status based on progress
+            if (percent < 20) {
+                subStatus.textContent = 'Preparing your images...';
+            } else if (percent < 40) {
+                subStatus.textContent = 'Analyzing photos for optimal Ken Burns effects...';
+            } else if (percent < 60) {
+                subStatus.textContent = 'Creating smooth camera movements...';
+            } else if (percent < 80) {
+                subStatus.textContent = 'Rendering HD video with professional transitions...';
             } else {
-                subStatus.textContent = '';
+                subStatus.textContent = 'Finalizing your virtual tour...';
             }
         }
         
@@ -626,57 +1030,60 @@
             resultsSection.classList.remove('error');
             generateBtn.disabled = false;
             
-            document.getElementById('results-title').textContent = '✅ Virtual Tour Created Successfully!';
+            document.getElementById('results-title').textContent = 'Your Virtual Tour is Ready!';
+            document.querySelector('.results-icon').textContent = '✅';
             
-            let message = `Processed ${data.images_processed || selectedFiles.length} images`;
+            let message = `Created stunning video tour with ${data.images_processed || selectedFiles.length} photos`;
             if (data.processing_time) {
                 message += ` in ${data.processing_time}`;
             }
             
             document.getElementById('results-message').textContent = message;
             
+            // Show video preview if available
+            const videoPreview = document.getElementById('video-preview');
+            if (data.video_url || data.github_job_id) {
+                const videoUrl = data.video_url || `/api/virtual-tour/download/${currentJobId}/video`;
+                videoPreview.innerHTML = `
+                    <video controls autoplay muted loop>
+                        <source src="${videoUrl}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                `;
+                videoPreview.style.display = 'block';
+            } else {
+                videoPreview.style.display = 'none';
+            }
+            
             // Create download buttons
             const downloadButtons = document.getElementById('download-buttons');
             downloadButtons.innerHTML = '';
             
-            // Primary output - MP4 Video
-            if (data.video_available || data.virtual_tour_available) {
-                downloadButtons.innerHTML += `
-                    <a href="/api/virtual-tour/download/${data.job_id}/video" class="btn success" download>
-                        🎬 Download MP4 Video
-                    </a>
-                `;
-            }
+            // Video download
+            downloadButtons.innerHTML += `
+                <a href="/api/virtual-tour/download/${currentJobId}/video" class="btn success" download>
+                    🎬 Download MP4 Video
+                </a>
+            `;
             
-            // Cloud-generated MP4 video if available
-            if (data.cloudinary_video && data.files_generated.cloud_video_url) {
-                downloadButtons.innerHTML += `
-                    <a href="${data.files_generated.cloud_video_url}" class="btn secondary" target="_blank">
-                        ☁️ View Cloud Video
-                    </a>
-                    <a href="${data.files_generated.cloud_video_download}" class="btn secondary" download>
-                        📹 Download MP4
-                    </a>
-                `;
+            // Additional downloads
+            if (data.files_generated) {
+                if (data.files_generated.description) {
+                    downloadButtons.innerHTML += `
+                        <a href="/api/virtual-tour/download/${currentJobId}/description" class="btn" download>
+                            📝 Property Description
+                        </a>
+                    `;
+                }
+                
+                if (data.files_generated.script) {
+                    downloadButtons.innerHTML += `
+                        <a href="/api/virtual-tour/download/${currentJobId}/script" class="btn" download>
+                            🎙️ Voiceover Script
+                        </a>
+                    `;
+                }
             }
-            // Remove redundant local MP4 section since we handle it above
-            
-            if (data.files_generated.description) {
-                downloadButtons.innerHTML += `
-                    <a href="/api/virtual-tour/download/${data.job_id}/description" class="btn" download>
-                        📝 Property Description
-                    </a>
-                `;
-            }
-            
-            if (data.files_generated.script) {
-                downloadButtons.innerHTML += `
-                    <a href="/api/virtual-tour/download/${data.job_id}/script" class="btn" download>
-                        🎙️ Voiceover Script
-                    </a>
-                `;
-            }
-            // No HTML slideshow - only MP4 videos
         }
         
         function showError(message) {
@@ -685,13 +1092,31 @@
             resultsSection.classList.add('error');
             generateBtn.disabled = false;
             
-            document.getElementById('results-title').textContent = '❌ Error';
+            document.getElementById('results-title').textContent = 'Processing Error';
+            document.querySelector('.results-icon').textContent = '❌';
             document.getElementById('results-message').textContent = message;
             document.getElementById('download-buttons').innerHTML = '';
+            document.getElementById('video-preview').style.display = 'none';
             
             if (statusCheckInterval) {
                 clearInterval(statusCheckInterval);
                 statusCheckInterval = null;
+            }
+        }
+        
+        function cancelJob() {
+            if (statusCheckInterval) {
+                clearInterval(statusCheckInterval);
+                statusCheckInterval = null;
+            }
+            
+            progressSection.style.display = 'none';
+            generateBtn.disabled = false;
+            
+            // Optionally, send cancel request to server
+            if (currentJobId) {
+                fetch(`/api/virtual-tour/job/${currentJobId}/cancel`, { method: 'POST' })
+                    .catch(err => console.error('Cancel error:', err));
             }
         }
     </script>

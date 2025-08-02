@@ -11,8 +11,10 @@ load_dotenv()
 use_github_actions = os.environ.get('USE_GITHUB_ACTIONS', 'false').lower() == 'true'
 if use_github_actions and all([os.environ.get('GITHUB_TOKEN'), os.environ.get('GITHUB_OWNER'), os.environ.get('GITHUB_REPO')]):
     from working_ken_burns_github import virtual_tour_bp
+    from webhook_handler import webhook_bp
 else:
     from working_ken_burns import virtual_tour_bp
+    webhook_bp = None
 
 # Configure logging
 logging.basicConfig(
@@ -27,6 +29,11 @@ CORS(app)
 
 # Register the virtual tour blueprint
 app.register_blueprint(virtual_tour_bp)
+
+# Register webhook blueprint if using GitHub Actions
+if webhook_bp:
+    app.register_blueprint(webhook_bp)
+    logger.info("GitHub webhook handler registered at /api/webhook/github")
 
 # Root route to serve the CSS3 Ken Burns frontend
 @app.route('/')
