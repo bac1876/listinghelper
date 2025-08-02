@@ -996,13 +996,13 @@
                 }
             }, 2000); // Check every 2 seconds
             
-            // Timeout after 10 minutes
+            // Timeout after 15 minutes (GitHub Actions can take time)
             setTimeout(() => {
                 if (statusCheckInterval) {
                     clearInterval(statusCheckInterval);
-                    showError('Processing timeout - please try again');
+                    showError('Processing timeout - Video rendering is taking longer than expected. Please check back in a few minutes or try with fewer/smaller images.');
                 }
-            }, 600000);
+            }, 900000); // 15 minutes
         }
         
         function updateProgress(percent, message) {
