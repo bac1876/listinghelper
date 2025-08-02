@@ -459,6 +459,69 @@ def view_tour(job_id):
         logger.error(f"Error viewing tour: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@virtual_tour_bp.route('/download/<job_id>/<file_type>', methods=['GET'])
+def download_file(job_id, file_type):
+    """Download generated files"""
+    try:
+        # First check if this is a GitHub Actions job
+        if job_id in active_jobs:
+            job = active_jobs[job_id]
+            
+            # For video files from GitHub Actions
+            if file_type in ['video', 'virtual_tour'] and job.get('github_job_id'):
+                github_job_id = job['github_job_id']
+                cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dib3kbifc')
+                video_url = f"https://res.cloudinary.com/{cloud_name}/video/upload/tours/{github_job_id}.mp4"
+                
+                # Redirect to Cloudinary URL
+                from flask import redirect
+                return redirect(video_url)
+            
+            # For local files
+            if job.get('files_generated', {}):
+                if file_type == 'description' and 'description' in job['files_generated']:
+                    filepath = job['files_generated']['description']
+                    if os.path.exists(filepath):
+                        return send_file(filepath, as_attachment=True, download_name=f'property_description_{job_id}.txt')
+                elif file_type == 'script' and 'script' in job['files_generated']:
+                    filepath = job['files_generated']['script']
+                    if os.path.exists(filepath):
+                        return send_file(filepath, as_attachment=True, download_name=f'voiceover_script_{job_id}.txt')
+        
+        # Fallback to job directory lookup
+        job_dir = os.path.join(STORAGE_DIR, f'job_{job_id}')
+        if not os.path.exists(job_dir):
+            # Try without job_ prefix
+            job_dir = os.path.join(STORAGE_DIR, job_id)
+            if not os.path.exists(job_dir):
+                return jsonify({'error': 'Job not found'}), 404
+        
+        # Map file types to actual filenames
+        file_mapping = {
+            'video': f'virtual_tour_{job_id}.mp4',
+            'virtual_tour': f'virtual_tour_{job_id}.mp4',
+            'description': f'property_description_{job_id}.txt',
+            'script': f'voiceover_script_{job_id}.txt'
+        }
+        
+        if file_type not in file_mapping:
+            return jsonify({'error': 'Invalid file type'}), 400
+        
+        filepath = os.path.join(job_dir, file_mapping[file_type])
+        
+        if os.path.exists(filepath):
+            return send_file(
+                filepath, 
+                as_attachment=True,
+                download_name=os.path.basename(filepath)
+            )
+        else:
+            return jsonify({'error': f'File not found: {file_type}'}), 404
+            
+    except Exception as e:
+        logger.error(f"Download error: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @virtual_tour_bp.route('/job/<job_id>/status', methods=['GET'])
 def get_job_status(job_id):
     """Get status of a specific job"""
@@ -488,7 +551,8 @@ def get_job_status(job_id):
         except Exception as e:
             logger.error(f"Error checking GitHub job status: {e}")
     
-    return jsonify({
+    # Build response data
+    response_data = {
         'job_id': job_id,
         'status': job.get('status', 'unknown'),
         'progress': job.get('progress', 0),
@@ -500,7 +564,20 @@ def get_job_status(job_id):
         'processing_time': job.get('processing_time', ''),
         'error': job.get('error', None),
         'github_job_id': job.get('github_job_id', None)
-    })
+    }
+    
+    # Add video URL if we have a GitHub job ID and status is completed
+    if job.get('github_job_id') and job.get('status') == 'completed':
+        github_job_id = job['github_job_id']
+        cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dib3kbifc')
+        video_url = f"https://res.cloudinary.com/{cloud_name}/video/upload/tours/{github_job_id}.mp4"
+        response_data['video_url'] = video_url
+        # Also update the files_generated for consistency
+        if 'files_generated' not in response_data:
+            response_data['files_generated'] = {}
+        response_data['files_generated']['cloudinary_url'] = video_url
+    
+    return jsonify(response_data)
 
 def generate_virtual_tour_html(job_id, job_data):
     """Generate HTML for virtual tour viewer"""

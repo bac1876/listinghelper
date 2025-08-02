@@ -41,7 +41,11 @@
       "Bash(rm:*)",
       "Bash(git log:*)",
       "WebFetch(domain:www.remotion.dev)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(chcp:*)",
+      "Bash(curl:*)",
+      "Bash(timeout:*)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": []
   },
