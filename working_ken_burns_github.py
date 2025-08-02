@@ -210,8 +210,8 @@ def upload_images():
         transition_duration = float(settings.get('transitionDuration', request.form.get('transition_duration', 1.5)))
         
         # Process uploaded files if any
-        if 'images' in request.files:
-            files = request.files.getlist('images')
+        if 'files' in request.files:
+            files = request.files.getlist('files')
             logger.info(f"Received {len(files)} files for job {job_id}")
             
             # Create job directory
@@ -382,10 +382,20 @@ def upload_images():
         
         # Finalize job
         processing_time = time.time() - start_time
-        active_jobs[job_id]['status'] = 'completed'
-        active_jobs[job_id]['progress'] = 100
-        active_jobs[job_id]['current_step'] = 'Processing complete'
-        active_jobs[job_id]['processing_time'] = f"{processing_time:.2f} seconds"
+        
+        # If GitHub Actions was triggered, don't mark as completed yet
+        if active_jobs[job_id].get('github_job_id'):
+            active_jobs[job_id]['status'] = 'processing'
+            active_jobs[job_id]['progress'] = 75
+            active_jobs[job_id]['current_step'] = 'GitHub Actions rendering in progress'
+            active_jobs[job_id]['processing_time'] = f"{processing_time:.2f} seconds"
+            logger.info(f"Job {job_id} waiting for GitHub Actions to complete")
+        else:
+            # Only mark as completed if no GitHub Actions
+            active_jobs[job_id]['status'] = 'completed'
+            active_jobs[job_id]['progress'] = 100
+            active_jobs[job_id]['current_step'] = 'Processing complete'
+            active_jobs[job_id]['processing_time'] = f"{processing_time:.2f} seconds"
         
         return jsonify({
             'job_id': job_id,
@@ -468,14 +478,28 @@ def download_file(job_id, file_type):
             job = active_jobs[job_id]
             
             # For video files from GitHub Actions
-            if file_type in ['video', 'virtual_tour'] and job.get('github_job_id'):
-                github_job_id = job['github_job_id']
-                cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dib3kbifc')
-                video_url = f"https://res.cloudinary.com/{cloud_name}/video/upload/tours/{github_job_id}.mp4"
-                
-                # Redirect to Cloudinary URL
-                from flask import redirect
-                return redirect(video_url)
+            if file_type in ['video', 'virtual_tour']:
+                if job.get('github_job_id'):
+                    github_job_id = job['github_job_id']
+                    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dib3kbifc')
+                    video_url = f"https://res.cloudinary.com/{cloud_name}/video/upload/tours/{github_job_id}.mp4"
+                    
+                    # Redirect to Cloudinary URL
+                    from flask import redirect
+                    return redirect(video_url)
+                elif job.get('status') == 'processing':
+                    return jsonify({
+                        'error': 'Video is still being rendered',
+                        'status': 'processing',
+                        'progress': job.get('progress', 0),
+                        'message': 'Please wait while your video is being generated. This may take 1-2 minutes.'
+                    }), 202  # 202 Accepted - request accepted but processing not complete
+                else:
+                    return jsonify({
+                        'error': 'Video not available',
+                        'status': job.get('status', 'unknown'),
+                        'message': 'The video generation may have failed or is not yet started.'
+                    }), 404
             
             # For local files
             if job.get('files_generated', {}):
