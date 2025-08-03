@@ -575,6 +575,25 @@ def get_job_status(job_id):
         except Exception as e:
             logger.error(f"Error checking GitHub job status: {e}")
     
+    # Fallback: Check if video exists on Cloudinary directly
+    if job.get('github_job_id') and job.get('status') != 'completed':
+        cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dib3kbifc')
+        video_url = f"https://res.cloudinary.com/{cloud_name}/video/upload/tours/{job['github_job_id']}.mp4"
+        
+        # Simple HEAD request to check if video exists
+        try:
+            import requests
+            response = requests.head(video_url, timeout=5)
+            if response.status_code == 200:
+                logger.info(f"Video found on Cloudinary for job {job_id}")
+                job['cloudinary_video'] = True
+                job['files_generated']['cloudinary_url'] = video_url
+                job['status'] = 'completed'
+                job['progress'] = 100
+                job['current_step'] = 'Video ready for download'
+        except Exception as e:
+            logger.debug(f"Video not ready yet for job {job_id}: {e}")
+    
     # Build response data
     response_data = {
         'job_id': job_id,
