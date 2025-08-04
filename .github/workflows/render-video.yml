@@ -129,6 +129,22 @@ jobs:
         echo "Current directory: $(pwd)"
         echo "Video path: ${VIDEO_PATH}"
         
+        # Verify video file exists and has content
+        if [ ! -f "${VIDEO_PATH}" ]; then
+          echo "ERROR: Video file not found at ${VIDEO_PATH}"
+          echo "Directory contents:"
+          ls -la out/
+          exit 1
+        fi
+        
+        VIDEO_SIZE=$(stat -c%s "${VIDEO_PATH}" 2>/dev/null || stat -f%z "${VIDEO_PATH}" 2>/dev/null)
+        echo "Video file size: ${VIDEO_SIZE} bytes"
+        
+        if [ "${VIDEO_SIZE}" -eq "0" ]; then
+          echo "ERROR: Video file is empty"
+          exit 1
+        fi
+        
         # Install cloudinary SDK
         npm install cloudinary
         
@@ -165,10 +181,19 @@ jobs:
             const videoUrl = result.secure_url;
             console.log(`VIDEO_URL=${videoUrl}`);
             
+            // Verify URL is valid
+            if (!videoUrl || videoUrl === 'undefined') {
+              console.error('ERROR: Cloudinary returned invalid URL');
+              console.error('Full result:', JSON.stringify(result, null, 2));
+              process.exit(1);
+            }
+            
             // Write to GITHUB_ENV
             fs.appendFileSync(process.env.GITHUB_ENV, `VIDEO_URL=${videoUrl}\n`);
             
             console.log(`Successfully uploaded to: ${videoUrl}`);
+            console.log(`Video public_id: ${result.public_id}`);
+            console.log(`Video format: ${result.format}`);
           }
         );
         EOF
@@ -178,17 +203,52 @@ jobs:
     - name: Create result artifact
       run: |
         # Create a result file with the video URL and metadata
+        # Ensure VIDEO_URL has a default value if empty
+        if [ -z "${VIDEO_URL}" ]; then
+          echo "WARNING: VIDEO_URL is empty, using placeholder"
+          VIDEO_URL="error:no-video-url"
+        fi
+        
+        # Calculate duration safely
+        DURATION=$(node -e "
+          try {
+            const s = JSON.parse('${{ inputs.settings }}');
+            const i = JSON.parse('${{ inputs.images }}');
+            console.log(s.durationPerImage * i.length);
+          } catch (e) {
+            console.log(0);
+          }
+        ")
+        
+        # Create JSON with proper escaping
         cat > result.json << EOF
         {
           "success": true,
           "jobId": "${{ inputs.jobId }}",
           "videoUrl": "${VIDEO_URL}",
-          "duration": $(node -e "const s = JSON.parse('${{ inputs.settings }}'); const i = JSON.parse('${{ inputs.images }}'); console.log(s.durationPerImage * i.length)"),
+          "duration": ${DURATION:-0},
           "renderTime": "${{ steps.render.outputs.duration }}",
           "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
         }
         EOF
         
+        # Validate JSON before proceeding
+        if ! jq . result.json > /dev/null 2>&1; then
+          echo "ERROR: Invalid JSON generated, creating fallback"
+          cat > result.json << EOF
+        {
+          "success": false,
+          "jobId": "${{ inputs.jobId }}",
+          "videoUrl": "error:invalid-json",
+          "duration": 0,
+          "renderTime": "unknown",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "error": "Failed to generate valid result JSON"
+        }
+        EOF
+        fi
+        
+        echo "Result JSON:"
         cat result.json
     
     - name: Upload result as artifact

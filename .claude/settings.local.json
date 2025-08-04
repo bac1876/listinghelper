@@ -48,7 +48,8 @@
       "WebFetch(domain:github.com)",
       "Bash(mv:*)",
       "Bash(gh run list:*)",
-      "Bash(gh auth:*)"
+      "Bash(gh auth:*)",
+      "Bash(py:*)"
     ],
     "deny": []
   },

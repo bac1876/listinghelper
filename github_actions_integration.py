@@ -165,18 +165,91 @@ class GitHubActionsIntegration:
             import zipfile
             import io
             
-            with zipfile.ZipFile(io.BytesIO(response.content)) as zip_file:
-                with zip_file.open('result.json') as result_file:
-                    result = json.load(result_file)
+            try:
+                with zipfile.ZipFile(io.BytesIO(response.content)) as zip_file:
+                    # List files in the zip for debugging
+                    zip_contents = zip_file.namelist()
+                    logger.info(f"Artifact contents: {zip_contents}")
                     
-                    return {
-                        "success": True,
-                        "status": "completed",
-                        "video_url": result.get('videoUrl'),
-                        "duration": result.get('duration'),
-                        "render_time": result.get('renderTime'),
-                        "timestamp": result.get('timestamp')
-                    }
+                    if 'result.json' not in zip_contents:
+                        logger.error("result.json not found in artifact")
+                        return {
+                            "success": False,
+                            "error": "result.json not found in artifact",
+                            "artifact_contents": zip_contents
+                        }
+                    
+                    with zip_file.open('result.json') as result_file:
+                        # Read raw content first for debugging
+                        raw_content = result_file.read()
+                        logger.info(f"Raw result.json content: {raw_content[:500]}")  # Log first 500 chars
+                        
+                        # Try to parse JSON
+                        try:
+                            result = json.loads(raw_content)
+                        except json.JSONDecodeError as e:
+                            logger.error(f"JSON parsing error: {e}")
+                            logger.error(f"Raw content: {raw_content}")
+                            
+                            # Try to extract video URL with regex as fallback
+                            import re
+                            video_url_match = re.search(r'"videoUrl":\s*"([^"]+)"', raw_content.decode('utf-8'))
+                            if video_url_match and video_url_match.group(1) != "error:no-video-url":
+                                logger.info(f"Extracted video URL via regex: {video_url_match.group(1)}")
+                                return {
+                                    "success": True,
+                                    "status": "completed",
+                                    "video_url": video_url_match.group(1),
+                                    "duration": 0,
+                                    "render_time": "unknown",
+                                    "timestamp": "unknown",
+                                    "warning": "JSON parsing failed, extracted URL via regex"
+                                }
+                            
+                            return {
+                                "success": False,
+                                "error": f"Invalid JSON in result.json: {e}",
+                                "raw_content": raw_content.decode('utf-8')[:500]
+                            }
+                        
+                        # Check if it's an error response
+                        if not result.get('success', True):
+                            return {
+                                "success": False,
+                                "status": "failed",
+                                "error": result.get('error', 'Unknown error in result.json'),
+                                "video_url": result.get('videoUrl'),
+                                "timestamp": result.get('timestamp')
+                            }
+                        
+                        # Check for placeholder video URL
+                        video_url = result.get('videoUrl', '')
+                        if video_url.startswith('error:'):
+                            logger.error(f"Error video URL found: {video_url}")
+                            return {
+                                "success": False,
+                                "status": "failed",
+                                "error": f"Video generation failed: {video_url}",
+                                "duration": result.get('duration'),
+                                "render_time": result.get('renderTime'),
+                                "timestamp": result.get('timestamp')
+                            }
+                        
+                        return {
+                            "success": True,
+                            "status": "completed",
+                            "video_url": video_url,
+                            "duration": result.get('duration'),
+                            "render_time": result.get('renderTime'),
+                            "timestamp": result.get('timestamp')
+                        }
+                        
+            except zipfile.BadZipFile as e:
+                logger.error(f"Invalid zip file: {e}")
+                return {
+                    "success": False,
+                    "error": f"Invalid artifact zip file: {e}"
+                }
                     
         except Exception as e:
             logger.error(f"Error downloading job result: {str(e)}")
