@@ -74,6 +74,19 @@ jobs:
       run: |
         echo "Starting Remotion render..."
         
+        # Log the number of images received
+        echo "Images input: ${{ inputs.images }}"
+        echo "Number of images: $(node -e "console.log(JSON.parse(process.env.REMOTION_IMAGES).length)")"
+        
+        # Log each image URL
+        node -e "
+          const images = JSON.parse(process.env.REMOTION_IMAGES);
+          console.log('Image URLs received:');
+          images.forEach((url, index) => {
+            console.log(\`  Image \${index + 1}: \${url}\`);
+          });
+        "
+        
         # Create output directory
         mkdir -p out
         
