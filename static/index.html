@@ -796,6 +796,11 @@
         let statusCheckInterval = null;
         let selectedQuality = 'medium';
         
+        // Debug: Verify script is loading
+        console.log('Virtual Tour Generator script loaded');
+        console.log('File input element:', fileInput);
+        console.log('Generate button element:', generateBtn);
+        
         // Quality selection
         document.querySelectorAll('.quality-option').forEach(option => {
             option.addEventListener('click', () => {
@@ -821,6 +826,7 @@
         });
         
         fileInput.addEventListener('change', (e) => {
+            console.log('File input changed, files:', e.target.files.length);
             handleFiles(e.target.files);
         });
         
@@ -890,17 +896,22 @@
         });
         
         function handleFiles(files) {
+            console.log('handleFiles called with', files.length, 'files');
             const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+            console.log('Found', imageFiles.length, 'image files');
             selectedFiles = [...selectedFiles, ...imageFiles].slice(0, 15); // Max 15 files
+            console.log('Total selected files:', selectedFiles.length);
             updateFileList();
         }
         
         function updateFileList() {
+            console.log('updateFileList called, selectedFiles:', selectedFiles.length);
             if (selectedFiles.length === 0) {
                 fileList.style.display = 'none';
                 return;
             }
             
+            console.log('Showing file list');
             fileList.style.display = 'block';
             fileItems.innerHTML = selectedFiles.map((file, index) => {
                 const url = URL.createObjectURL(file);
