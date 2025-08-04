@@ -30,6 +30,20 @@ export const RemotionRoot: React.FC = () => {
             transitionDuration: 1 // seconds
           }
         }}
+        calculateMetadata={({ props }) => {
+          const { images, settings } = props;
+          const numImages = images.length > 0 ? images.length : 4; // Default to 4 if no images
+          const fps = 30;
+          const imageFrames = settings.durationPerImage * fps;
+          const totalFrames = numImages * imageFrames;
+          
+          return {
+            durationInFrames: totalFrames,
+            fps,
+            width: 1920,
+            height: 1080,
+          };
+        }}
       />
     </>
   );
