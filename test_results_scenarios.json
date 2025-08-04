@@ -1,0 +1,57 @@
+[
+  {
+    "name": "2 Images Fast",
+    "status": "success",
+    "job_id": "a8b5de51-d43a-4a3e-8246-ae644d176bbc",
+    "github_job_id": "tour_1754152853_04998953",
+    "video_url": "https://res.cloudinary.com/dib3kbifc/video/upload/tours/tour_1754152853_04998953.mp4",
+    "size_mb": 7.1884355545043945,
+    "elapsed_seconds": 94.95500659942627,
+    "images": 2,
+    "quality": "fast"
+  },
+  {
+    "name": "3 Images Fast",
+    "status": "success",
+    "job_id": "375fdab6-8d3e-43d9-b72f-ba7e95b046c9",
+    "github_job_id": "tour_1754152978_e0ea111e",
+    "video_url": "https://res.cloudinary.com/dib3kbifc/video/upload/tours/tour_1754152978_e0ea111e.mp4",
+    "size_mb": 8.827150344848633,
+    "elapsed_seconds": 63.16477108001709,
+    "images": 3,
+    "quality": "fast"
+  },
+  {
+    "name": "4 Images Medium",
+    "status": "success",
+    "job_id": "5d559067-5305-4a98-ab8d-9906d6e1f6d4",
+    "github_job_id": "tour_1754153071_8e004e9b",
+    "video_url": "https://res.cloudinary.com/dib3kbifc/video/upload/tours/tour_1754153071_8e004e9b.mp4",
+    "size_mb": 9.992866516113281,
+    "elapsed_seconds": 79.0482668876648,
+    "images": 4,
+    "quality": "medium"
+  },
+  {
+    "name": "5 Images Medium",
+    "status": "success",
+    "job_id": "560a1f68-9f90-4822-9cd7-10ee0d6cd32b",
+    "github_job_id": "tour_1754153180_21b46e52",
+    "video_url": "https://res.cloudinary.com/dib3kbifc/video/upload/tours/tour_1754153180_21b46e52.mp4",
+    "size_mb": 9.997854232788086,
+    "elapsed_seconds": 65.19185256958008,
+    "images": 5,
+    "quality": "medium"
+  },
+  {
+    "name": "3 Images Premium",
+    "status": "success",
+    "job_id": "c743d91e-5779-461f-9cad-4230a0b67e1f",
+    "github_job_id": "tour_1754153275_9908cac6",
+    "video_url": "https://res.cloudinary.com/dib3kbifc/video/upload/tours/tour_1754153275_9908cac6.mp4",
+    "size_mb": 8.03121566772461,
+    "elapsed_seconds": 97.01169729232788,
+    "images": 3,
+    "quality": "slow"
+  }
+]

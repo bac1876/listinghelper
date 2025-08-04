@@ -49,6 +49,10 @@ jobs:
       run: |
         echo "Parsing inputs..."
         
+        # Log raw images input
+        echo "Raw images input:"
+        echo '${{ inputs.images }}'
+        
         # Save inputs to files using cat with heredoc to avoid shell interpretation
         cat > /tmp/images.json << 'EOF'
         ${{ inputs.images }}
@@ -61,6 +65,10 @@ jobs:
         cat > /tmp/settings.json << 'EOF'
         ${{ inputs.settings }}
         EOF
+        
+        # Log parsed image count
+        echo "Parsed image count:"
+        node -e "const imgs = JSON.parse(require('fs').readFileSync('/tmp/images.json', 'utf8')); console.log('Total images:', imgs.length); imgs.forEach((img, i) => console.log(\`  Image \${i+1}: \${img}\`));"
         
         echo "Inputs saved to temporary files"
     

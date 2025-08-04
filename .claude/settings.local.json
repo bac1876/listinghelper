@@ -46,7 +46,9 @@
       "Bash(curl:*)",
       "Bash(timeout:*)",
       "WebFetch(domain:github.com)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh auth:*)"
     ],
     "deny": []
   },
