@@ -213,6 +213,9 @@ def upload_images():
         if 'files' in request.files:
             files = request.files.getlist('files')
             logger.info(f"Received {len(files)} files for job {job_id}")
+            # Log each file for debugging
+            for i, file in enumerate(files):
+                logger.info(f"  File {i+1}: {file.filename} ({file.content_length} bytes)")
             
             # Create job directory
             job_dir = os.path.join(STORAGE_DIR, job_id)
@@ -281,10 +284,15 @@ def upload_images():
                 
                 # Upload files to Cloudinary
                 logger.info(f"Uploading {len(saved_files)} files to Cloudinary...")
+                for i, file in enumerate(saved_files):
+                    logger.info(f"  Will upload file {i+1}: {os.path.basename(file)}")
+                
                 github_image_urls = upload_files_to_cloudinary(saved_files)
                 
                 if github_image_urls:
                     logger.info(f"Successfully uploaded {len(github_image_urls)} images to Cloudinary")
+                    for i, url in enumerate(github_image_urls):
+                        logger.info(f"  Uploaded URL {i+1}: {url}")
                     active_jobs[job_id]['current_step'] = f'Uploaded {len(github_image_urls)} images to cloud'
                     active_jobs[job_id]['progress'] = 50
                 else:
@@ -300,6 +308,7 @@ def upload_images():
                 active_jobs[job_id]['progress'] = 60
                 
                 if github_image_urls:
+                    logger.info(f"Triggering GitHub Actions with {len(github_image_urls)} images")
                     github_result = github_actions.trigger_video_render(
                         images=github_image_urls,
                         property_details={
