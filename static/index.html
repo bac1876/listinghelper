@@ -724,6 +724,7 @@
                             🎬 Generate Virtual Tour
                         </button>
                         <button class="btn secondary" id="clear-btn">Clear All</button>
+                        <button class="btn" id="test-btn" style="background: #e67e22;">🔧 Test Connection</button>
                     </div>
                 </div>
             </div>
@@ -828,6 +829,66 @@
         cancelBtn.addEventListener('click', cancelJob);
         newVideoBtn.addEventListener('click', resetForm);
         
+        // Add test button handler
+        const testBtn = document.getElementById('test-btn');
+        testBtn.addEventListener('click', async () => {
+            console.log('=== TESTING CONNECTION ===');
+            
+            // Test 1: Basic connectivity
+            console.log('Test 1: Basic connectivity...');
+            try {
+                const response = await fetch('/api/virtual-tour/health');
+                console.log('Health endpoint status:', response.status);
+                const data = await response.json();
+                console.log('Health data:', data);
+            } catch (error) {
+                console.error('Health check failed:', error);
+            }
+            
+            // Test 2: Simple POST without files
+            console.log('\nTest 2: Simple POST request...');
+            try {
+                const testData = { test: true, timestamp: new Date().toISOString() };
+                const response = await fetch('/api/virtual-tour/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testData)
+                });
+                console.log('Simple POST status:', response.status);
+                const result = await response.text();
+                console.log('Simple POST response:', result);
+            } catch (error) {
+                console.error('Simple POST failed:', error);
+            }
+            
+            // Test 3: FormData without files
+            console.log('\nTest 3: FormData without files...');
+            try {
+                const formData = new FormData();
+                formData.append('test', 'true');
+                formData.append('timestamp', new Date().toISOString());
+                
+                const response = await fetch('/api/virtual-tour/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                console.log('FormData POST status:', response.status);
+                const result = await response.text();
+                console.log('FormData POST response:', result);
+            } catch (error) {
+                console.error('FormData POST failed:', error);
+            }
+            
+            // Test 4: Check current origin
+            console.log('\nTest 4: Environment check...');
+            console.log('Current origin:', window.location.origin);
+            console.log('Current hostname:', window.location.hostname);
+            console.log('Current protocol:', window.location.protocol);
+            console.log('Full URL would be:', window.location.origin + '/api/virtual-tour/upload');
+            
+            alert('Tests complete! Check the browser console (F12) for results.');
+        });
+        
         function handleFiles(files) {
             const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
             selectedFiles = [...selectedFiles, ...imageFiles].slice(0, 15); // Max 15 files
@@ -902,6 +963,24 @@
             
             if (!address || !agentName || !agentPhone) {
                 alert('Please fill in required fields: Property Address, Agent Name, and Phone Number');
+                return;
+            }
+            
+            // First test if the API is reachable
+            console.log('Testing API health...');
+            try {
+                const healthResponse = await fetch('/api/virtual-tour/health');
+                console.log('Health check response:', healthResponse.status);
+                if (!healthResponse.ok) {
+                    console.error('API health check failed:', healthResponse.status);
+                    alert('Server is not responding. Please try again in a moment.');
+                    return;
+                }
+                const healthData = await healthResponse.json();
+                console.log('Health check data:', healthData);
+            } catch (error) {
+                console.error('Cannot reach server:', error);
+                alert('Cannot connect to server. Please check your connection and try again.');
                 return;
             }
             
