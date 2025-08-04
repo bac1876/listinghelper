@@ -899,7 +899,9 @@
             
             // Prepare form data
             const formData = new FormData();
-            selectedFiles.forEach(file => {
+            console.log(`Uploading ${selectedFiles.length} files:`);
+            selectedFiles.forEach((file, index) => {
+                console.log(`  File ${index + 1}: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB, type: ${file.type})`);
                 formData.append('files', file);
             });
             
@@ -938,6 +940,9 @@
             progressSection.style.display = 'block';
             resultsSection.style.display = 'none';
             generateBtn.disabled = true;
+            
+            // Update initial status with file count
+            updateStatus(`Uploading ${selectedFiles.length} images...`, 'processing');
             updateProgress(0, 'Uploading photos...');
             
             try {

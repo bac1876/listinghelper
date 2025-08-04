@@ -214,8 +214,26 @@ def upload_images():
             files = request.files.getlist('files')
             logger.info(f"Received {len(files)} files for job {job_id}")
             # Log each file for debugging
+            valid_files = []
             for i, file in enumerate(files):
-                logger.info(f"  File {i+1}: {file.filename} ({file.content_length} bytes)")
+                file_size = len(file.read())
+                file.seek(0)  # Reset file pointer after reading
+                logger.info(f"  File {i+1}: {file.filename} ({file_size} bytes, type: {file.mimetype})")
+                
+                # Check file size (max 10MB per image)
+                if file_size > 10 * 1024 * 1024:
+                    logger.warning(f"  File {i+1} rejected: Too large ({file_size} bytes > 10MB)")
+                    continue
+                    
+                # Check file type
+                if not file.mimetype.startswith('image/'):
+                    logger.warning(f"  File {i+1} rejected: Invalid type ({file.mimetype})")
+                    continue
+                    
+                valid_files.append(file)
+            
+            logger.info(f"Valid files after filtering: {len(valid_files)} of {len(files)}")
+            files = valid_files
             
             # Create job directory
             job_dir = os.path.join(STORAGE_DIR, job_id)
