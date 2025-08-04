@@ -1,4 +1,4 @@
-from flask import Flask, render_template, send_from_directory
+from flask import Flask, render_template, send_from_directory, request
 from flask_cors import CORS
 import os
 import logging
@@ -26,6 +26,17 @@ logger = logging.getLogger(__name__)
 # Create Flask app
 app = Flask(__name__, static_folder='static', template_folder='templates')
 CORS(app)
+
+# Add request logging middleware
+@app.before_request
+def log_request_info():
+    logger.info(f"Request: {request.method} {request.path}")
+    logger.info(f"Headers: {dict(request.headers)}")
+    
+@app.after_request
+def log_response_info(response):
+    logger.info(f"Response: {response.status}")
+    return response
 
 # Register the virtual tour blueprint
 app.register_blueprint(virtual_tour_bp)

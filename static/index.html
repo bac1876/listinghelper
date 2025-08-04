@@ -854,6 +854,14 @@
                     </div>
                 `;
             }).join('');
+            
+            // Update status message
+            updateStatus(`${selectedFiles.length} images selected`, 'info');
+        }
+        
+        function updateStatus(message, type = 'info') {
+            console.log(`[${type.toUpperCase()}] ${message}`);
+            // You can add visual status updates here if needed
         }
         
         function removeFile(index) {
@@ -946,27 +954,60 @@
             updateProgress(0, 'Uploading photos...');
             
             try {
+                console.log('Starting upload...');
+                console.log('Form data prepared, initiating fetch request...');
+                console.log('Target URL:', window.location.origin + '/api/virtual-tour/upload');
+                
+                // Add timeout to prevent infinite waiting
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+                
                 // Upload and start processing
                 const response = await fetch('/api/virtual-tour/upload', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    signal: controller.signal
+                }).catch(err => {
+                    console.error('Fetch error:', err);
+                    if (err.name === 'AbortError') {
+                        throw new Error('Upload timeout - server not responding');
+                    }
+                    throw new Error(`Network error: ${err.message}`);
                 });
                 
-                const data = await response.json();
+                clearTimeout(timeoutId);
+                
+                console.log('Upload response received, status:', response.status);
                 
                 if (!response.ok) {
-                    throw new Error(data.error || 'Upload failed');
+                    let errorMsg = `Upload failed: ${response.status} ${response.statusText}`;
+                    try {
+                        const errorText = await response.text();
+                        console.error('Error response body:', errorText);
+                        if (errorText) {
+                            errorMsg += ` - ${errorText}`;
+                        }
+                    } catch (e) {
+                        console.error('Could not read error response:', e);
+                    }
+                    throw new Error(errorMsg);
                 }
                 
+                const data = await response.json();
+                console.log('Upload response data:', data);
+                
                 currentJobId = data.job_id;
+                updateStatus('Upload complete, processing...', 'processing');
+                updateProgress(10, 'Photos uploaded successfully');
                 
                 // Start checking job status
                 startStatusChecking();
                 
             } catch (error) {
-                console.error('Error:', error);
-                showError(error.message);
+                console.error('Upload error:', error);
+                showError(`Upload failed: ${error.message}`);
                 generateBtn.disabled = false;
+                progressSection.style.display = 'none';
             }
         }
         
