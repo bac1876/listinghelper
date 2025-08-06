@@ -50,7 +50,7 @@ export const PropertyDetails: React.FC<PropertyDetailsProps> = ({
       style={{
         justifyContent: position === 'top' ? 'flex-start' : 'flex-end',
         alignItems: 'flex-start',
-        padding: '60px',
+        padding: '40px',
       }}
     >
       <div
@@ -58,21 +58,21 @@ export const PropertyDetails: React.FC<PropertyDetailsProps> = ({
           transform: `translateY(${(1 - slideIn) * (position === 'top' ? -100 : 100)}px)`,
           opacity,
           backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          padding: '40px',
+          padding: '25px',
           borderRadius: '10px',
-          maxWidth: '600px',
+          maxWidth: '450px',
           boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
         }}
       >
         {/* Property Info */}
-        <div style={{ marginBottom: '30px' }}>
+        <div style={{ marginBottom: '20px' }}>
           <h1
             style={{
               color: 'white',
-              fontSize: '42px',
+              fontSize: '32px',
               fontWeight: 'bold',
               margin: 0,
-              marginBottom: '10px',
+              marginBottom: '8px',
               fontFamily: 'Arial, sans-serif',
             }}
           >
@@ -81,9 +81,9 @@ export const PropertyDetails: React.FC<PropertyDetailsProps> = ({
           <p
             style={{
               color: 'white',
-              fontSize: '28px',
+              fontSize: '22px',
               margin: 0,
-              marginBottom: '20px',
+              marginBottom: '15px',
               fontFamily: 'Arial, sans-serif',
             }}
           >
@@ -95,9 +95,9 @@ export const PropertyDetails: React.FC<PropertyDetailsProps> = ({
                 display: 'inline-block',
                 backgroundColor: '#4CAF50',
                 color: 'white',
-                padding: '8px 20px',
-                borderRadius: '25px',
-                fontSize: '20px',
+                padding: '6px 16px',
+                borderRadius: '20px',
+                fontSize: '16px',
                 fontWeight: 'bold',
                 fontFamily: 'Arial, sans-serif',
               }}
@@ -112,9 +112,9 @@ export const PropertyDetails: React.FC<PropertyDetailsProps> = ({
           <p
             style={{
               color: 'white',
-              fontSize: '24px',
+              fontSize: '18px',
               margin: 0,
-              marginBottom: '30px',
+              marginBottom: '20px',
               fontFamily: 'Arial, sans-serif',
               lineHeight: 1.4,
             }}
@@ -127,15 +127,15 @@ export const PropertyDetails: React.FC<PropertyDetailsProps> = ({
         <div
           style={{
             borderTop: '1px solid rgba(255, 255, 255, 0.3)',
-            paddingTop: '20px',
+            paddingTop: '15px',
           }}
         >
           <p
             style={{
               color: 'white',
-              fontSize: '24px',
+              fontSize: '20px',
               margin: 0,
-              marginBottom: '5px',
+              marginBottom: '4px',
               fontWeight: 'bold',
               fontFamily: 'Arial, sans-serif',
             }}
@@ -145,9 +145,9 @@ export const PropertyDetails: React.FC<PropertyDetailsProps> = ({
           <p
             style={{
               color: 'rgba(255, 255, 255, 0.8)',
-              fontSize: '20px',
+              fontSize: '16px',
               margin: 0,
-              marginBottom: '5px',
+              marginBottom: '3px',
               fontFamily: 'Arial, sans-serif',
             }}
           >
@@ -156,7 +156,7 @@ export const PropertyDetails: React.FC<PropertyDetailsProps> = ({
           <p
             style={{
               color: 'rgba(255, 255, 255, 0.8)',
-              fontSize: '18px',
+              fontSize: '14px',
               margin: 0,
               fontFamily: 'Arial, sans-serif',
             }}
