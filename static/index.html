@@ -1365,6 +1365,7 @@
         }
         
         function showSuccess(data) {
+            console.log('ShowSuccess data:', data);  // Debug logging
             progressSection.style.display = 'none';
             resultsSection.style.display = 'block';
             resultsSection.classList.remove('error');
@@ -1400,11 +1401,21 @@
             downloadButtons.innerHTML = '';
             
             // Video download - use direct Cloudinary URL if available
-            if (data.video_url) {
+            let videoUrl = data.video_url;
+            
+            // If no video_url but we have github_job_id, construct it
+            if (!videoUrl && data.github_job_id) {
+                // Construct Cloudinary URL from github_job_id
+                const cloudName = 'dib3kbifc';  // Your Cloudinary cloud name
+                videoUrl = `https://res.cloudinary.com/${cloudName}/video/upload/tours/${data.github_job_id}.mp4`;
+                console.log('Constructed video URL from github_job_id:', videoUrl);
+            }
+            
+            if (videoUrl) {
                 // Add fl_attachment flag to force download from Cloudinary
-                const downloadUrl = data.video_url.includes('cloudinary.com') 
-                    ? data.video_url.replace('/upload/', '/upload/fl_attachment/')
-                    : data.video_url;
+                const downloadUrl = videoUrl.includes('cloudinary.com') 
+                    ? videoUrl.replace('/upload/', '/upload/fl_attachment/')
+                    : videoUrl;
                 
                 downloadButtons.innerHTML += `
                     <a href="${downloadUrl}" class="btn success" download="virtual_tour.mp4">
@@ -1412,7 +1423,8 @@
                     </a>
                 `;
             } else {
-                // Fallback to API endpoint
+                // Fallback to API endpoint (should rarely happen now)
+                console.warn('No video URL or github_job_id available, using fallback');
                 downloadButtons.innerHTML += `
                     <a href="/api/virtual-tour/download/${currentJobId}/video" class="btn success" download>
                         🎬 Download MP4 Video

@@ -669,13 +669,13 @@ def download_file(job_id, file_type):
             
             # For video files from GitHub Actions
             if file_type in ['video', 'virtual_tour']:
-                # Check if video is available and has cloudinary URL
-                if job.get('video_available') and job.get('cloudinary_video') and job.get('files_generated', {}).get('cloudinary_url'):
+                # First priority: Check for stored cloudinary URL
+                if job.get('files_generated', {}).get('cloudinary_url'):
                     cloudinary_url = job['files_generated']['cloudinary_url']
-                    # Redirect to Cloudinary URL
+                    logger.info(f"Using stored Cloudinary URL for job {job_id}")
                     return redirect(cloudinary_url)
                 
-                # Fallback: If we have a GitHub job ID but webhook hasn't updated yet, check Cloudinary directly
+                # Second priority: If we have a GitHub job ID, always try Cloudinary
                 elif job.get('github_job_id'):
                     github_job_id = job['github_job_id']
                     cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dib3kbifc')
@@ -830,13 +830,15 @@ def get_job_status(job_id):
     # Add video URL if available from multiple sources
     if job.get('files_generated', {}).get('cloudinary_url'):
         response_data['video_url'] = job['files_generated']['cloudinary_url']
-    elif job.get('github_job_id') and job.get('status') == 'completed':
+    elif job.get('github_job_id'):
+        # Always construct URL if we have a GitHub job ID, regardless of status
         github_job_id = job['github_job_id']
         cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dib3kbifc')
         video_url = f"https://res.cloudinary.com/{cloud_name}/video/upload/tours/{github_job_id}.mp4"
         response_data['video_url'] = video_url
         # Also update the files_generated for consistency
         response_data['files_generated']['cloudinary_url'] = video_url
+        logger.info(f"Constructed video URL for job {job_id}: {video_url}")
     
     return jsonify(response_data)
 
