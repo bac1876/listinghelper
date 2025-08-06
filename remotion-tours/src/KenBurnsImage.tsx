@@ -5,16 +5,7 @@ export type KenBurnsEffect =
   | 'zoomIn' 
   | 'zoomOut' 
   | 'panLeft' 
-  | 'panRight' 
-  | 'panUp' 
-  | 'panDown'
-  | 'zoomInPanLeft'
-  | 'zoomInPanRight'
-  | 'zoomOutPanUp'
-  | 'zoomOutPanDown'
-  | 'zoomInRotate'
-  | 'panRotate'
-  | 'zoomOutRotate';
+  | 'panRight';
 
 export type Speed = 'slow' | 'medium' | 'fast';
 
@@ -43,15 +34,11 @@ export const KenBurnsImage: React.FC<KenBurnsImageProps> = ({
   const durationInFrames = duration * fps;
   
   // Speed multipliers - controls how much movement happens
-  // Increase movement for interior shots
-  const baseMultiplier = {
-    slow: 0.15,    // Very subtle movement
-    medium: 0.3,   // Moderate movement
-    fast: 0.5      // More dramatic movement
+  const speedMultiplier = {
+    slow: 0.2,    // Subtle movement
+    medium: 0.35,  // Moderate movement  
+    fast: 0.5      // More movement
   }[speed];
-  
-  // Boost movement for interior shots to show more of the room
-  const speedMultiplier = isInterior ? baseMultiplier * 1.8 : baseMultiplier;
   
   // Calculate progress (0 to 1)
   const progress = interpolate(
@@ -61,57 +48,27 @@ export const KenBurnsImage: React.FC<KenBurnsImageProps> = ({
     { extrapolateRight: 'clamp', extrapolateLeft: 'clamp' }
   );
   
-  // Base zoom levels - more zoom for interiors to explore the space
-  const zoomStart = 1;
-  const zoomEnd = 1 + (0.4 * speedMultiplier); // Max zoom depends on speed
-  
-  // Calculate zoom based on effect
+  // Calculate zoom OR pan (never both)
   let zoom = 1;
-  if (effect.includes('zoomIn')) {
-    zoom = interpolate(progress, [0, 1], [zoomStart, zoomEnd]);
-  } else if (effect.includes('zoomOut')) {
-    zoom = interpolate(progress, [0, 1], [zoomEnd, zoomStart]);
-  }
-  
-  // Pan distances (as percentage of image size) - increased for better room exploration
-  const panDistance = isInterior ? 25 * speedMultiplier : 15 * speedMultiplier;
-  
-  // Calculate pan positions - use circular/orbital motion instead of linear
   let translateX = 0;
   let translateY = 0;
   
-  // Create orbital/circular panning motion
-  if (effect.includes('pan')) {
-    // Calculate angle for circular motion (0 to 2π for full circle, partial for effect)
-    const angleRange = Math.PI * 0.5; // Quarter circle for subtle effect
-    let startAngle = 0;
-    
-    // Different starting angles for different pan directions
-    if (effect.includes('panLeft')) {
-      startAngle = 0;
-    } else if (effect.includes('panRight')) {
-      startAngle = Math.PI;
-    } else if (effect.includes('panUp')) {
-      startAngle = Math.PI / 2;
-    } else if (effect.includes('panDown')) {
-      startAngle = -Math.PI / 2;
-    }
-    
-    // Interpolate angle based on progress
-    const angle = interpolate(progress, [0, 1], [startAngle, startAngle + angleRange]);
-    
-    // Calculate circular motion coordinates
-    const radius = panDistance;
-    translateX = Math.cos(angle) * radius;
-    translateY = Math.sin(angle) * radius * 0.6; // Reduce Y movement for more natural look
-  }
-  
-  // Add rotation for more dynamic movement (especially for interiors)
-  let rotation = 0;
-  if (effect.includes('Rotate')) {
-    // More rotation for interiors to show room perspective
-    const maxRotation = isInterior ? 3 : 1.5; // degrees
-    rotation = interpolate(progress, [0, 0.5, 1], [0, maxRotation, 0]);
+  if (effect === 'zoomIn') {
+    // Gentle zoom in to show details
+    const zoomEnd = 1 + (0.3 * speedMultiplier);
+    zoom = interpolate(progress, [0, 1], [1, zoomEnd]);
+  } else if (effect === 'zoomOut') {
+    // Start zoomed in and pull back to show full room
+    const zoomStart = 1 + (0.3 * speedMultiplier);
+    zoom = interpolate(progress, [0, 1], [zoomStart, 1]);
+  } else if (effect === 'panLeft') {
+    // Pan from right to left to scan across the room
+    const panDistance = 20 * speedMultiplier; // Percentage of image width
+    translateX = interpolate(progress, [0, 1], [panDistance, -panDistance]);
+  } else if (effect === 'panRight') {
+    // Pan from left to right to scan across the room
+    const panDistance = 20 * speedMultiplier; // Percentage of image width
+    translateX = interpolate(progress, [0, 1], [-panDistance, panDistance]);
   }
   
   // Smooth easing for more natural movement
@@ -125,7 +82,7 @@ export const KenBurnsImage: React.FC<KenBurnsImageProps> = ({
     >
       <AbsoluteFill
         style={{
-          transform: `scale(${zoom}) translate(${translateX}%, ${translateY}%) rotate(${rotation}deg)`,
+          transform: `scale(${zoom}) translate(${translateX}%, ${translateY}%)`,
           transformOrigin: 'center center',
         }}
       >
@@ -150,29 +107,18 @@ function easeInOutCubic(t: number): number {
 
 // Helper to get a diverse set of effects
 export function getEffectForIndex(index: number, isInterior: boolean = true): KenBurnsEffect {
-  // More dynamic effects for interiors, simpler for exteriors
-  const interiorEffects: KenBurnsEffect[] = [
-    'zoomIn',
-    'zoomInRotate',
-    'panLeft',
-    'panRight',
-    'zoomInPanLeft',
-    'zoomInPanRight',
-    'panRotate',
-    'zoomOutPanUp',
-    'zoomOutPanDown',
-    'zoomOutRotate',
+  // Simple effects - alternating between pan and zoom
+  const effects: KenBurnsEffect[] = [
+    'panRight',   // Pan to see the room
+    'zoomIn',     // Zoom to show details
+    'panLeft',    // Pan the other direction
+    'zoomOut',    // Pull back to see full room
   ];
   
-  const exteriorEffects: KenBurnsEffect[] = [
-    'zoomIn',
-    'zoomOut',
-    'panLeft',
-    'panRight',
-    'zoomInPanLeft',
-    'zoomInPanRight',
-  ];
+  // For exteriors, prefer zoom effects
+  if (!isInterior && (index === 0 || index % 4 < 2)) {
+    return index % 2 === 0 ? 'zoomIn' : 'zoomOut';
+  }
   
-  const effects = isInterior ? interiorEffects : exteriorEffects;
   return effects[index % effects.length];
 }
