@@ -18,6 +18,8 @@ from ffmpeg_ken_burns import create_ken_burns_video
 from cloudinary_integration import generate_cloudinary_video
 from github_actions_integration import GitHubActionsIntegration
 from upload_to_cloudinary import upload_files_to_cloudinary
+from PIL import Image
+import io
 
 virtual_tour_bp = Blueprint('virtual_tour', __name__, url_prefix='/api/virtual-tour')
 
@@ -70,6 +72,70 @@ def start_cleanup_thread():
 
 # Start cleanup thread when module loads
 start_cleanup_thread()
+
+def compress_image(file_obj, filename, max_width=1920, max_height=1080, quality=85):
+    """
+    Compress and resize image to reduce file size
+    
+    Args:
+        file_obj: File object from request
+        filename: Original filename
+        max_width: Maximum width (default 1920 for Full HD)
+        max_height: Maximum height (default 1080 for Full HD)
+        quality: JPEG quality (default 85, good quality with small size)
+    
+    Returns:
+        Compressed image bytes and new filename
+    """
+    try:
+        # Open image with PIL
+        img = Image.open(file_obj)
+        
+        # Convert RGBA to RGB if necessary (for PNG with transparency)
+        if img.mode in ('RGBA', 'LA', 'P'):
+            # Create a white background
+            background = Image.new('RGB', img.size, (255, 255, 255))
+            if img.mode == 'P':
+                img = img.convert('RGBA')
+            background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+            img = background
+        elif img.mode != 'RGB':
+            img = img.convert('RGB')
+        
+        # Calculate new size maintaining aspect ratio
+        original_width, original_height = img.size
+        aspect_ratio = original_width / original_height
+        
+        # Only resize if image is larger than max dimensions
+        if original_width > max_width or original_height > max_height:
+            if aspect_ratio > max_width / max_height:
+                # Image is wider, fit to width
+                new_width = max_width
+                new_height = int(max_width / aspect_ratio)
+            else:
+                # Image is taller, fit to height
+                new_height = max_height
+                new_width = int(max_height * aspect_ratio)
+            
+            # Resize with high quality
+            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            logger.info(f"Resized image from {original_width}x{original_height} to {new_width}x{new_height}")
+        
+        # Save to bytes buffer
+        output = io.BytesIO()
+        img.save(output, format='JPEG', quality=quality, optimize=True)
+        output.seek(0)
+        
+        # Update filename to .jpg
+        new_filename = os.path.splitext(filename)[0] + '.jpg'
+        
+        return output, new_filename
+        
+    except Exception as e:
+        logger.error(f"Error compressing image: {e}")
+        # Return original if compression fails
+        file_obj.seek(0)
+        return file_obj, filename
 
 @virtual_tour_bp.route('/health', methods=['GET'])
 def health_check():
@@ -248,19 +314,53 @@ def upload_images():
             job_dir = os.path.join(STORAGE_DIR, job_id)
             os.makedirs(job_dir, exist_ok=True)
             
-            # Save uploaded files
+            # Save uploaded files with compression
             saved_files = []
+            original_total_size = 0
+            compressed_total_size = 0
+            
             for i, file in enumerate(files):
                 if file and file.filename:
-                    filename = f"image_{i}_{file.filename}"
+                    # Get original file size
+                    file.seek(0, 2)  # Seek to end
+                    original_size = file.tell()
+                    original_total_size += original_size
+                    file.seek(0)  # Reset to beginning
+                    
+                    # Compress the image
+                    compressed_file, compressed_filename = compress_image(file, file.filename)
+                    
+                    # Save compressed file
+                    filename = f"image_{i}_{compressed_filename}"
                     filepath = os.path.join(job_dir, filename)
-                    file.save(filepath)
+                    
+                    # If compression returned a BytesIO object, save its contents
+                    if isinstance(compressed_file, io.BytesIO):
+                        with open(filepath, 'wb') as f:
+                            f.write(compressed_file.getvalue())
+                        compressed_size = len(compressed_file.getvalue())
+                    else:
+                        # Fallback: save original file
+                        compressed_file.seek(0)
+                        with open(filepath, 'wb') as f:
+                            f.write(compressed_file.read())
+                        compressed_file.seek(0, 2)
+                        compressed_size = compressed_file.tell()
+                    
+                    compressed_total_size += compressed_size
                     saved_files.append(filepath)
-                    logger.info(f"Saved file: {filename}")
+                    
+                    compression_ratio = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0
+                    logger.info(f"Saved compressed file: {filename} (Original: {original_size/1024:.1f}KB, Compressed: {compressed_size/1024:.1f}KB, Saved: {compression_ratio:.1f}%)")
             
-            # Update job progress
+            # Update job progress with compression info
             active_jobs[job_id]['images_processed'] = len(saved_files)
-            active_jobs[job_id]['current_step'] = f'Saved {len(saved_files)} images'
+            if original_total_size > 0:
+                total_compression = (1 - compressed_total_size / original_total_size) * 100
+                active_jobs[job_id]['current_step'] = f'Compressed {len(saved_files)} images (saved {total_compression:.0f}% space)'
+                logger.info(f"Total compression: {original_total_size/1024/1024:.1f}MB -> {compressed_total_size/1024/1024:.1f}MB")
+            else:
+                active_jobs[job_id]['current_step'] = f'Saved {len(saved_files)} images'
             active_jobs[job_id]['progress'] = 10
             
             # Create local video with FFmpeg

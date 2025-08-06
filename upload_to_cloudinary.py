@@ -26,13 +26,18 @@ def upload_files_to_cloudinary(file_paths):
     
     for file_path in file_paths:
         try:
-            # Upload image to Cloudinary
+            # Upload image to Cloudinary with optimizations
             result = cloudinary.uploader.upload(
                 file_path,
                 folder="tours/temp",
                 resource_type="image",
                 quality="auto:good",
-                fetch_format="auto"
+                fetch_format="auto",
+                transformation=[
+                    {'width': 1920, 'height': 1080, 'crop': 'limit'},  # Max Full HD
+                    {'quality': 'auto:good'},  # Auto quality optimization
+                    {'fetch_format': 'auto'}  # Auto format (WebP where supported)
+                ]
             )
             
             uploaded_urls.append(result['secure_url'])
