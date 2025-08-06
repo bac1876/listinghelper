@@ -194,8 +194,17 @@ def upload_images():
             settings = {}
         
         # Get property details
-        address = property_details.get('address', request.form.get('address', 'Beautiful Property'))
-        city = property_details.get('city', request.form.get('city', 'Your City, State'))
+        full_address = property_details.get('address', request.form.get('address', 'Beautiful Property'))
+        
+        # Parse address to extract street and city if it contains a newline
+        if '\n' in full_address:
+            address_parts = full_address.split('\n', 1)
+            address = address_parts[0].strip()  # Street address
+            city = address_parts[1].strip() if len(address_parts) > 1 else ''
+        else:
+            address = full_address
+            city = ''  # Don't use default "Your City, State"
+        
         details1 = property_details.get('details1', request.form.get('details1', 'Call for viewing'))
         details2 = property_details.get('details2', request.form.get('details2', 'Just Listed'))
         
