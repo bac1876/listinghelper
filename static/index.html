@@ -171,12 +171,13 @@
             background: var(--primary);
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
             text-decoration: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             box-shadow: 0 4px 6px rgba(52, 152, 219, 0.2);
         }
         
@@ -192,25 +193,44 @@
         }
         
         .btn:disabled {
-            background: var(--border);
+            background: #ccc;
             cursor: not-allowed;
             box-shadow: none;
+            opacity: 0.6;
         }
         
         .btn.secondary {
-            background: var(--text-light);
+            background: #6c757d;
         }
         
         .btn.secondary:hover {
-            background: #5a6c7d;
+            background: #5a6268;
         }
         
         .btn.success {
-            background: var(--success);
+            background: #28a745;
         }
         
         .btn.success:hover {
-            background: #229954;
+            background: #218838;
+        }
+        
+        .btn.test-connection {
+            background: #ff9800;
+        }
+        
+        .btn.test-connection:hover {
+            background: #f57c00;
+        }
+        
+        .btn.generate {
+            background: #28a745;
+            font-size: 18px;
+            padding: 16px 40px;
+        }
+        
+        .btn.generate:hover {
+            background: #218838;
         }
         
         .file-list {
@@ -486,8 +506,8 @@
         }
         
         .results-section.error {
-            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
-            border-color: #ef9a9a;
+            background: linear-gradient(135deg, #ffe0e6 0%, #ffc0cb 100%);
+            border-color: #ff69b4;
         }
         
         .results-icon {
@@ -720,11 +740,11 @@
                     </div>
                     
                     <div class="action-buttons">
-                        <button class="btn success" id="generate-btn">
+                        <button class="btn generate" id="generate-btn">
                             🎬 Generate Virtual Tour
                         </button>
                         <button class="btn secondary" id="clear-btn">Clear All</button>
-                        <button class="btn" id="test-btn" style="background: #e67e22;">🔧 Test Connection</button>
+                        <button class="btn test-connection" id="test-btn">🔧 Test Connection</button>
                     </div>
                 </div>
             </div>
@@ -748,32 +768,6 @@
                 <button class="btn" id="new-video-btn" style="margin-top: 20px;">Create Another Video</button>
             </div>
         </div>
-        
-        <div class="info-section">
-            <h3>How It Works</h3>
-            <div class="info-grid">
-                <div class="info-card">
-                    <div class="info-card-icon">📸</div>
-                    <h4>Upload Photos</h4>
-                    <p>Select 3-15 high-quality property photos</p>
-                </div>
-                <div class="info-card">
-                    <div class="info-card-icon">🎬</div>
-                    <h4>Ken Burns Effect</h4>
-                    <p>Professional pan & zoom movements</p>
-                </div>
-                <div class="info-card">
-                    <div class="info-card-icon">🎵</div>
-                    <h4>Add Details</h4>
-                    <p>Property info and agent branding</p>
-                </div>
-                <div class="info-card">
-                    <div class="info-card-icon">💾</div>
-                    <h4>Download & Share</h4>
-                    <p>HD MP4 ready for any platform</p>
-                </div>
-            </div>
-        </div>
     </div>
     
     <script>
@@ -794,6 +788,7 @@
         let selectedFiles = [];
         let currentJobId = null;
         let statusCheckInterval = null;
+        let statusCheckTimeout = null;
         let selectedQuality = 'medium';
         
         // Debug: Verify script is loading
@@ -1124,9 +1119,19 @@
                     // Check if completed
                     if (data.status === 'completed') {
                         clearInterval(statusCheckInterval);
+                        statusCheckInterval = null;
+                        if (statusCheckTimeout) {
+                            clearTimeout(statusCheckTimeout);
+                            statusCheckTimeout = null;
+                        }
                         showSuccess(data);
                     } else if (data.status === 'failed') {
                         clearInterval(statusCheckInterval);
+                        statusCheckInterval = null;
+                        if (statusCheckTimeout) {
+                            clearTimeout(statusCheckTimeout);
+                            statusCheckTimeout = null;
+                        }
                         showError(data.error || 'Processing failed');
                     }
                     
@@ -1136,9 +1141,10 @@
             }, 2000); // Check every 2 seconds
             
             // Timeout after 15 minutes (GitHub Actions can take time)
-            setTimeout(() => {
+            statusCheckTimeout = setTimeout(() => {
                 if (statusCheckInterval) {
                     clearInterval(statusCheckInterval);
+                    statusCheckInterval = null;
                     showError('Processing timeout - Video rendering is taking longer than expected. Please check back in a few minutes or try with fewer/smaller images.');
                 }
             }, 900000); // 15 minutes
@@ -1241,12 +1247,20 @@
                 clearInterval(statusCheckInterval);
                 statusCheckInterval = null;
             }
+            if (statusCheckTimeout) {
+                clearTimeout(statusCheckTimeout);
+                statusCheckTimeout = null;
+            }
         }
         
         function cancelJob() {
             if (statusCheckInterval) {
                 clearInterval(statusCheckInterval);
                 statusCheckInterval = null;
+            }
+            if (statusCheckTimeout) {
+                clearTimeout(statusCheckTimeout);
+                statusCheckTimeout = null;
             }
             
             progressSection.style.display = 'none';

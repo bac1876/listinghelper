@@ -11,7 +11,10 @@ export type KenBurnsEffect =
   | 'zoomInPanLeft'
   | 'zoomInPanRight'
   | 'zoomOutPanUp'
-  | 'zoomOutPanDown';
+  | 'zoomOutPanDown'
+  | 'zoomInRotate'
+  | 'panRotate'
+  | 'zoomOutRotate';
 
 export type Speed = 'slow' | 'medium' | 'fast';
 
@@ -21,6 +24,7 @@ interface KenBurnsImageProps {
   effect: KenBurnsEffect;
   speed: Speed;
   startFrame: number;
+  isInterior?: boolean; // Flag to indicate if this is an interior shot
 }
 
 export const KenBurnsImage: React.FC<KenBurnsImageProps> = ({
@@ -29,6 +33,7 @@ export const KenBurnsImage: React.FC<KenBurnsImageProps> = ({
   effect,
   speed,
   startFrame,
+  isInterior = true, // Default to interior for more movement
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -38,11 +43,15 @@ export const KenBurnsImage: React.FC<KenBurnsImageProps> = ({
   const durationInFrames = duration * fps;
   
   // Speed multipliers - controls how much movement happens
-  const speedMultiplier = {
+  // Increase movement for interior shots
+  const baseMultiplier = {
     slow: 0.15,    // Very subtle movement
     medium: 0.3,   // Moderate movement
     fast: 0.5      // More dramatic movement
   }[speed];
+  
+  // Boost movement for interior shots to show more of the room
+  const speedMultiplier = isInterior ? baseMultiplier * 1.8 : baseMultiplier;
   
   // Calculate progress (0 to 1)
   const progress = interpolate(
@@ -52,7 +61,7 @@ export const KenBurnsImage: React.FC<KenBurnsImageProps> = ({
     { extrapolateRight: 'clamp', extrapolateLeft: 'clamp' }
   );
   
-  // Base zoom levels
+  // Base zoom levels - more zoom for interiors to explore the space
   const zoomStart = 1;
   const zoomEnd = 1 + (0.4 * speedMultiplier); // Max zoom depends on speed
   
@@ -64,8 +73,8 @@ export const KenBurnsImage: React.FC<KenBurnsImageProps> = ({
     zoom = interpolate(progress, [0, 1], [zoomEnd, zoomStart]);
   }
   
-  // Pan distances (as percentage of image size)
-  const panDistance = 15 * speedMultiplier; // Adjust pan distance based on speed
+  // Pan distances (as percentage of image size) - increased for better room exploration
+  const panDistance = isInterior ? 25 * speedMultiplier : 15 * speedMultiplier;
   
   // Calculate pan positions
   let translateX = 0;
@@ -83,6 +92,14 @@ export const KenBurnsImage: React.FC<KenBurnsImageProps> = ({
     translateY = interpolate(progress, [0, 1], [-panDistance, panDistance]);
   }
   
+  // Add rotation for more dynamic movement (especially for interiors)
+  let rotation = 0;
+  if (effect.includes('Rotate')) {
+    // More rotation for interiors to show room perspective
+    const maxRotation = isInterior ? 3 : 1.5; // degrees
+    rotation = interpolate(progress, [0, 0.5, 1], [0, maxRotation, 0]);
+  }
+  
   // Smooth easing for more natural movement
   const easedProgress = easeInOutCubic(progress);
   
@@ -94,7 +111,7 @@ export const KenBurnsImage: React.FC<KenBurnsImageProps> = ({
     >
       <AbsoluteFill
         style={{
-          transform: `scale(${zoom}) translate(${translateX}%, ${translateY}%)`,
+          transform: `scale(${zoom}) translate(${translateX}%, ${translateY}%) rotate(${rotation}deg)`,
           transformOrigin: 'center center',
         }}
       >
@@ -118,17 +135,30 @@ function easeInOutCubic(t: number): number {
 }
 
 // Helper to get a diverse set of effects
-export function getEffectForIndex(index: number): KenBurnsEffect {
-  const effects: KenBurnsEffect[] = [
+export function getEffectForIndex(index: number, isInterior: boolean = true): KenBurnsEffect {
+  // More dynamic effects for interiors, simpler for exteriors
+  const interiorEffects: KenBurnsEffect[] = [
+    'zoomIn',
+    'zoomInRotate',
+    'panLeft',
+    'panRight',
+    'zoomInPanLeft',
+    'zoomInPanRight',
+    'panRotate',
+    'zoomOutPanUp',
+    'zoomOutPanDown',
+    'zoomOutRotate',
+  ];
+  
+  const exteriorEffects: KenBurnsEffect[] = [
     'zoomIn',
     'zoomOut',
     'panLeft',
     'panRight',
     'zoomInPanLeft',
     'zoomInPanRight',
-    'zoomOutPanUp',
-    'zoomOutPanDown',
   ];
   
+  const effects = isInterior ? interiorEffects : exteriorEffects;
   return effects[index % effects.length];
 }

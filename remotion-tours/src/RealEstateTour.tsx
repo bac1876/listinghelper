@@ -50,7 +50,16 @@ export const RealEstateTour: React.FC<RealEstateTourProps> = ({
       {/* Background Images with Ken Burns Effects */}
       {displayImages.map((image, index) => {
         const startFrame = index * imageFrames;
-        const effect = getEffectForIndex(index);
+        
+        // Detect if image is exterior based on index or URL
+        // Typically first and last images are exterior shots
+        const isExterior = index === 0 || index === displayImages.length - 1 || 
+                          image.toLowerCase().includes('exterior') || 
+                          image.toLowerCase().includes('front') ||
+                          image.toLowerCase().includes('outside');
+        const isInterior = !isExterior;
+        
+        const effect = getEffectForIndex(index, isInterior);
         
         return (
           <Sequence
@@ -64,6 +73,7 @@ export const RealEstateTour: React.FC<RealEstateTourProps> = ({
               effect={effect}
               speed={settings.effectSpeed}
               startFrame={0}
+              isInterior={isInterior}
             />
             
             {/* Fade transition to next image */}
