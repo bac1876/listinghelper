@@ -102,8 +102,16 @@ def github_webhook():
                                 # Construct Cloudinary URL
                                 cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dib3kbifc')
                                 video_url = f"https://res.cloudinary.com/{cloud_name}/video/upload/tours/{job_id}.mp4"
+                                
+                                # Set all necessary fields for video download to work
                                 active_jobs[railway_job_id]['video_url'] = video_url
                                 active_jobs[railway_job_id]['cloudinary_video'] = True
+                                active_jobs[railway_job_id]['video_available'] = True
+                                
+                                # Ensure files_generated exists and has the cloudinary_url
+                                if 'files_generated' not in active_jobs[railway_job_id]:
+                                    active_jobs[railway_job_id]['files_generated'] = {}
+                                active_jobs[railway_job_id]['files_generated']['cloudinary_url'] = video_url
                                 
                                 logger.info(f"Job {railway_job_id} completed successfully. Video at: {video_url}")
                             else:

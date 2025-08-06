@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, send_file
+from flask import Blueprint, request, jsonify, send_file, redirect
 import os
 import tempfile
 import subprocess
@@ -327,17 +327,37 @@ def upload_images():
                 
                 if github_image_urls:
                     logger.info(f"Triggering GitHub Actions with {len(github_image_urls)} images")
+                    
+                    # Build details string from property fields if available
+                    details_parts = []
+                    property_price = request.form.get('property_price', '').strip()
+                    property_beds = request.form.get('property_beds', '').strip()
+                    property_baths = request.form.get('property_baths', '').strip()
+                    property_sqft = request.form.get('property_sqft', '').strip()
+                    
+                    if property_price:
+                        details_parts.append(property_price)
+                    if property_beds:
+                        details_parts.append(f"{property_beds} Beds")
+                    if property_baths:
+                        details_parts.append(f"{property_baths} Baths")
+                    if property_sqft:
+                        details_parts.append(property_sqft)
+                    
+                    # Use composed details or fallback to details1
+                    property_details_string = ' | '.join(details_parts) if details_parts else details1
+                    
                     github_result = github_actions.trigger_video_render(
                         images=github_image_urls,
                         property_details={
                             'address': address,
                             'city': city,
-                            'details1': details1,
-                            'details2': details2,
-                            'agent_name': agent_name,
-                            'agent_email': agent_email,
-                            'agent_phone': agent_phone,
-                            'brand_name': brand_name
+                            'details': property_details_string,  # Remotion expects 'details' not 'details1'
+                            'status': details2,  # Status is from details2
+                            'agentName': agent_name,  # Remotion expects camelCase
+                            'agentEmail': agent_email,
+                            'agentPhone': agent_phone,
+                            'brandName': brand_name
                         },
                         settings={
                             'durationPerImage': duration_per_image,
@@ -459,6 +479,13 @@ def download_video(job_id):
         if not job.get('video_available'):
             return jsonify({'error': 'Video not available'}), 404
         
+        # Check if video is on Cloudinary (GitHub Actions workflow)
+        if job.get('cloudinary_video') and job.get('files_generated', {}).get('cloudinary_url'):
+            cloudinary_url = job['files_generated']['cloudinary_url']
+            # Redirect to Cloudinary URL for download
+            return redirect(cloudinary_url)
+        
+        # Otherwise, serve local video file
         video_path = job['files_generated'].get('local_video')
         if not video_path or not os.path.exists(video_path):
             return jsonify({'error': 'Video file not found'}), 404
