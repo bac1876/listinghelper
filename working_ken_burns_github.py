@@ -542,14 +542,11 @@ def download_file(job_id, file_type):
             
             # For video files from GitHub Actions
             if file_type in ['video', 'virtual_tour']:
-                if job.get('github_job_id'):
-                    github_job_id = job['github_job_id']
-                    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dib3kbifc')
-                    video_url = f"https://res.cloudinary.com/{cloud_name}/video/upload/tours/{github_job_id}.mp4"
-                    
+                # Check if video is available and has cloudinary URL
+                if job.get('video_available') and job.get('cloudinary_video') and job.get('files_generated', {}).get('cloudinary_url'):
+                    cloudinary_url = job['files_generated']['cloudinary_url']
                     # Redirect to Cloudinary URL
-                    from flask import redirect
-                    return redirect(video_url)
+                    return redirect(cloudinary_url)
                 elif job.get('status') == 'processing':
                     return jsonify({
                         'error': 'Video is still being rendered',

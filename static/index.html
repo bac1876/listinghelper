@@ -12,26 +12,30 @@
         }
         
         :root {
-            --primary: #667eea;
-            --primary-light: #7c3aed;
-            --primary-dark: #5a67d8;
-            --secondary: #f56565;
-            --accent: #48bb78;
-            --success: #48bb78;
-            --error: #f56565;
-            --warning: #ed8936;
-            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            --gradient-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            --gradient-4: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-            --gradient-bg: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #fa709a 100%);
-            --text-dark: #2d3748;
-            --text-light: #718096;
-            --border: #e2e8f0;
-            --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --primary: #8b5cf6;
+            --primary-light: #a78bfa;
+            --primary-dark: #7c3aed;
+            --secondary: #ec4899;
+            --accent: #10b981;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --gradient-1: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+            --gradient-2: linear-gradient(135deg, #f472b6 0%, #fb923c 100%);
+            --gradient-3: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+            --gradient-4: linear-gradient(135deg, #10b981 0%, #14b8a6 100%);
+            --gradient-bg: linear-gradient(135deg, #1e1b4b 0%, #312e81 25%, #581c87 50%, #831843 75%, #7f1d1d 100%);
+            --bg-primary: #0f0f1e;
+            --bg-secondary: #1a1a2e;
+            --bg-card: rgba(26, 26, 46, 0.95);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --border: #374151;
+            --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.14);
         }
         
         @keyframes gradient {
@@ -63,10 +67,10 @@
         
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background: linear-gradient(-45deg, #1e1b4b, #312e81, #581c87, #831843);
             background-size: 400% 400%;
             animation: gradient 15s ease infinite;
-            color: var(--text-dark);
+            color: var(--text-primary);
             line-height: 1.6;
             min-height: 100vh;
             position: relative;
@@ -79,7 +83,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.3);
             backdrop-filter: blur(10px);
             z-index: -1;
         }
@@ -91,9 +95,9 @@
         }
         
         .header {
-            background: rgba(255, 255, 255, 0.95);
+            background: var(--bg-card);
             backdrop-filter: blur(10px);
-            color: var(--text-dark);
+            color: var(--text-primary);
             padding: 60px 0;
             text-align: center;
             margin-bottom: 60px;
@@ -102,6 +106,7 @@
             position: relative;
             overflow: hidden;
             animation: fadeInUp 0.8s ease;
+            border: 1px solid var(--border);
         }
         
         .header::before {
@@ -131,7 +136,7 @@
         
         .header p {
             font-size: 1.3em;
-            color: var(--text-light);
+            color: var(--text-secondary);
             max-width: 600px;
             margin: 0 auto;
             font-weight: 500;
@@ -151,14 +156,14 @@
         }
         
         .main-content {
-            background: rgba(255, 255, 255, 0.98);
+            background: var(--bg-card);
             border-radius: 30px;
             box-shadow: var(--shadow-xl);
             padding: 60px;
             position: relative;
             overflow: hidden;
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
+            border: 1px solid var(--border);
             animation: fadeInUp 1s ease 0.2s both;
         }
         
@@ -273,7 +278,7 @@
         }
         
         .drop-zone p {
-            color: var(--text-light);
+            color: var(--text-secondary);
             margin-bottom: 25px;
             font-size: 1.1em;
         }
@@ -370,8 +375,8 @@
         }
         
         .file-item {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%);
-            border: 2px solid rgba(102, 126, 234, 0.1);
+            background: linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(26, 26, 46, 0.8) 100%);
+            border: 2px solid var(--border);
             border-radius: 20px;
             padding: 20px;
             display: flex;
@@ -388,7 +393,7 @@
             transform: translateY(-5px) scale(1.02);
             box-shadow: var(--shadow-lg);
             border-color: var(--primary);
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%);
         }
         
         .file-preview {
@@ -413,7 +418,7 @@
         }
         
         .file-size {
-            color: var(--text-light);
+            color: var(--text-secondary);
             font-size: 0.9em;
             margin-top: 4px;
         }
@@ -448,9 +453,9 @@
         .property-details {
             margin-top: 40px;
             padding: 40px;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%);
             border-radius: 25px;
-            border: 2px solid rgba(102, 126, 234, 0.1);
+            border: 2px solid var(--border);
             backdrop-filter: blur(10px);
             animation: fadeInUp 0.6s ease;
         }
@@ -477,12 +482,13 @@
         .form-group select {
             width: 100%;
             padding: 20px 16px 8px 16px;
-            border: 2px solid transparent;
+            border: 2px solid var(--border);
             border-radius: 15px;
             font-size: 16px;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             font-family: inherit;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+            background: rgba(15, 15, 30, 0.8);
+            color: var(--text-primary);
             backdrop-filter: blur(10px);
         }
         
@@ -491,11 +497,11 @@
             left: 16px;
             top: 16px;
             font-weight: 500;
-            color: var(--text-light);
+            color: var(--text-secondary);
             font-size: 16px;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             pointer-events: none;
-            background: white;
+            background: var(--bg-card);
             padding: 0 4px;
         }
         
@@ -506,8 +512,8 @@
         .form-group textarea:not(:placeholder-shown) {
             outline: none;
             border: 2px solid var(--primary);
-            background: white;
-            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            background: rgba(26, 26, 46, 0.9);
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.2);
         }
         
         .form-group input:focus + label,
@@ -541,12 +547,12 @@
         
         .quality-option {
             padding: 25px;
-            border: 2px solid transparent;
+            border: 2px solid var(--border);
             border-radius: 20px;
             cursor: pointer;
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             text-align: center;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
+            background: linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(26, 26, 46, 0.7) 100%);
             backdrop-filter: blur(10px);
             position: relative;
             overflow: hidden;
@@ -591,14 +597,14 @@
         }
         
         .quality-option h5 {
-            color: var(--text-dark);
+            color: var(--text-primary);
             margin-bottom: 10px;
             font-size: 1.2em;
             font-weight: 700;
         }
         
         .quality-option p {
-            color: var(--text-light);
+            color: var(--text-secondary);
             font-size: 0.9em;
         }
         
@@ -613,9 +619,10 @@
             display: none;
             margin-top: 40px;
             padding: 40px;
-            background: linear-gradient(135deg, var(--light-bg) 0%, #d5dbdb 100%);
+            background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(31, 31, 51, 0.95) 100%);
             border-radius: 15px;
             text-align: center;
+            border: 2px solid var(--border);
         }
         
         .progress-icon {
@@ -632,11 +639,12 @@
         .progress-bar {
             width: 100%;
             height: 35px;
-            background: white;
+            background: rgba(15, 15, 30, 0.8);
             border-radius: 20px;
             overflow: hidden;
             margin: 25px 0;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
         }
         
         .progress-fill {
@@ -677,7 +685,7 @@
         }
         
         .sub-status {
-            color: var(--text-light);
+            color: var(--text-secondary);
             font-size: 1em;
         }
         
@@ -685,15 +693,15 @@
             display: none;
             margin-top: 40px;
             padding: 40px;
-            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(20, 184, 166, 0.1) 100%);
             border-radius: 15px;
-            border: 2px solid #a5d6a7;
+            border: 2px solid var(--success);
             text-align: center;
         }
         
         .results-section.error {
-            background: linear-gradient(135deg, #ffe0e6 0%, #ffc0cb 100%);
-            border-color: #ff69b4;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%);
+            border-color: var(--error);
         }
         
         .results-icon {
@@ -735,13 +743,13 @@
         .info-section {
             margin-top: 50px;
             padding: 40px;
-            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-            border: 2px solid #ffc107;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(251, 146, 60, 0.1) 100%);
+            border: 2px solid var(--warning);
             border-radius: 15px;
         }
         
         .info-section h3 {
-            color: #856404;
+            color: var(--warning);
             margin-bottom: 20px;
             font-size: 1.5em;
         }
@@ -754,11 +762,12 @@
         }
         
         .info-card {
-            background: white;
+            background: var(--bg-card);
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: var(--shadow-lg);
             text-align: center;
+            border: 1px solid var(--border);
         }
         
         .info-card-icon {
@@ -773,7 +782,7 @@
         }
         
         .info-card p {
-            color: var(--text-light);
+            color: var(--text-secondary);
             font-size: 0.95em;
         }
         

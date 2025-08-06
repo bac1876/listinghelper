@@ -76,20 +76,34 @@ export const KenBurnsImage: React.FC<KenBurnsImageProps> = ({
   // Pan distances (as percentage of image size) - increased for better room exploration
   const panDistance = isInterior ? 25 * speedMultiplier : 15 * speedMultiplier;
   
-  // Calculate pan positions
+  // Calculate pan positions - use circular/orbital motion instead of linear
   let translateX = 0;
   let translateY = 0;
   
-  if (effect.includes('panLeft')) {
-    translateX = interpolate(progress, [0, 1], [panDistance, -panDistance]);
-  } else if (effect.includes('panRight')) {
-    translateX = interpolate(progress, [0, 1], [-panDistance, panDistance]);
-  }
-  
-  if (effect.includes('panUp')) {
-    translateY = interpolate(progress, [0, 1], [panDistance, -panDistance]);
-  } else if (effect.includes('panDown')) {
-    translateY = interpolate(progress, [0, 1], [-panDistance, panDistance]);
+  // Create orbital/circular panning motion
+  if (effect.includes('pan')) {
+    // Calculate angle for circular motion (0 to 2π for full circle, partial for effect)
+    const angleRange = Math.PI * 0.5; // Quarter circle for subtle effect
+    let startAngle = 0;
+    
+    // Different starting angles for different pan directions
+    if (effect.includes('panLeft')) {
+      startAngle = 0;
+    } else if (effect.includes('panRight')) {
+      startAngle = Math.PI;
+    } else if (effect.includes('panUp')) {
+      startAngle = Math.PI / 2;
+    } else if (effect.includes('panDown')) {
+      startAngle = -Math.PI / 2;
+    }
+    
+    // Interpolate angle based on progress
+    const angle = interpolate(progress, [0, 1], [startAngle, startAngle + angleRange]);
+    
+    // Calculate circular motion coordinates
+    const radius = panDistance;
+    translateX = Math.cos(angle) * radius;
+    translateY = Math.sin(angle) * radius * 0.6; // Reduce Y movement for more natural look
   }
   
   // Add rotation for more dynamic movement (especially for interiors)
