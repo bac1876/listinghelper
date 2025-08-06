@@ -12,24 +12,76 @@
         }
         
         :root {
-            --primary: #3498db;
-            --primary-dark: #2980b9;
-            --secondary: #2c3e50;
-            --success: #27ae60;
-            --error: #e74c3c;
-            --warning: #f39c12;
-            --light-bg: #ecf0f1;
-            --text-dark: #2c3e50;
-            --text-light: #7f8c8d;
-            --border: #bdc3c7;
+            --primary: #667eea;
+            --primary-light: #7c3aed;
+            --primary-dark: #5a67d8;
+            --secondary: #f56565;
+            --accent: #48bb78;
+            --success: #48bb78;
+            --error: #f56565;
+            --warning: #ed8936;
+            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --gradient-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --gradient-4: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            --gradient-bg: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #fa709a 100%);
+            --text-dark: #2d3748;
+            --text-light: #718096;
+            --border: #e2e8f0;
+            --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
             color: var(--text-dark);
             line-height: 1.6;
             min-height: 100vh;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            z-index: -1;
         }
         
         .container {
@@ -39,35 +91,75 @@
         }
         
         .header {
-            background: linear-gradient(135deg, var(--secondary) 0%, #34495e 100%);
-            color: white;
-            padding: 40px 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            color: var(--text-dark);
+            padding: 60px 0;
             text-align: center;
-            margin-bottom: 40px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 60px;
+            box-shadow: var(--shadow-xl);
+            border-radius: 0 0 50px 50px;
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.8s ease;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: var(--gradient-1);
+            opacity: 0.1;
+            transform: rotate(45deg);
+            animation: float 10s ease-in-out infinite;
         }
         
         .header h1 {
-            font-size: 3em;
-            margin-bottom: 15px;
-            font-weight: 700;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            font-size: 3.5em;
+            margin-bottom: 20px;
+            font-weight: 800;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            position: relative;
+            letter-spacing: -1px;
         }
         
         .header p {
             font-size: 1.3em;
-            opacity: 0.95;
+            color: var(--text-light);
             max-width: 600px;
             margin: 0 auto;
+            font-weight: 500;
+        }
+        
+        .version-badge {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 8px 20px;
+            background: var(--gradient-4);
+            color: white;
+            border-radius: 25px;
+            font-size: 0.9em;
+            font-weight: 600;
+            box-shadow: var(--shadow-md);
+            animation: pulse 2s infinite;
         }
         
         .main-content {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            padding: 50px;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 30px;
+            box-shadow: var(--shadow-xl);
+            padding: 60px;
             position: relative;
             overflow: hidden;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            animation: fadeInUp 1s ease 0.2s both;
         }
         
         .main-content::before {
@@ -76,8 +168,9 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 5px;
-            background: linear-gradient(90deg, var(--primary) 0%, var(--success) 100%);
+            height: 6px;
+            background: var(--gradient-1);
+            border-radius: 30px 30px 0 0;
         }
         
         .upload-section {
@@ -102,15 +195,33 @@
         }
         
         .drop-zone {
-            border: 3px dashed var(--primary);
-            border-radius: 15px;
+            border: 3px dashed transparent;
+            border-radius: 25px;
             padding: 80px 40px;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+            background-clip: padding-box;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             text-align: center;
             position: relative;
             overflow: hidden;
+        }
+        
+        .drop-zone::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 25px;
+            padding: 3px;
+            background: var(--gradient-1);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0.5;
+            transition: opacity 0.3s ease;
         }
         
         .drop-zone::before {
@@ -131,16 +242,22 @@
         }
         
         .drop-zone:hover {
-            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-            border-color: var(--primary-dark);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.2);
+            transform: translateY(-5px) scale(1.01);
+            box-shadow: var(--shadow-xl);
+        }
+        
+        .drop-zone:hover::before {
+            opacity: 1;
         }
         
         .drop-zone.drag-over {
-            background: linear-gradient(135deg, #e3f2fd 0%, #90caf9 100%);
-            border-color: var(--primary-dark);
-            transform: scale(1.02);
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+            transform: scale(1.03);
+            box-shadow: var(--shadow-xl);
+        }
+        
+        .drop-zone.drag-over::before {
+            opacity: 1;
         }
         
         .drop-zone-icon {
@@ -167,24 +284,43 @@
         
         .btn {
             display: inline-block;
-            padding: 14px 35px;
-            background: var(--primary);
+            padding: 16px 40px;
+            background: var(--gradient-1);
             color: white;
             border: none;
-            border-radius: 10px;
+            border-radius: 50px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             text-decoration: none;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            box-shadow: 0 4px 6px rgba(52, 152, 219, 0.2);
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            overflow: hidden;
+            transform: translateZ(0);
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
         }
         
         .btn:hover {
-            background: var(--primary-dark);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(52, 152, 219, 0.3);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: var(--shadow-xl);
         }
         
         .btn:active {
@@ -200,11 +336,7 @@
         }
         
         .btn.secondary {
-            background: #6c757d;
-        }
-        
-        .btn.secondary:hover {
-            background: #5a6268;
+            background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
         }
         
         .btn.success {
@@ -216,21 +348,14 @@
         }
         
         .btn.test-connection {
-            background: #ff9800;
-        }
-        
-        .btn.test-connection:hover {
-            background: #f57c00;
+            background: var(--gradient-2);
         }
         
         .btn.generate {
-            background: #28a745;
+            background: var(--gradient-4);
             font-size: 18px;
-            padding: 16px 40px;
-        }
-        
-        .btn.generate:hover {
-            background: #218838;
+            padding: 18px 45px;
+            animation: pulse 2s infinite;
         }
         
         .file-list {
@@ -245,22 +370,25 @@
         }
         
         .file-item {
-            background: var(--light-bg);
-            border: 2px solid transparent;
-            border-radius: 10px;
-            padding: 15px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%);
+            border: 2px solid rgba(102, 126, 234, 0.1);
+            border-radius: 20px;
+            padding: 20px;
             display: flex;
             align-items: center;
             gap: 15px;
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             position: relative;
             overflow: hidden;
+            backdrop-filter: blur(10px);
+            animation: fadeInUp 0.4s ease;
         }
         
         .file-item:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: var(--shadow-lg);
             border-color: var(--primary);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
         }
         
         .file-preview {
@@ -319,10 +447,12 @@
         
         .property-details {
             margin-top: 40px;
-            padding: 30px;
-            background: linear-gradient(135deg, #f0f8ff 0%, #e0f2ff 100%);
-            border-radius: 12px;
-            border: 1px solid #b3d9ff;
+            padding: 40px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+            border-radius: 25px;
+            border: 2px solid rgba(102, 126, 234, 0.1);
+            backdrop-filter: blur(10px);
+            animation: fadeInUp 0.6s ease;
         }
         
         .property-details h4 {
@@ -338,34 +468,58 @@
         }
         
         .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .form-group label {
-            font-weight: 600;
-            color: var(--secondary);
-            margin-bottom: 8px;
-            font-size: 0.95em;
+            position: relative;
+            margin-bottom: 25px;
         }
         
         .form-group input,
         .form-group textarea,
         .form-group select {
-            padding: 12px;
-            border: 2px solid var(--border);
-            border-radius: 8px;
+            width: 100%;
+            padding: 20px 16px 8px 16px;
+            border: 2px solid transparent;
+            border-radius: 15px;
             font-size: 16px;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             font-family: inherit;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+            backdrop-filter: blur(10px);
+        }
+        
+        .form-group label {
+            position: absolute;
+            left: 16px;
+            top: 16px;
+            font-weight: 500;
+            color: var(--text-light);
+            font-size: 16px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            background: white;
+            padding: 0 4px;
         }
         
         .form-group input:focus,
         .form-group textarea:focus,
-        .form-group select:focus {
+        .form-group select:focus,
+        .form-group input:not(:placeholder-shown),
+        .form-group textarea:not(:placeholder-shown) {
             outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+            border: 2px solid var(--primary);
+            background: white;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+        
+        .form-group input:focus + label,
+        .form-group textarea:focus + label,
+        .form-group select:focus + label,
+        .form-group input:not(:placeholder-shown) + label,
+        .form-group textarea:not(:placeholder-shown) + label {
+            top: -10px;
+            left: 12px;
+            font-size: 12px;
+            color: var(--primary);
+            font-weight: 600;
         }
         
         .form-group textarea {
@@ -386,29 +540,61 @@
         }
         
         .quality-option {
-            padding: 20px;
-            border: 2px solid var(--border);
-            border-radius: 10px;
+            padding: 25px;
+            border: 2px solid transparent;
+            border-radius: 20px;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             text-align: center;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .quality-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 20px;
+            padding: 2px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
         
         .quality-option:hover {
-            border-color: var(--primary);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: var(--shadow-xl);
+        }
+        
+        .quality-option:hover::before {
+            opacity: 1;
         }
         
         .quality-option.selected {
-            border-color: var(--primary);
-            background: var(--light-bg);
+            background: var(--gradient-1);
+            color: white;
+            transform: scale(1.05);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .quality-option.selected h5,
+        .quality-option.selected p {
+            color: white;
         }
         
         .quality-option h5 {
-            color: var(--secondary);
-            margin-bottom: 8px;
-            font-size: 1.1em;
+            color: var(--text-dark);
+            margin-bottom: 10px;
+            font-size: 1.2em;
+            font-weight: 700;
         }
         
         .quality-option p {
@@ -642,8 +828,8 @@
         <div class="container">
             <h1>🏠 Virtual Tour Generator</h1>
             <p>Transform Your Real Estate Photos into Cinematic Video Tours with Professional Ken Burns Effects</p>
-            <div style="margin-top: 15px; font-size: 0.9em; opacity: 0.8;">
-                Last Updated: August 2, 2025 - 2:00 PM PST | v1.0.1
+            <div class="version-badge">
+                v1.0.2 • Updated Today
             </div>
         </div>
     </div>
@@ -669,24 +855,24 @@
                         <h4>Property Information</h4>
                         <div class="form-grid">
                             <div class="form-group">
+                                <textarea id="property-address" placeholder=" " rows="2"></textarea>
                                 <label for="property-address">Property Address *</label>
-                                <textarea id="property-address" placeholder="123 Main Street&#10;Los Angeles, CA 90001" rows="2"></textarea>
                             </div>
                             <div class="form-group">
+                                <input type="text" id="property-price" placeholder=" ">
                                 <label for="property-price">Listing Price</label>
-                                <input type="text" id="property-price" placeholder="$2,495,000">
                             </div>
                             <div class="form-group">
+                                <input type="text" id="property-beds" placeholder=" ">
                                 <label for="property-beds">Bedrooms</label>
-                                <input type="text" id="property-beds" placeholder="4 Beds">
                             </div>
                             <div class="form-group">
+                                <input type="text" id="property-baths" placeholder=" ">
                                 <label for="property-baths">Bathrooms</label>
-                                <input type="text" id="property-baths" placeholder="3 Baths">
                             </div>
                             <div class="form-group">
+                                <input type="text" id="property-sqft" placeholder=" ">
                                 <label for="property-sqft">Square Footage</label>
-                                <input type="text" id="property-sqft" placeholder="3,200 sq ft">
                             </div>
                             <div class="form-group">
                                 <label for="property-status">Status</label>
@@ -703,20 +889,20 @@
                         <h4 style="margin-top: 30px;">Agent Information</h4>
                         <div class="form-grid">
                             <div class="form-group">
+                                <input type="text" id="agent-name" placeholder=" ">
                                 <label for="agent-name">Agent Name *</label>
-                                <input type="text" id="agent-name" placeholder="John Smith">
                             </div>
                             <div class="form-group">
+                                <input type="tel" id="agent-phone" placeholder=" ">
                                 <label for="agent-phone">Phone Number *</label>
-                                <input type="tel" id="agent-phone" placeholder="(555) 123-4567">
                             </div>
                             <div class="form-group">
+                                <input type="email" id="agent-email" placeholder=" ">
                                 <label for="agent-email">Email</label>
-                                <input type="email" id="agent-email" placeholder="john@realestate.com">
                             </div>
                             <div class="form-group">
+                                <input type="text" id="brand-name" placeholder=" ">
                                 <label for="brand-name">Brokerage</label>
-                                <input type="text" id="brand-name" placeholder="Premium Real Estate">
                             </div>
                         </div>
                     </div>
