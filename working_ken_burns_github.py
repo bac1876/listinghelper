@@ -672,33 +672,30 @@ def download_file(job_id, file_type):
                 # First priority: Check for stored cloudinary URL
                 if job.get('files_generated', {}).get('cloudinary_url'):
                     cloudinary_url = job['files_generated']['cloudinary_url']
-                    logger.info(f"Using stored Cloudinary URL for job {job_id}")
+                    # Add attachment flag to force download
+                    if 'cloudinary.com' in cloudinary_url and '/upload/' in cloudinary_url:
+                        cloudinary_url = cloudinary_url.replace('/upload/', '/upload/fl_attachment/')
+                    logger.info(f"Using stored Cloudinary URL for job {job_id}: {cloudinary_url}")
                     return redirect(cloudinary_url)
                 
-                # Second priority: If we have a GitHub job ID, always try Cloudinary
+                # Second priority: If we have a GitHub job ID, always redirect to Cloudinary
                 elif job.get('github_job_id'):
                     github_job_id = job['github_job_id']
                     cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dib3kbifc')
-                    video_url = f"https://res.cloudinary.com/{cloud_name}/video/upload/tours/{github_job_id}.mp4"
+                    # Include attachment flag in URL to force download
+                    video_url = f"https://res.cloudinary.com/{cloud_name}/video/upload/fl_attachment/tours/{github_job_id}.mp4"
                     
-                    # Check if video exists on Cloudinary
-                    try:
-                        import requests
-                        response = requests.head(video_url, timeout=5)
-                        if response.status_code == 200:
-                            logger.info(f"Video found on Cloudinary (fallback) for job {job_id}")
-                            # Update job status since webhook didn't
-                            job['cloudinary_video'] = True
-                            job['video_available'] = True
-                            if 'files_generated' not in job:
-                                job['files_generated'] = {}
-                            job['files_generated']['cloudinary_url'] = video_url
-                            job['status'] = 'completed'
-                            job['progress'] = 100
-                            # Redirect to the video
-                            return redirect(video_url)
-                    except Exception as e:
-                        logger.debug(f"Cloudinary check failed for job {job_id}: {e}")
+                    logger.info(f"Redirecting to Cloudinary URL for job {job_id}: {video_url}")
+                    
+                    # Update job data for future requests
+                    job['cloudinary_video'] = True
+                    job['video_available'] = True
+                    if 'files_generated' not in job:
+                        job['files_generated'] = {}
+                    job['files_generated']['cloudinary_url'] = video_url
+                    
+                    # Always redirect - let Cloudinary handle 404 if video doesn't exist
+                    return redirect(video_url)
                 
                 elif job.get('status') == 'processing':
                     # For download requests, return error
