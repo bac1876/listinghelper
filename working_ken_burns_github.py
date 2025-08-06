@@ -485,14 +485,37 @@ def download_video(job_id):
         
         job = active_jobs[job_id]
         
-        if not job.get('video_available'):
-            return jsonify({'error': 'Video not available'}), 404
-        
         # Check if video is on Cloudinary (GitHub Actions workflow)
         if job.get('cloudinary_video') and job.get('files_generated', {}).get('cloudinary_url'):
             cloudinary_url = job['files_generated']['cloudinary_url']
             # Redirect to Cloudinary URL for download
             return redirect(cloudinary_url)
+        
+        # Fallback: If we have a GitHub job ID but webhook hasn't updated yet
+        if job.get('github_job_id'):
+            github_job_id = job['github_job_id']
+            cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dib3kbifc')
+            video_url = f"https://res.cloudinary.com/{cloud_name}/video/upload/tours/{github_job_id}.mp4"
+            
+            # Check if video exists on Cloudinary
+            try:
+                import requests
+                response = requests.head(video_url, timeout=5)
+                if response.status_code == 200:
+                    logger.info(f"Video found on Cloudinary (fallback) for job {job_id}")
+                    # Update job status
+                    job['cloudinary_video'] = True
+                    job['video_available'] = True
+                    if 'files_generated' not in job:
+                        job['files_generated'] = {}
+                    job['files_generated']['cloudinary_url'] = video_url
+                    # Redirect to the video
+                    return redirect(video_url)
+            except Exception as e:
+                logger.debug(f"Cloudinary check failed: {e}")
+        
+        if not job.get('video_available'):
+            return jsonify({'error': 'Video not available'}), 404
         
         # Otherwise, serve local video file
         video_path = job['files_generated'].get('local_video')
@@ -547,6 +570,32 @@ def download_file(job_id, file_type):
                     cloudinary_url = job['files_generated']['cloudinary_url']
                     # Redirect to Cloudinary URL
                     return redirect(cloudinary_url)
+                
+                # Fallback: If we have a GitHub job ID but webhook hasn't updated yet, check Cloudinary directly
+                elif job.get('github_job_id'):
+                    github_job_id = job['github_job_id']
+                    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dib3kbifc')
+                    video_url = f"https://res.cloudinary.com/{cloud_name}/video/upload/tours/{github_job_id}.mp4"
+                    
+                    # Check if video exists on Cloudinary
+                    try:
+                        import requests
+                        response = requests.head(video_url, timeout=5)
+                        if response.status_code == 200:
+                            logger.info(f"Video found on Cloudinary (fallback) for job {job_id}")
+                            # Update job status since webhook didn't
+                            job['cloudinary_video'] = True
+                            job['video_available'] = True
+                            if 'files_generated' not in job:
+                                job['files_generated'] = {}
+                            job['files_generated']['cloudinary_url'] = video_url
+                            job['status'] = 'completed'
+                            job['progress'] = 100
+                            # Redirect to the video
+                            return redirect(video_url)
+                    except Exception as e:
+                        logger.debug(f"Cloudinary check failed for job {job_id}: {e}")
+                
                 elif job.get('status') == 'processing':
                     return jsonify({
                         'error': 'Video is still being rendered',

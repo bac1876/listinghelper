@@ -8,6 +8,7 @@ import hashlib
 import os
 import logging
 import json
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,9 @@ def github_webhook():
         # Get the event type
         event_type = request.headers.get('X-GitHub-Event')
         
+        # Log the full payload for debugging
+        logger.info(f"Received {event_type} webhook with payload keys: {list(payload.keys()) if payload else 'None'}")
+        
         if event_type == 'workflow_run':
             # Handle workflow run events
             workflow_run = payload.get('workflow_run', {})
@@ -73,11 +77,32 @@ def github_webhook():
             conclusion = workflow_run.get('conclusion')
             run_id = workflow_run.get('id')
             
-            # Look for job ID in workflow inputs
+            # Look for job ID in workflow inputs (usually not present in webhook)
             inputs = workflow_run.get('inputs', {})
             job_id = inputs.get('jobId')
             
-            logger.info(f"Workflow {workflow_name} (run {run_id}) - Status: {status}, Conclusion: {conclusion}")
+            # Try to extract job ID from workflow name if not in inputs
+            # GitHub Actions workflow names often include the job ID
+            if not job_id and workflow_name:
+                # Look for UUID pattern in workflow name
+                import re
+                uuid_pattern = r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}'
+                match = re.search(uuid_pattern, workflow_name)
+                if match:
+                    job_id = match.group(0)
+                    logger.info(f"Extracted job ID from workflow name: {job_id}")
+            
+            # Also check the workflow run display title
+            if not job_id:
+                display_title = workflow_run.get('display_title', '')
+                if display_title:
+                    match = re.search(uuid_pattern, display_title)
+                    if match:
+                        job_id = match.group(0)
+                        logger.info(f"Extracted job ID from display title: {job_id}")
+            
+            logger.info(f"Workflow {workflow_name} (run {run_id}) - Status: {status}, Conclusion: {conclusion}, JobId: {job_id}")
+            logger.debug(f"Full workflow_run keys: {list(workflow_run.keys())}")
             
             if job_id:
                 # Import the active_jobs from the main module
@@ -123,6 +148,8 @@ def github_webhook():
                             active_jobs[railway_job_id]['progress'] = 75
                     else:
                         logger.warning(f"No Railway job found for GitHub job {job_id}")
+                        logger.debug(f"Active jobs: {list(active_jobs.keys())}")
+                        logger.debug(f"GitHub job IDs in active jobs: {[job.get('github_job_id') for job in active_jobs.values()]}")
                         
                 except Exception as e:
                     logger.error(f"Error updating job status from webhook: {e}")
@@ -149,11 +176,54 @@ def github_webhook():
         logger.error(f"Error processing webhook: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
-@webhook_bp.route('/github/test', methods=['GET'])
+@webhook_bp.route('/github/test', methods=['GET', 'POST'])
 def test_webhook():
-    """Test endpoint to verify webhook is accessible"""
+    """Test endpoint to verify webhook is accessible and optionally simulate a webhook"""
+    if request.method == 'POST':
+        # Simulate a webhook for testing
+        data = request.get_json()
+        if data and 'job_id' in data:
+            try:
+                from working_ken_burns_github import active_jobs
+                
+                job_id = data['job_id']
+                # Find Railway job with this GitHub job ID
+                railway_job_id = None
+                for rid, job_data in active_jobs.items():
+                    if job_data.get('github_job_id') == job_id:
+                        railway_job_id = rid
+                        break
+                
+                if railway_job_id:
+                    # Simulate successful completion
+                    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dib3kbifc')
+                    video_url = f"https://res.cloudinary.com/{cloud_name}/video/upload/tours/{job_id}.mp4"
+                    
+                    active_jobs[railway_job_id]['status'] = 'completed'
+                    active_jobs[railway_job_id]['progress'] = 100
+                    active_jobs[railway_job_id]['cloudinary_video'] = True
+                    active_jobs[railway_job_id]['video_available'] = True
+                    if 'files_generated' not in active_jobs[railway_job_id]:
+                        active_jobs[railway_job_id]['files_generated'] = {}
+                    active_jobs[railway_job_id]['files_generated']['cloudinary_url'] = video_url
+                    
+                    return jsonify({
+                        'status': 'simulated',
+                        'railway_job_id': railway_job_id,
+                        'video_url': video_url
+                    })
+                else:
+                    return jsonify({
+                        'error': 'No job found with GitHub job ID',
+                        'github_job_id': job_id,
+                        'active_jobs': list(active_jobs.keys())
+                    }), 404
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
+    
     return jsonify({
         'status': 'ok',
         'webhook_configured': bool(WEBHOOK_SECRET),
-        'endpoint': '/api/webhook/github'
+        'endpoint': '/api/webhook/github',
+        'test_usage': 'POST with {"job_id": "github-job-uuid"} to simulate webhook'
     })
