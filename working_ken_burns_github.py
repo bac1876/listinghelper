@@ -697,18 +697,49 @@ def download_file(job_id, file_type):
                         logger.debug(f"Cloudinary check failed for job {job_id}: {e}")
                 
                 elif job.get('status') == 'processing':
-                    return jsonify({
-                        'error': 'Video is still being rendered',
-                        'status': 'processing',
-                        'progress': job.get('progress', 0),
-                        'message': 'Please wait while your video is being generated. This may take 1-2 minutes.'
-                    }), 202  # 202 Accepted - request accepted but processing not complete
+                    # Return HTML page with auto-refresh for processing videos
+                    return f'''
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Video Processing...</title>
+                        <meta http-equiv="refresh" content="5">
+                        <style>
+                            body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
+                            .spinner {{ border: 4px solid #f3f3f3; border-top: 4px solid #3498db; 
+                                       border-radius: 50%; width: 50px; height: 50px; 
+                                       animation: spin 1s linear infinite; margin: 20px auto; }}
+                            @keyframes spin {{ 0% {{ transform: rotate(0deg); }} 100% {{ transform: rotate(360deg); }} }}
+                        </style>
+                    </head>
+                    <body>
+                        <h2>Your video is being processed...</h2>
+                        <div class="spinner"></div>
+                        <p>Progress: {job.get('progress', 0)}%</p>
+                        <p>This page will refresh automatically.</p>
+                    </body>
+                    </html>
+                    ''', 202
                 else:
-                    return jsonify({
-                        'error': 'Video not available',
-                        'status': job.get('status', 'unknown'),
-                        'message': 'The video generation may have failed or is not yet started.'
-                    }), 404
+                    # Return HTML error page
+                    return f'''
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Video Not Available</title>
+                        <style>
+                            body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
+                            .error {{ color: #d32f2f; }}
+                        </style>
+                    </head>
+                    <body>
+                        <h2 class="error">Video Not Available</h2>
+                        <p>The video generation may have failed or is not yet started.</p>
+                        <p>Status: {job.get('status', 'unknown')}</p>
+                        <a href="/">Return to Home</a>
+                    </body>
+                    </html>
+                    ''', 404
             
             # For local files
             if job.get('files_generated', {}):
@@ -815,18 +846,19 @@ def get_job_status(job_id):
         'images_processed': job.get('images_processed', 0),
         'processing_time': job.get('processing_time', ''),
         'error': job.get('error', None),
-        'github_job_id': job.get('github_job_id', None)
+        'github_job_id': job.get('github_job_id', None),
+        'files_generated': job.get('files_generated', {})
     }
     
-    # Add video URL if we have a GitHub job ID and status is completed
-    if job.get('github_job_id') and job.get('status') == 'completed':
+    # Add video URL if available from multiple sources
+    if job.get('files_generated', {}).get('cloudinary_url'):
+        response_data['video_url'] = job['files_generated']['cloudinary_url']
+    elif job.get('github_job_id') and job.get('status') == 'completed':
         github_job_id = job['github_job_id']
         cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dib3kbifc')
         video_url = f"https://res.cloudinary.com/{cloud_name}/video/upload/tours/{github_job_id}.mp4"
         response_data['video_url'] = video_url
         # Also update the files_generated for consistency
-        if 'files_generated' not in response_data:
-            response_data['files_generated'] = {}
         response_data['files_generated']['cloudinary_url'] = video_url
     
     return jsonify(response_data)

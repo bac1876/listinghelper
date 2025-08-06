@@ -1399,12 +1399,26 @@
             const downloadButtons = document.getElementById('download-buttons');
             downloadButtons.innerHTML = '';
             
-            // Video download
-            downloadButtons.innerHTML += `
-                <a href="/api/virtual-tour/download/${currentJobId}/video" class="btn success" download>
-                    🎬 Download MP4 Video
-                </a>
-            `;
+            // Video download - use direct Cloudinary URL if available
+            if (data.video_url) {
+                // Add fl_attachment flag to force download from Cloudinary
+                const downloadUrl = data.video_url.includes('cloudinary.com') 
+                    ? data.video_url.replace('/upload/', '/upload/fl_attachment/')
+                    : data.video_url;
+                
+                downloadButtons.innerHTML += `
+                    <a href="${downloadUrl}" class="btn success" download="virtual_tour.mp4">
+                        🎬 Download MP4 Video
+                    </a>
+                `;
+            } else {
+                // Fallback to API endpoint
+                downloadButtons.innerHTML += `
+                    <a href="/api/virtual-tour/download/${currentJobId}/video" class="btn success" download>
+                        🎬 Download MP4 Video
+                    </a>
+                `;
+            }
             
             // Additional downloads
             if (data.files_generated) {
