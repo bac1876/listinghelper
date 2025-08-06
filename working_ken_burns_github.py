@@ -399,6 +399,7 @@ def upload_images():
         
         # Check if we should use GitHub Actions for high-quality rendering
         use_github_actions = os.environ.get('USE_GITHUB_ACTIONS', 'false').lower() == 'true' and github_actions
+        logger.info(f"GitHub Actions enabled: {use_github_actions} (env: {os.environ.get('USE_GITHUB_ACTIONS')}, integration: {github_actions is not None})")
         
         # Prepare image URLs for GitHub Actions
         github_image_urls = image_urls or []
@@ -482,6 +483,7 @@ def upload_images():
                         logger.info(f"GitHub Actions job started: {github_result['job_id']}")
                     else:
                         logger.error(f"Failed to start GitHub Actions: {github_result.get('error')}")
+                        active_jobs[job_id]['current_step'] = f"GitHub Actions failed: {github_result.get('error', 'Unknown error')}"
                         
             except Exception as e:
                 logger.error(f"Error with GitHub Actions: {e}")
@@ -555,13 +557,15 @@ def upload_images():
         
         return jsonify({
             'job_id': job_id,
-            'status': 'completed',
+            'status': active_jobs[job_id]['status'],  # Return actual status, not always 'completed'
             'video_available': active_jobs[job_id]['video_available'],
             'virtual_tour_available': active_jobs[job_id]['virtual_tour_available'],
             'cloudinary_video': active_jobs[job_id]['cloudinary_video'],
             'github_job_id': active_jobs[job_id].get('github_job_id'),
             'images_processed': active_jobs[job_id]['images_processed'],
-            'processing_time': active_jobs[job_id]['processing_time']
+            'processing_time': active_jobs[job_id]['processing_time'],
+            'current_step': active_jobs[job_id].get('current_step', ''),
+            'progress': active_jobs[job_id].get('progress', 100)
         })
         
     except Exception as e:
@@ -697,49 +701,22 @@ def download_file(job_id, file_type):
                         logger.debug(f"Cloudinary check failed for job {job_id}: {e}")
                 
                 elif job.get('status') == 'processing':
-                    # Return HTML page with auto-refresh for processing videos
-                    return f'''
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <title>Video Processing...</title>
-                        <meta http-equiv="refresh" content="5">
-                        <style>
-                            body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
-                            .spinner {{ border: 4px solid #f3f3f3; border-top: 4px solid #3498db; 
-                                       border-radius: 50%; width: 50px; height: 50px; 
-                                       animation: spin 1s linear infinite; margin: 20px auto; }}
-                            @keyframes spin {{ 0% {{ transform: rotate(0deg); }} 100% {{ transform: rotate(360deg); }} }}
-                        </style>
-                    </head>
-                    <body>
-                        <h2>Your video is being processed...</h2>
-                        <div class="spinner"></div>
-                        <p>Progress: {job.get('progress', 0)}%</p>
-                        <p>This page will refresh automatically.</p>
-                    </body>
-                    </html>
-                    ''', 202
+                    # For download requests, return error
+                    return jsonify({
+                        'error': 'Video is still being rendered',
+                        'status': 'processing',
+                        'progress': job.get('progress', 0),
+                        'message': 'Please wait while your video is being generated.'
+                    }), 202
                 else:
-                    # Return HTML error page
-                    return f'''
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <title>Video Not Available</title>
-                        <style>
-                            body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
-                            .error {{ color: #d32f2f; }}
-                        </style>
-                    </head>
-                    <body>
-                        <h2 class="error">Video Not Available</h2>
-                        <p>The video generation may have failed or is not yet started.</p>
-                        <p>Status: {job.get('status', 'unknown')}</p>
-                        <a href="/">Return to Home</a>
-                    </body>
-                    </html>
-                    ''', 404
+                    # Video not available - return error
+                    logger.warning(f"Video download failed for job {job_id}: status={job.get('status')}, github_job_id={job.get('github_job_id')}")
+                    return jsonify({
+                        'error': 'Video not available',
+                        'status': job.get('status', 'unknown'),
+                        'github_job_id': job.get('github_job_id'),
+                        'message': 'The video generation may have failed or is not yet started.'
+                    }), 404
             
             # For local files
             if job.get('files_generated', {}):
