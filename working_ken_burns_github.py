@@ -212,9 +212,13 @@ def check_github_job(job_id):
 
 @virtual_tour_bp.route('/upload', methods=['POST'])
 def upload_images():
-    """Handle image upload and create virtual tour"""
+    """Handle image upload and create virtual tour with improved error recovery"""
     job_id = str(uuid.uuid4())
     start_time = time.time()
+    
+    # Initialize error recovery
+    MAX_RETRIES = 3
+    retry_count = 0
     
     try:
         # Check for existing job ID (checking status)
@@ -284,10 +288,16 @@ def upload_images():
         effect_speed = settings.get('effectSpeed', request.form.get('effect_speed', 'medium'))
         transition_duration = float(settings.get('transitionDuration', request.form.get('transition_duration', 1.5)))
         
-        # Process uploaded files if any
+        # Process uploaded files - check both 'files' and 'images' fields
+        files = []
         if 'files' in request.files:
             files = request.files.getlist('files')
-            logger.info(f"Received {len(files)} files for job {job_id}")
+            logger.info(f"Received {len(files)} files in 'files' field for job {job_id}")
+        elif 'images' in request.files:
+            files = request.files.getlist('images')
+            logger.info(f"Received {len(files)} files in 'images' field for job {job_id}")
+        
+        if files:
             # Log each file for debugging
             valid_files = []
             for i, file in enumerate(files):
@@ -314,44 +324,68 @@ def upload_images():
             job_dir = os.path.join(STORAGE_DIR, job_id)
             os.makedirs(job_dir, exist_ok=True)
             
-            # Save uploaded files with compression
+            # Save uploaded files with compression - BATCH PROCESSING
             saved_files = []
             original_total_size = 0
             compressed_total_size = 0
             
-            for i, file in enumerate(files):
-                if file and file.filename:
-                    # Get original file size
-                    file.seek(0, 2)  # Seek to end
-                    original_size = file.tell()
-                    original_total_size += original_size
-                    file.seek(0)  # Reset to beginning
-                    
-                    # Compress the image
-                    compressed_file, compressed_filename = compress_image(file, file.filename)
-                    
-                    # Save compressed file
-                    filename = f"image_{i}_{compressed_filename}"
-                    filepath = os.path.join(job_dir, filename)
-                    
-                    # If compression returned a BytesIO object, save its contents
-                    if isinstance(compressed_file, io.BytesIO):
-                        with open(filepath, 'wb') as f:
-                            f.write(compressed_file.getvalue())
-                        compressed_size = len(compressed_file.getvalue())
-                    else:
-                        # Fallback: save original file
-                        compressed_file.seek(0)
-                        with open(filepath, 'wb') as f:
-                            f.write(compressed_file.read())
-                        compressed_file.seek(0, 2)
-                        compressed_size = compressed_file.tell()
-                    
-                    compressed_total_size += compressed_size
-                    saved_files.append(filepath)
-                    
-                    compression_ratio = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0
-                    logger.info(f"Saved compressed file: {filename} (Original: {original_size/1024:.1f}KB, Compressed: {compressed_size/1024:.1f}KB, Saved: {compression_ratio:.1f}%)")
+            # Process images in batches of 4 to prevent memory overload
+            BATCH_SIZE = 4
+            total_files = len(files)
+            
+            for batch_start in range(0, total_files, BATCH_SIZE):
+                batch_end = min(batch_start + BATCH_SIZE, total_files)
+                batch_files = files[batch_start:batch_end]
+                
+                logger.info(f"Processing batch {batch_start//BATCH_SIZE + 1} (images {batch_start+1}-{batch_end} of {total_files})")
+                active_jobs[job_id]['current_step'] = f'Processing images {batch_start+1}-{batch_end} of {total_files}'
+                active_jobs[job_id]['progress'] = int(5 + (batch_end / total_files) * 15)  # Progress from 5% to 20%
+                
+                for i, file in enumerate(batch_files):
+                    actual_index = batch_start + i
+                    if file and file.filename:
+                        try:
+                            # Get original file size
+                            file.seek(0, 2)  # Seek to end
+                            original_size = file.tell()
+                            original_total_size += original_size
+                            file.seek(0)  # Reset to beginning
+                            
+                            # Compress the image
+                            compressed_file, compressed_filename = compress_image(file, file.filename)
+                            
+                            # Save compressed file
+                            filename = f"image_{actual_index}_{compressed_filename}"
+                            filepath = os.path.join(job_dir, filename)
+                            
+                            # If compression returned a BytesIO object, save its contents
+                            if isinstance(compressed_file, io.BytesIO):
+                                with open(filepath, 'wb') as f:
+                                    f.write(compressed_file.getvalue())
+                                compressed_size = len(compressed_file.getvalue())
+                            else:
+                                # Fallback: save original file
+                                compressed_file.seek(0)
+                                with open(filepath, 'wb') as f:
+                                    f.write(compressed_file.read())
+                                compressed_file.seek(0, 2)
+                                compressed_size = compressed_file.tell()
+                            
+                            compressed_total_size += compressed_size
+                            saved_files.append(filepath)
+                            
+                            compression_ratio = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0
+                            logger.info(f"Saved compressed file: {filename} (Original: {original_size/1024:.1f}KB, Compressed: {compressed_size/1024:.1f}KB, Saved: {compression_ratio:.1f}%)")
+                            
+                        except Exception as e:
+                            logger.error(f"Error processing image {actual_index}: {e}")
+                            # Continue with next image instead of failing completely
+                            continue
+                
+                # Brief pause between batches to prevent resource exhaustion
+                if batch_end < total_files:
+                    import time
+                    time.sleep(0.5)  # Half second pause between batches
             
             # Update job progress with compression info
             active_jobs[job_id]['images_processed'] = len(saved_files)
