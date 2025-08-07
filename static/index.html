@@ -1292,6 +1292,12 @@
         }
         
         function startStatusChecking() {
+            // Clear any existing interval first to prevent multiple polling loops
+            if (statusCheckInterval) {
+                clearInterval(statusCheckInterval);
+                statusCheckInterval = null;
+            }
+            
             let lastProgress = 0;
             
             statusCheckInterval = setInterval(async () => {
