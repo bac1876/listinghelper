@@ -266,24 +266,8 @@ def health_check():
     
     return jsonify(health_status)
 
-@virtual_tour_bp.route('/check-github-job/<job_id>', methods=['GET'])
-def check_github_job(job_id):
-    """Check the status of a GitHub Actions video render job"""
-    if not github_actions:
-        return jsonify({
-            'success': False,
-            'error': 'GitHub Actions not configured'
-        }), 503
-    
-    try:
-        result = github_actions.check_job_status(job_id)
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"Error checking GitHub job status: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+# REMOVED: GitHub job status endpoint to prevent API rate limit exhaustion
+# The Cloudinary polling mechanism handles video status checking without API calls
 
 @virtual_tour_bp.route('/upload', methods=['POST'])
 def upload_images():
@@ -902,17 +886,9 @@ def get_job_status(job_id):
     
     job = active_jobs[job_id]
     
-    # Check GitHub Actions status if applicable
-    if job.get('github_job_id') and github_actions:
-        try:
-            github_status = github_actions.check_job_status(job['github_job_id'])
-            if github_status.get('status') == 'completed' and github_status.get('video_url'):
-                job['cloudinary_video'] = True
-                job['files_generated']['cloudinary_url'] = github_status['video_url']
-                job['status'] = 'completed'
-                job['progress'] = 100
-        except Exception as e:
-            logger.error(f"Error checking GitHub job status: {e}")
+    # REMOVED GitHub API status checking to prevent rate limit exhaustion
+    # The Cloudinary polling thread already handles checking for video completion
+    # Each status check was making an API call, causing 30+ calls per minute
     
     # Fallback: Check if video exists on Cloudinary directly
     if job.get('github_job_id') and job.get('status') != 'completed':
