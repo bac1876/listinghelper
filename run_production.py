@@ -37,22 +37,22 @@ def run_production_server():
     }
     
     print(f"""
-╔══════════════════════════════════════════════════════════╗
-║         Virtual Tour Generator - Production Server        ║
-╠══════════════════════════════════════════════════════════╣
-║  Server:     Waitress (Production-Ready)                  ║
-║  Host:       {host:<45}║
-║  Port:       {port:<45}║
-║  Threads:    {config['threads']:<45}║
-║  Max Upload: 100 MB                                       ║
-║                                                            ║
-║  Access at:  http://localhost:{port:<39}║
-║                                                            ║
-║  This server is optimized for handling multiple           ║
-║  image uploads without crashing.                          ║
-║                                                            ║
-║  Press Ctrl+C to stop the server                          ║
-╚══════════════════════════════════════════════════════════╝
+============================================================
+         Virtual Tour Generator - Production Server        
+============================================================
+  Server:     Waitress (Production-Ready)                  
+  Host:       {host}
+  Port:       {port}
+  Threads:    {config['threads']}
+  Max Upload: 100 MB                                       
+                                                            
+  Access at:  http://localhost:{port}
+                                                            
+  This server is optimized for handling multiple           
+  image uploads without crashing.                          
+                                                            
+  Press Ctrl+C to stop the server                          
+============================================================
     """)
     
     try:
