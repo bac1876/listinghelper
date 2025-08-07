@@ -15,7 +15,7 @@ import requests
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from ffmpeg_ken_burns import create_ken_burns_video
+# FFmpeg removed - only using GitHub Actions + Remotion or Cloudinary
 from cloudinary_integration import generate_cloudinary_video
 from github_actions_integration import GitHubActionsIntegration
 from upload_to_cloudinary import upload_files_to_cloudinary
@@ -214,37 +214,14 @@ def compress_image(file_obj, filename, max_width=1920, max_height=1080, quality=
 
 @virtual_tour_bp.route('/health', methods=['GET'])
 def health_check():
-    """Check if FFmpeg is available and test basic functionality"""
+    """Check system health - GitHub Actions and storage"""
     health_status = {
         'status': 'healthy',
-        'ffmpeg_available': False,
-        'ffmpeg_version': None,
-        'ffmpeg_test_passed': False,
         'storage_writable': False,
         'storage_path': STORAGE_DIR,
-        'ffmpeg_binary': None,
-        'github_actions_available': github_actions is not None
+        'github_actions_available': github_actions is not None,
+        'cloudinary_configured': bool(os.environ.get('CLOUDINARY_CLOUD_NAME'))
     }
-    
-    # Check FFmpeg - try imageio-ffmpeg first
-    ffmpeg_cmd = 'ffmpeg'
-    try:
-        import imageio_ffmpeg as ffmpeg
-        ffmpeg_cmd = ffmpeg.get_ffmpeg_exe()
-        health_status['ffmpeg_binary'] = 'imageio-ffmpeg'
-    except:
-        health_status['ffmpeg_binary'] = 'system'
-    
-    try:
-        result = subprocess.run([ffmpeg_cmd, '-version'], 
-                              capture_output=True, 
-                              text=True, 
-                              timeout=5)
-        if result.returncode == 0:
-            health_status['ffmpeg_available'] = True
-            health_status['ffmpeg_version'] = result.stdout.split('\n')[0]
-    except:
-        pass
     
     # Check storage
     try:
@@ -455,27 +432,8 @@ def upload_images():
                 active_jobs[job_id]['current_step'] = f'Saved {len(saved_files)} images'
             active_jobs[job_id]['progress'] = 10
             
-            # Create local video with FFmpeg
-            if saved_files:
-                try:
-                    active_jobs[job_id]['current_step'] = 'Creating video with Ken Burns effects'
-                    active_jobs[job_id]['progress'] = 20
-                    
-                    output_path = os.path.join(job_dir, 'virtual_tour.mp4')
-                    success = create_ken_burns_video(
-                        saved_files, 
-                        output_path,
-                        job_id=job_id
-                    )
-                    
-                    if success and os.path.exists(output_path):
-                        active_jobs[job_id]['video_available'] = True
-                        active_jobs[job_id]['files_generated']['local_video'] = output_path
-                        active_jobs[job_id]['progress'] = 50
-                        logger.info(f"Video created successfully: {output_path}")
-                except Exception as e:
-                    logger.error(f"Error creating video: {e}")
-                    active_jobs[job_id]['current_step'] = f'Error creating video: {str(e)}'
+            # NO FFMPEG FALLBACK - Only use GitHub Actions + Remotion or Cloudinary
+            # FFmpeg creates terrible quality videos and is worse than failure
         
         # Check if we should use GitHub Actions for high-quality rendering
         use_github_actions = os.environ.get('USE_GITHUB_ACTIONS', 'false').lower() == 'true' and github_actions
