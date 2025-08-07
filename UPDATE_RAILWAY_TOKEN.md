@@ -5,16 +5,20 @@ Your Railway deployment is currently failing with **"401 Bad credentials"** beca
 
 ## Quick Fix Steps
 
-### 1. Generate New GitHub Token
-1. Go to: https://github.com/settings/tokens
-2. Click **"Generate new token (classic)"**
-3. Name: `listinghelper-railway`
-4. Expiration: **90 days** (or longer)
-5. Select scopes:
-   - ✅ **repo** (entire checkbox)
-   - ✅ **workflow**
-6. Click **"Generate token"**
-7. **COPY THE TOKEN** (starts with `ghp_`)
+### 1. Generate New GitHub Token (MUST BE CLASSIC)
+
+**IMPORTANT**: You need a "Classic" token, NOT a "Fine-grained" token!
+
+1. Go to: https://github.com/settings/tokens?type=beta
+2. Click **"Personal access tokens (classic)"** in the left sidebar
+3. Click **"Generate new token"** → **"Generate new token (classic)"**
+4. Name: `listinghelper-railway`
+5. Expiration: **90 days** (or custom)
+6. Select scopes:
+   - ✅ **repo** (CHECK THE ENTIRE CHECKBOX - all sub-items)
+   - ✅ **workflow** (separate checkbox below)
+7. Scroll down and click **"Generate token"**
+8. **COPY THE TOKEN IMMEDIATELY** (starts with `ghp_`)
 
 ### 2. Update Railway
 1. Go to your Railway dashboard

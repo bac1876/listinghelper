@@ -2,14 +2,17 @@
 
 ## You Need to Create a GitHub Personal Access Token
 
-### Step 1: Go to GitHub Token Settings
-Click this link: https://github.com/settings/tokens/new
+### Step 1: Go to GitHub Token Settings (CLASSIC TOKENS)
+
+**IMPORTANT**: You need a "Classic" token, NOT "Fine-grained"!
+
+Direct link: https://github.com/settings/tokens?type=beta
 
 Or manually:
 1. GitHub → Settings (your profile)
-2. Developer settings (bottom of sidebar)
-3. Personal access tokens → Tokens (classic)
-4. Generate new token (classic)
+2. Developer settings (bottom of sidebar)  
+3. Personal access tokens → **"Tokens (classic)"** ← CLICK THIS
+4. Generate new token → **"Generate new token (classic)"**
 
 ### Step 2: Configure Your Token
 
@@ -19,8 +22,8 @@ Or manually:
 
 **Select Scopes (permissions):**
 Check these boxes:
-- ✅ **repo** (Full control of private repositories) - CHECK THIS ENTIRE SECTION
-- ✅ **workflow** (Update GitHub Action workflows)
+- ✅ **repo** - CHECK THE ENTIRE CHECKBOX (this will auto-check all sub-items like repo:status, repo_deployment, etc.)
+- ✅ **workflow** - This is a separate checkbox further down the list
 
 ### Step 3: Generate and Copy Token
 
