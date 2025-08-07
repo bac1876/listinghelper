@@ -510,24 +510,24 @@ def upload_images():
                             'effectSpeed': effect_speed,
                             'transitionDuration': transition_duration
                         }
-                    )
+                )
+                
+                if github_result.get('success'):
+                    active_jobs[job_id]['github_job_id'] = github_result['job_id']
+                    active_jobs[job_id]['current_step'] = 'Starting Remotion rendering'
+                    active_jobs[job_id]['progress'] = 70
+                    logger.info(f"GitHub Actions job started: {github_result['job_id']}")
+                else:
+                    error_detail = github_result.get('error', 'Unknown error')
+                    logger.error(f"Failed to start GitHub Actions: {error_detail}")
+                    active_jobs[job_id]['current_step'] = f"GitHub Actions failed: {error_detail}"
                     
-                    if github_result.get('success'):
-                        active_jobs[job_id]['github_job_id'] = github_result['job_id']
-                        active_jobs[job_id]['current_step'] = 'Starting Remotion rendering'
-                        active_jobs[job_id]['progress'] = 70
-                        logger.info(f"GitHub Actions job started: {github_result['job_id']}")
-                    else:
-                        error_detail = github_result.get('error', 'Unknown error')
-                        logger.error(f"Failed to start GitHub Actions: {error_detail}")
-                        active_jobs[job_id]['current_step'] = f"GitHub Actions failed: {error_detail}"
-                        
-                        # Provide helpful error message
-                        if 'Unauthorized' in str(error_detail) or '401' in str(error_detail):
-                            active_jobs[job_id]['current_step'] = "GitHub Actions failed - check GITHUB_TOKEN"
-                        elif 'Not Found' in str(error_detail) or '404' in str(error_detail):
-                            active_jobs[job_id]['current_step'] = "GitHub Actions failed - check GITHUB_OWNER and GITHUB_REPO"
-                        
+                    # Provide helpful error message
+                    if 'Unauthorized' in str(error_detail) or '401' in str(error_detail):
+                        active_jobs[job_id]['current_step'] = "GitHub Actions failed - check GITHUB_TOKEN"
+                    elif 'Not Found' in str(error_detail) or '404' in str(error_detail):
+                        active_jobs[job_id]['current_step'] = "GitHub Actions failed - check GITHUB_OWNER and GITHUB_REPO"
+                    
             except Exception as e:
                 logger.error(f"Error with GitHub Actions: {e}")
                 active_jobs[job_id]['current_step'] = f'GitHub Actions error: {str(e)}'
