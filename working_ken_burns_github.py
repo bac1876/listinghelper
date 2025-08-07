@@ -9,6 +9,7 @@ import base64
 import shutil
 import threading
 import logging
+import requests
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -30,6 +31,74 @@ if not os.path.exists(STORAGE_DIR):
 
 # In-memory job tracking with detailed status
 active_jobs = {}
+
+def start_cloudinary_polling(job_id, github_job_id):
+    """Start a background thread to poll Cloudinary for the completed video"""
+    def poll_cloudinary():
+        cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dib3kbifc')
+        video_url = f"https://res.cloudinary.com/{cloud_name}/video/upload/tours/{github_job_id}.mp4"
+        
+        logger.info(f"Starting Cloudinary polling for job {job_id}")
+        logger.info(f"Checking URL: {video_url}")
+        
+        max_attempts = 30  # Poll for up to 5 minutes (30 * 10 seconds)
+        attempt = 0
+        
+        while attempt < max_attempts:
+            attempt += 1
+            
+            try:
+                # Update progress based on time elapsed
+                progress = min(75 + (attempt * 0.8), 95)  # Progress from 75% to 95%
+                active_jobs[job_id]['progress'] = int(progress)
+                
+                # Update status message with time estimate
+                remaining_time = (max_attempts - attempt) * 10
+                active_jobs[job_id]['current_step'] = f'Rendering with Remotion... (~{remaining_time}s remaining)'
+                
+                # Check if video exists on Cloudinary
+                response = requests.head(video_url, timeout=5)
+                
+                if response.status_code == 200:
+                    # Video found!
+                    logger.info(f"Video found on Cloudinary for job {job_id}!")
+                    
+                    # Update job status
+                    active_jobs[job_id]['status'] = 'completed'
+                    active_jobs[job_id]['progress'] = 100
+                    active_jobs[job_id]['current_step'] = 'Video ready!'
+                    active_jobs[job_id]['cloudinary_video'] = True
+                    active_jobs[job_id]['video_available'] = True
+                    
+                    if 'files_generated' not in active_jobs[job_id]:
+                        active_jobs[job_id]['files_generated'] = {}
+                    active_jobs[job_id]['files_generated']['cloudinary_url'] = video_url
+                    
+                    logger.info(f"Job {job_id} completed successfully with Cloudinary URL: {video_url}")
+                    return
+                
+                elif response.status_code == 404:
+                    # Video not ready yet, continue polling
+                    logger.debug(f"Attempt {attempt}/{max_attempts}: Video not yet available")
+                else:
+                    logger.warning(f"Unexpected status {response.status_code} when checking Cloudinary")
+                    
+            except Exception as e:
+                logger.debug(f"Polling attempt {attempt} failed: {e}")
+            
+            # Wait before next attempt
+            time.sleep(10)
+        
+        # Timeout - video generation took too long
+        logger.error(f"Cloudinary polling timeout for job {job_id} after {max_attempts} attempts")
+        active_jobs[job_id]['status'] = 'error'
+        active_jobs[job_id]['current_step'] = 'Video rendering timeout - please try again'
+        active_jobs[job_id]['progress'] = 100
+    
+    # Start polling in background thread
+    polling_thread = threading.Thread(target=poll_cloudinary, daemon=True)
+    polling_thread.start()
+    logger.info(f"Started polling thread for job {job_id}")
 
 # Initialize GitHub Actions integration if configured
 github_actions = None
@@ -457,10 +526,15 @@ def upload_images():
                     active_jobs[job_id]['current_step'] = f'Uploaded {len(github_image_urls)} images to cloud'
                     active_jobs[job_id]['progress'] = 50
                 else:
-                    logger.error("Failed to upload images to Cloudinary")
+                    error_msg = "Failed to upload images to Cloudinary - check CLOUDINARY credentials"
+                    logger.error(error_msg)
+                    active_jobs[job_id]['current_step'] = error_msg
+                    # Continue anyway - local video was created
                     
             except Exception as e:
-                logger.error(f"Error uploading to Cloudinary: {e}")
+                error_msg = f"Error uploading to Cloudinary: {str(e)}"
+                logger.error(error_msg)
+                active_jobs[job_id]['current_step'] = error_msg
                 github_image_urls = []
         
         if use_github_actions and github_image_urls:
@@ -511,12 +585,19 @@ def upload_images():
                     
                     if github_result.get('success'):
                         active_jobs[job_id]['github_job_id'] = github_result['job_id']
-                        active_jobs[job_id]['current_step'] = 'GitHub Actions rendering started'
+                        active_jobs[job_id]['current_step'] = 'Starting Remotion rendering'
                         active_jobs[job_id]['progress'] = 70
                         logger.info(f"GitHub Actions job started: {github_result['job_id']}")
                     else:
-                        logger.error(f"Failed to start GitHub Actions: {github_result.get('error')}")
-                        active_jobs[job_id]['current_step'] = f"GitHub Actions failed: {github_result.get('error', 'Unknown error')}"
+                        error_detail = github_result.get('error', 'Unknown error')
+                        logger.error(f"Failed to start GitHub Actions: {error_detail}")
+                        active_jobs[job_id]['current_step'] = f"GitHub Actions failed: {error_detail}"
+                        
+                        # Provide helpful error message
+                        if 'Unauthorized' in str(error_detail) or '401' in str(error_detail):
+                            active_jobs[job_id]['current_step'] = "GitHub Actions failed - check GITHUB_TOKEN"
+                        elif 'Not Found' in str(error_detail) or '404' in str(error_detail):
+                            active_jobs[job_id]['current_step'] = "GitHub Actions failed - check GITHUB_OWNER and GITHUB_REPO"
                         
             except Exception as e:
                 logger.error(f"Error with GitHub Actions: {e}")
@@ -574,13 +655,17 @@ def upload_images():
         # Finalize job
         processing_time = time.time() - start_time
         
-        # If GitHub Actions was triggered, don't mark as completed yet
+        # If GitHub Actions was triggered, start polling for the video
         if active_jobs[job_id].get('github_job_id'):
             active_jobs[job_id]['status'] = 'processing'
             active_jobs[job_id]['progress'] = 75
-            active_jobs[job_id]['current_step'] = 'GitHub Actions rendering in progress'
+            active_jobs[job_id]['current_step'] = 'Rendering high-quality video with Remotion'
             active_jobs[job_id]['processing_time'] = f"{processing_time:.2f} seconds"
-            logger.info(f"Job {job_id} waiting for GitHub Actions to complete")
+            logger.info(f"Job {job_id} - GitHub Actions triggered, starting Cloudinary polling")
+            
+            # Start background polling for Cloudinary video
+            github_job_id = active_jobs[job_id]['github_job_id']
+            start_cloudinary_polling(job_id, github_job_id)
         else:
             # Only mark as completed if no GitHub Actions
             active_jobs[job_id]['status'] = 'completed'
