@@ -23,6 +23,39 @@ class GitHubActionsIntegration:
             'Content-Type': 'application/json'
         }
         self.base_url = f'https://api.github.com/repos/{self.github_owner}/{self.github_repo}'
+        
+        # Validate token on initialization
+        self.is_valid = self.validate_token()
+    
+    def validate_token(self) -> bool:
+        """
+        Validate the GitHub token by checking repository access
+        
+        Returns:
+            True if token is valid, False otherwise
+        """
+        try:
+            # Try to access the repository
+            test_url = f"{self.base_url}"
+            response = requests.get(test_url, headers=self.headers, timeout=5)
+            
+            if response.status_code == 200:
+                logger.info(f"GitHub token validated successfully for {self.github_owner}/{self.github_repo}")
+                return True
+            elif response.status_code == 401:
+                logger.error(f"GitHub token is invalid or expired (401 Unauthorized)")
+                logger.error("Please generate a new token at: https://github.com/settings/tokens")
+                return False
+            elif response.status_code == 404:
+                logger.error(f"Repository {self.github_owner}/{self.github_repo} not found or token lacks access")
+                return False
+            else:
+                logger.warning(f"Unexpected status code when validating token: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error validating GitHub token: {e}")
+            return False
     
     def trigger_video_render(self, images: List[str], property_details: Dict[str, Any], settings: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
@@ -36,6 +69,15 @@ class GitHubActionsIntegration:
         Returns:
             Dict with job_id and status
         """
+        # Check if token is valid before attempting to trigger
+        if not self.is_valid:
+            logger.error("Cannot trigger GitHub Actions - token is invalid or expired")
+            return {
+                "success": False,
+                "error": "GitHub token is invalid or expired",
+                "details": "Please update GITHUB_TOKEN in Railway environment variables with a new token from https://github.com/settings/tokens"
+            }
+        
         try:
             # Generate unique job ID
             job_id = f"tour_{int(time.time())}_{os.urandom(4).hex()}"

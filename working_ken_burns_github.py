@@ -105,7 +105,13 @@ github_actions = None
 if all([os.environ.get('GITHUB_TOKEN'), os.environ.get('GITHUB_OWNER'), os.environ.get('GITHUB_REPO')]):
     try:
         github_actions = GitHubActionsIntegration()
-        logger.info("GitHub Actions integration initialized successfully")
+        if github_actions.is_valid:
+            logger.info("GitHub Actions integration initialized successfully")
+        else:
+            logger.error("GitHub Actions integration failed - token is invalid or expired")
+            logger.error("Please update GITHUB_TOKEN in Railway environment variables")
+            logger.error("Generate new token at: https://github.com/settings/tokens")
+            github_actions = None
     except Exception as e:
         logger.error(f"Failed to initialize GitHub Actions: {e}")
 
@@ -475,19 +481,7 @@ def upload_images():
                     success = create_ken_burns_video(
                         saved_files, 
                         output_path,
-                        duration_per_image=duration_per_image,
-                        effect_speed=effect_speed,
-                        transition_duration=transition_duration,
-                        property_details={
-                            'address': address,
-                            'city': city,
-                            'details1': details1,
-                            'details2': details2,
-                            'agent_name': agent_name,
-                            'agent_email': agent_email,
-                            'agent_phone': agent_phone,
-                            'brand_name': brand_name
-                        }
+                        job_id=job_id
                     )
                     
                     if success and os.path.exists(output_path):
