@@ -384,7 +384,6 @@ def upload_images():
                 
                 # Brief pause between batches to prevent resource exhaustion
                 if batch_end < total_files:
-                    import time
                     time.sleep(0.5)  # Half second pause between batches
             
             # Update job progress with compression info
