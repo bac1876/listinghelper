@@ -474,33 +474,39 @@ def upload_images():
                 github_image_urls = []
         
         if use_github_actions and github_image_urls:
+            # Double-check GitHub Actions is actually valid before trying
+            if not github_actions or (hasattr(github_actions, 'is_valid') and not github_actions.is_valid):
+                logger.error("GitHub Actions integration is not valid - skipping")
+                active_jobs[job_id]['current_step'] = "GitHub Actions unavailable - invalid token"
+                use_github_actions = False
+            
+        if use_github_actions:
             try:
                 active_jobs[job_id]['current_step'] = 'Triggering GitHub Actions for high-quality rendering'
                 active_jobs[job_id]['progress'] = 60
                 
-                if github_image_urls:
-                    logger.info(f"Triggering GitHub Actions with {len(github_image_urls)} images")
-                    
-                    # Build details string from property fields if available
-                    details_parts = []
-                    property_price = request.form.get('property_price', '').strip()
-                    property_beds = request.form.get('property_beds', '').strip()
-                    property_baths = request.form.get('property_baths', '').strip()
-                    property_sqft = request.form.get('property_sqft', '').strip()
-                    
-                    if property_price:
-                        details_parts.append(property_price)
-                    if property_beds:
-                        details_parts.append(f"{property_beds} Beds")
-                    if property_baths:
-                        details_parts.append(f"{property_baths} Baths")
-                    if property_sqft:
-                        details_parts.append(property_sqft)
-                    
-                    # Use composed details or fallback to details1
-                    property_details_string = ' | '.join(details_parts) if details_parts else details1
-                    
-                    github_result = github_actions.trigger_video_render(
+                logger.info(f"Triggering GitHub Actions with {len(github_image_urls)} images")
+                
+                # Build details string from property fields if available
+                details_parts = []
+                property_price = request.form.get('property_price', '').strip()
+                property_beds = request.form.get('property_beds', '').strip()
+                property_baths = request.form.get('property_baths', '').strip()
+                property_sqft = request.form.get('property_sqft', '').strip()
+                
+                if property_price:
+                    details_parts.append(property_price)
+                if property_beds:
+                    details_parts.append(f"{property_beds} Beds")
+                if property_baths:
+                    details_parts.append(f"{property_baths} Baths")
+                if property_sqft:
+                    details_parts.append(property_sqft)
+                
+                # Use composed details or fallback to details1
+                property_details_string = ' | '.join(details_parts) if details_parts else details1
+                
+                github_result = github_actions.trigger_video_render(
                         images=github_image_urls,
                         property_details={
                             'address': address,
@@ -603,11 +609,12 @@ def upload_images():
             github_job_id = active_jobs[job_id]['github_job_id']
             start_cloudinary_polling(job_id, github_job_id)
         else:
-            # Only mark as completed if no GitHub Actions
-            active_jobs[job_id]['status'] = 'completed'
-            active_jobs[job_id]['progress'] = 100
-            active_jobs[job_id]['current_step'] = 'Processing complete'
+            # GitHub Actions didn't run - this is a FAILURE not success!
+            active_jobs[job_id]['status'] = 'error'
+            active_jobs[job_id]['progress'] = 0
+            active_jobs[job_id]['current_step'] = 'Failed: GitHub Actions not available - check token'
             active_jobs[job_id]['processing_time'] = f"{processing_time:.2f} seconds"
+            logger.error(f"Job {job_id} failed - GitHub Actions not triggered")
         
         return jsonify({
             'job_id': job_id,
