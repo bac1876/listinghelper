@@ -34,32 +34,64 @@ if not os.path.exists(STORAGE_DIR):
 # In-memory job tracking with detailed status
 active_jobs = {}
 
-def start_imagekit_polling(job_id, github_job_id):
-    """Start a background thread to poll ImageKit for the completed video"""
-    def poll_imagekit():
-        # Get ImageKit URL for the video
-        video_url = get_video_url_imagekit(github_job_id)
+def start_github_actions_polling(job_id, github_job_id):
+    """Start a background thread to poll GitHub Actions and then ImageKit for the completed video"""
+    def poll_for_video():
+        logger.info(f"Starting GitHub Actions polling for job {job_id}, GitHub job ID: {github_job_id}")
         
-        logger.info(f"Starting ImageKit polling for job {job_id}")
-        logger.info(f"Checking URL: {video_url}")
-        
-        max_attempts = 30  # Poll for up to 5 minutes (30 * 10 seconds)
+        max_attempts = 60  # Poll for up to 10 minutes (60 * 10 seconds)
         attempt = 0
+        github_actions_complete = False
+        video_url = None
         
         while attempt < max_attempts:
             attempt += 1
             
             try:
                 # Update progress based on time elapsed
-                progress = min(75 + (attempt * 0.8), 95)  # Progress from 75% to 95%
+                progress = min(75 + (attempt * 0.4), 95)  # Progress from 75% to 95%
                 active_jobs[job_id]['progress'] = int(progress)
                 
                 # Update status message with time estimate
                 remaining_time = (max_attempts - attempt) * 10
                 active_jobs[job_id]['current_step'] = f'Rendering with Remotion... (~{remaining_time}s remaining)'
                 
-                # Check if video exists on Cloudinary
-                response = requests.head(video_url, timeout=5)
+                # First, check if GitHub Actions has completed
+                if not github_actions_complete and github_actions:
+                    try:
+                        # Check GitHub Actions workflow status
+                        workflow_status = github_actions.get_workflow_status(github_job_id)
+                        logger.info(f"GitHub Actions status for {github_job_id}: {workflow_status}")
+                        
+                        if workflow_status == 'completed':
+                            github_actions_complete = True
+                            logger.info(f"GitHub Actions completed for job {github_job_id}")
+                            
+                            # Try to get the artifact with video URL
+                            artifact_data = github_actions.get_workflow_artifact(github_job_id)
+                            if artifact_data and artifact_data.get('videoUrl'):
+                                video_url = artifact_data['videoUrl']
+                                logger.info(f"Got video URL from GitHub artifact: {video_url}")
+                            else:
+                                # Construct ImageKit URL as fallback
+                                video_url = get_video_url_imagekit(github_job_id)
+                                logger.info(f"Using constructed ImageKit URL: {video_url}")
+                        elif workflow_status == 'failed':
+                            logger.error(f"GitHub Actions workflow failed for job {github_job_id}")
+                            active_jobs[job_id]['status'] = 'error'
+                            active_jobs[job_id]['current_step'] = 'Video rendering failed'
+                            active_jobs[job_id]['progress'] = 100
+                            return
+                    except Exception as e:
+                        logger.warning(f"Error checking GitHub Actions status: {e}")
+                
+                # If GitHub Actions is complete, check if video exists
+                if github_actions_complete and video_url:
+                    response = requests.head(video_url, timeout=5)
+                else:
+                    # Still waiting for GitHub Actions
+                    time.sleep(10)
+                    continue
                 
                 if response.status_code == 200:
                     # Video found!
@@ -81,9 +113,9 @@ def start_imagekit_polling(job_id, github_job_id):
                 
                 elif response.status_code == 404:
                     # Video not ready yet, continue polling
-                    logger.debug(f"Attempt {attempt}/{max_attempts}: Video not yet available")
+                    logger.debug(f"Attempt {attempt}/{max_attempts}: Video not yet available at {video_url}")
                 else:
-                    logger.warning(f"Unexpected status {response.status_code} when checking Cloudinary")
+                    logger.warning(f"Unexpected status {response.status_code} when checking video URL")
                     
             except Exception as e:
                 logger.debug(f"Polling attempt {attempt} failed: {e}")
@@ -92,15 +124,15 @@ def start_imagekit_polling(job_id, github_job_id):
             time.sleep(10)
         
         # Timeout - video generation took too long
-        logger.error(f"Cloudinary polling timeout for job {job_id} after {max_attempts} attempts")
+        logger.error(f"Video polling timeout for job {job_id} after {max_attempts} attempts")
         active_jobs[job_id]['status'] = 'error'
         active_jobs[job_id]['current_step'] = 'Video rendering timeout - please try again'
         active_jobs[job_id]['progress'] = 100
     
     # Start polling in background thread
-    polling_thread = threading.Thread(target=poll_imagekit, daemon=True)
+    polling_thread = threading.Thread(target=poll_for_video, daemon=True)
     polling_thread.start()
-    logger.info(f"Started ImageKit polling thread for job {job_id}")
+    logger.info(f"Started GitHub Actions polling thread for job {job_id}")
 
 # Initialize GitHub Actions integration if configured
 github_actions = None
@@ -601,9 +633,9 @@ def upload_images():
             active_jobs[job_id]['processing_time'] = f"{processing_time:.2f} seconds"
             logger.info(f"Job {job_id} - GitHub Actions triggered, starting Cloudinary polling")
             
-            # Start background polling for ImageKit video
+            # Start background polling for GitHub Actions and ImageKit video
             github_job_id = active_jobs[job_id]['github_job_id']
-            start_imagekit_polling(job_id, github_job_id)
+            start_github_actions_polling(job_id, github_job_id)
         else:
             # Mark as completed even if GitHub Actions didn't run
             active_jobs[job_id]['status'] = 'completed'

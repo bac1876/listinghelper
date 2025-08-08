@@ -128,6 +128,96 @@ class GitHubActionsIntegration:
                 "error": str(e)
             }
     
+    def get_workflow_status(self, job_id: str) -> str:
+        """
+        Get the status of a GitHub Actions workflow run by job ID
+        
+        Args:
+            job_id: The job identifier used when triggering the workflow
+            
+        Returns:
+            Status string: 'queued', 'in_progress', 'completed', 'failed', or 'unknown'
+        """
+        try:
+            # Get recent workflow runs
+            runs_url = f"{self.base_url}/actions/workflows/{self.workflow_file}/runs?per_page=20"
+            response = requests.get(runs_url, headers=self.headers)
+            
+            if response.status_code != 200:
+                logger.error(f"Failed to fetch workflow runs: {response.status_code}")
+                return 'unknown'
+            
+            runs = response.json()
+            
+            # Find the run for this job_id by checking inputs
+            for run in runs.get('workflow_runs', []):
+                # Check if this run matches our job ID
+                # The job_id is passed as an input to the workflow
+                if run.get('name', '').endswith(job_id) or job_id in run.get('display_title', ''):
+                    status = run.get('status', 'unknown')
+                    conclusion = run.get('conclusion', '')
+                    
+                    if status == 'completed':
+                        if conclusion == 'success':
+                            return 'completed'
+                        else:
+                            return 'failed'
+                    elif status in ['queued', 'in_progress']:
+                        return status
+                    else:
+                        return 'unknown'
+            
+            # If not found, assume it's still queued or starting
+            return 'queued'
+            
+        except Exception as e:
+            logger.error(f"Error checking workflow status: {e}")
+            return 'unknown'
+    
+    def get_workflow_artifact(self, job_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get the artifact data from a completed workflow
+        
+        Args:
+            job_id: The job identifier
+            
+        Returns:
+            Dict with artifact data including video URL, or None if not found
+        """
+        try:
+            # Get recent workflow runs
+            runs_url = f"{self.base_url}/actions/workflows/{self.workflow_file}/runs?per_page=10"
+            response = requests.get(runs_url, headers=self.headers)
+            
+            if response.status_code != 200:
+                logger.error(f"Failed to fetch workflow runs: {response.status_code}")
+                return None
+            
+            runs = response.json()
+            
+            # Find the completed run for this job_id
+            for run in runs.get('workflow_runs', []):
+                if run['status'] == 'completed' and run['conclusion'] == 'success':
+                    # Check artifacts for this run
+                    artifacts_url = run['artifacts_url']
+                    artifacts_response = requests.get(artifacts_url, headers=self.headers)
+                    
+                    if artifacts_response.status_code == 200:
+                        artifacts = artifacts_response.json()
+                        
+                        for artifact in artifacts.get('artifacts', []):
+                            if f"render-result-{job_id}" in artifact['name']:
+                                # Found our artifact, download and parse it
+                                result = self._download_job_result(artifact, run)
+                                if result.get('success'):
+                                    return result.get('data', {})
+                                    
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting workflow artifact: {e}")
+            return None
+    
     def check_job_status(self, job_id: str) -> Dict[str, Any]:
         """
         Check the status of a video render job
@@ -280,6 +370,12 @@ class GitHubActionsIntegration:
                         return {
                             "success": True,
                             "status": "completed",
+                            "data": {
+                                "videoUrl": video_url,
+                                "duration": result.get('duration'),
+                                "renderTime": result.get('renderTime'),
+                                "timestamp": result.get('timestamp')
+                            },
                             "video_url": video_url,
                             "duration": result.get('duration'),
                             "render_time": result.get('renderTime'),
