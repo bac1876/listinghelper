@@ -64,24 +64,52 @@ class ImageKitIntegration:
             )
             
             # Check if upload was successful
-            if result and result.url:
-                logger.info(f"Successfully uploaded to ImageKit: {result.url}")
-                return {
-                    'success': True,
-                    'url': result.url,
-                    'fileId': result.file_id,
-                    'name': result.name,
-                    'size': result.size
-                }
-            else:
-                error_msg = "Upload failed - no URL returned"
-                if hasattr(result, 'error'):
-                    error_msg = f"Upload failed: {result.error}"
-                logger.error(error_msg)
-                return {
-                    'success': False,
-                    'error': error_msg
-                }
+            # The SDK returns a dict with response details
+            if result:
+                # Handle both dict and object responses
+                if isinstance(result, dict):
+                    if 'url' in result:
+                        logger.info(f"Successfully uploaded to ImageKit: {result['url']}")
+                        return {
+                            'success': True,
+                            'url': result['url'],
+                            'fileId': result.get('fileId', ''),
+                            'name': result.get('name', ''),
+                            'size': result.get('size', 0)
+                        }
+                    elif 'error' in result:
+                        error_msg = f"Upload failed: {result['error']}"
+                        logger.error(error_msg)
+                        return {
+                            'success': False,
+                            'error': error_msg
+                        }
+                else:
+                    # Handle object response (if SDK returns object)
+                    if hasattr(result, 'url') and result.url:
+                        logger.info(f"Successfully uploaded to ImageKit: {result.url}")
+                        return {
+                            'success': True,
+                            'url': result.url,
+                            'fileId': getattr(result, 'file_id', ''),
+                            'name': getattr(result, 'name', ''),
+                            'size': getattr(result, 'size', 0)
+                        }
+                    elif hasattr(result, 'error'):
+                        error_msg = f"Upload failed: {result.error}"
+                        logger.error(error_msg)
+                        return {
+                            'success': False,
+                            'error': error_msg
+                        }
+            
+            # If we get here, something went wrong
+            error_msg = "Upload failed - unexpected response format"
+            logger.error(f"{error_msg}: {result}")
+            return {
+                'success': False,
+                'error': error_msg
+            }
                 
         except Exception as e:
             logger.error(f"Error uploading to ImageKit: {e}")
@@ -114,22 +142,45 @@ class ImageKitIntegration:
                 }
             )
             
-            if result and result.url:
-                logger.info(f"Successfully uploaded from URL to ImageKit: {result.url}")
-                return {
-                    'success': True,
-                    'url': result.url,
-                    'fileId': result.file_id
-                }
-            else:
-                error_msg = "Upload from URL failed"
-                if hasattr(result, 'error'):
-                    error_msg = f"Upload failed: {result.error}"
-                logger.error(error_msg)
-                return {
-                    'success': False,
-                    'error': error_msg
-                }
+            if result:
+                # Handle both dict and object responses
+                if isinstance(result, dict):
+                    if 'url' in result:
+                        logger.info(f"Successfully uploaded from URL to ImageKit: {result['url']}")
+                        return {
+                            'success': True,
+                            'url': result['url'],
+                            'fileId': result.get('fileId', '')
+                        }
+                    elif 'error' in result:
+                        error_msg = f"Upload failed: {result['error']}"
+                        logger.error(error_msg)
+                        return {
+                            'success': False,
+                            'error': error_msg
+                        }
+                else:
+                    if hasattr(result, 'url') and result.url:
+                        logger.info(f"Successfully uploaded from URL to ImageKit: {result.url}")
+                        return {
+                            'success': True,
+                            'url': result.url,
+                            'fileId': getattr(result, 'file_id', '')
+                        }
+                    elif hasattr(result, 'error'):
+                        error_msg = f"Upload failed: {result.error}"
+                        logger.error(error_msg)
+                        return {
+                            'success': False,
+                            'error': error_msg
+                        }
+            
+            error_msg = "Upload from URL failed - unexpected response"
+            logger.error(f"{error_msg}: {result}")
+            return {
+                'success': False,
+                'error': error_msg
+            }
                 
         except Exception as e:
             logger.error(f"Error uploading URL to ImageKit: {e}")
