@@ -97,6 +97,87 @@ jobs:
         
         echo "Inputs saved to temporary files"
     
+    - name: Test Image Accessibility
+      run: |
+        echo "Testing if GitHub Actions can access ImageKit images..."
+        
+        # Parse the first image URL for testing
+        FIRST_IMAGE=$(node -e "
+          const images = JSON.parse(require('fs').readFileSync('/tmp/images.json', 'utf8'));
+          if (images.length > 0) {
+            console.log(images[0]);
+          }
+        ")
+        
+        if [ -n "$FIRST_IMAGE" ]; then
+          echo "Testing access to: $FIRST_IMAGE"
+          
+          # Test with curl
+          echo "Testing with curl..."
+          curl -I "$FIRST_IMAGE" 2>/dev/null | head -n 5 || echo "curl failed"
+          
+          # Test actual download
+          echo "Testing actual download..."
+          curl -o test_image.jpg "$FIRST_IMAGE" --max-time 30 2>&1 || echo "Download failed"
+          
+          if [ -f "test_image.jpg" ]; then
+            FILE_SIZE=$(stat -c%s "test_image.jpg" 2>/dev/null || stat -f%z "test_image.jpg" 2>/dev/null || echo "0")
+            echo "Downloaded image size: $FILE_SIZE bytes"
+            if [ "$FILE_SIZE" -gt "0" ]; then
+              echo "✓ Image is accessible from GitHub Actions"
+            else
+              echo "✗ Image downloaded but is empty"
+            fi
+            rm -f test_image.jpg
+          else
+            echo "✗ Failed to download image from ImageKit"
+            echo "This might be why Remotion is failing!"
+          fi
+        else
+          echo "No images provided to test"
+        fi
+    
+    - name: Test Minimal Remotion Render
+      working-directory: ./remotion-tours
+      run: |
+        echo "Testing if Remotion can render at all..."
+        
+        # Create a minimal test render with dummy data
+        echo "Creating minimal props for test..."
+        cat > test_props.json << 'EOF'
+        {
+          "images": ["https://via.placeholder.com/1920x1080.jpg"],
+          "propertyDetails": {
+            "address": "Test Property",
+            "city": "Test City"
+          },
+          "settings": {
+            "durationPerImage": 2,
+            "effectSpeed": "fast",
+            "transitionDuration": 1
+          }
+        }
+        EOF
+        
+        echo "Running minimal test render (2 seconds, 1 placeholder image)..."
+        npx remotion render RealEstateTour test_minimal.mp4 \
+          --props="$(cat test_props.json)" \
+          --frames=0-60 \
+          2>&1 | tee test_render.log || {
+            echo "WARNING: Minimal test render failed!"
+            echo "Last 20 lines of test render log:"
+            tail -20 test_render.log
+            echo "Remotion might have issues with the composition itself"
+        }
+        
+        if [ -f "test_minimal.mp4" ]; then
+          TEST_SIZE=$(stat -c%s "test_minimal.mp4" 2>/dev/null || stat -f%z "test_minimal.mp4" 2>/dev/null || echo "0")
+          echo "✓ Minimal test render succeeded! Size: $TEST_SIZE bytes"
+          rm -f test_minimal.mp4
+        else
+          echo "✗ Minimal test render failed - Remotion has fundamental issues"
+        fi
+    
     - name: Render video with Remotion
       working-directory: ./remotion-tours
       env:
@@ -105,7 +186,7 @@ jobs:
         REMOTION_SETTINGS: ${{ inputs.settings }}
         JOB_ID: ${{ inputs.jobId }}
       run: |
-        echo "Starting Remotion render..."
+        echo "Starting FULL Remotion render..."
         
         # Debug: Check current directory and files
         echo "Current directory: $(pwd)"
@@ -156,15 +237,43 @@ jobs:
         echo "Props JSON:"
         cat props.json || echo "ERROR: props.json not created"
         
+        # Show the exact command that will be run
+        echo "=== EXACT REMOTION COMMAND ==="
+        echo "npx remotion render RealEstateTour out/${{ inputs.jobId }}.mp4 --props='$(cat props_output.json)'"
+        echo "=== END COMMAND ==="
+        
+        # Check if any image URLs contain problematic characters
+        node -e "
+          const images = JSON.parse(process.env.REMOTION_IMAGES);
+          images.forEach((url, i) => {
+            if (url.includes('\"') || url.includes(\"'\")) {
+              console.error(\`WARNING: Image \${i+1} contains quotes which may break the command\`);
+            }
+          });
+        "
+        
         # Render the video with error handling
         echo "Executing Remotion render command..."
         npx remotion render RealEstateTour out/${{ inputs.jobId }}.mp4 \
           --props="$(cat props_output.json)" \
           --log=verbose \
+          --timeout=300000 \
           2>&1 | tee render.log || {
             echo "ERROR: Remotion render failed!"
-            echo "Last 50 lines of render log:"
-            tail -50 render.log
+            echo "Last 100 lines of render log:"
+            tail -100 render.log
+            
+            # Check for specific error patterns
+            if grep -q "Failed to fetch" render.log; then
+              echo "ERROR: Remotion could not fetch images from ImageKit"
+              echo "This is likely a network/access issue"
+            fi
+            
+            if grep -q "out of memory" render.log; then
+              echo "ERROR: Remotion ran out of memory"
+              echo "Too many high-resolution images"
+            fi
+            
             exit 1
           }
         
