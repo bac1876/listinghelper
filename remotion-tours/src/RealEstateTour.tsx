@@ -77,7 +77,7 @@ export const RealEstateTour: React.FC<RealEstateTourProps> = ({
             />
             
             {/* Fade transition to next image */}
-            {index < displayImages.length - 1 && (
+            {index < displayImages.length - 1 && transitionFrames > 0 && (
               <Sequence from={imageFrames - transitionFrames} durationInFrames={transitionFrames}>
                 <TransitionFade duration={settings.transitionDuration} />
               </Sequence>
@@ -87,7 +87,7 @@ export const RealEstateTour: React.FC<RealEstateTourProps> = ({
       })}
       
       {/* Property Details Overlay */}
-      <Sequence from={30} durationInFrames={totalDuration - 60}>
+      <Sequence from={30} durationInFrames={Math.max(1, totalDuration - 60)}>
         <PropertyDetails
           {...propertyDetails}
           position="bottom"

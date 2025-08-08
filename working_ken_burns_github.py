@@ -582,6 +582,7 @@ def upload_images():
                 # Use composed details or fallback to details1
                 property_details_string = ' | '.join(details_parts) if details_parts else details1
                 
+                logger.info(f"Triggering GitHub Actions for job {job_id} with {len(github_image_urls)} images")
                 github_result = github_actions.trigger_video_render(
                         images=github_image_urls,
                         property_details={
@@ -601,14 +602,18 @@ def upload_images():
                         }
                 )
                 
+                logger.info(f"GitHub Actions trigger result: {github_result}")
+                
                 if github_result.get('success'):
                     active_jobs[job_id]['github_job_id'] = github_result['job_id']
                     active_jobs[job_id]['current_step'] = 'Starting Remotion rendering'
                     active_jobs[job_id]['progress'] = 70
-                    logger.info(f"GitHub Actions job started: {github_result['job_id']}")
+                    logger.info(f"GitHub Actions job started successfully: {github_result['job_id']}")
                 else:
                     error_detail = github_result.get('error', 'Unknown error')
+                    error_details = github_result.get('details', '')
                     logger.error(f"Failed to start GitHub Actions: {error_detail}")
+                    logger.error(f"Details: {error_details}")
                     active_jobs[job_id]['current_step'] = f"GitHub Actions failed: {error_detail}"
                     
                     # Provide helpful error message
