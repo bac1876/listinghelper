@@ -44,30 +44,38 @@ jobs:
         echo "Node version: $(node --version)"
         echo "NPM version: $(npm --version)"
         
+        # Clear npm cache to avoid issues
+        echo "Clearing npm cache..."
+        npm cache clean --force || echo "Cache clean failed, continuing..."
+        
         # Check if package-lock.json exists
         if [ ! -f "package-lock.json" ]; then
           echo "ERROR: package-lock.json not found!"
           echo "Running npm install instead of npm ci..."
-          npm install
+          npm install --legacy-peer-deps
         else
           echo "package-lock.json found, running npm ci..."
           npm ci || {
             echo "npm ci failed, trying npm install..."
             rm -rf node_modules package-lock.json
-            npm install
+            npm install --legacy-peer-deps
           }
         fi
         
-        # Install additional dependencies for GitHub Actions
-        echo "Installing Remotion CLI globally..."
-        npm install -g @remotion/cli || {
-          echo "Failed to install Remotion CLI globally, installing locally..."
-          npm install @remotion/cli
-        }
+        # Ensure Remotion CLI is available
+        echo "Ensuring Remotion CLI is available..."
+        if ! npx remotion --version 2>/dev/null; then
+          echo "Remotion CLI not found, installing..."
+          npm install @remotion/cli@^4.0.331
+        fi
         
-        # Verify Remotion is installed
-        echo "Verifying Remotion installation..."
-        npx remotion --version || echo "WARNING: Remotion CLI not accessible"
+        # Verify all dependencies
+        echo "Verifying installations..."
+        npx remotion --version || echo "ERROR: Remotion CLI still not accessible!"
+        
+        # List installed packages for debugging
+        echo "Key packages installed:"
+        npm list remotion @remotion/cli react react-dom --depth=0 || true
     
     - name: Parse inputs
       id: parse
@@ -142,32 +150,38 @@ jobs:
       run: |
         echo "Testing if Remotion can render at all..."
         
-        # Create a minimal test render with dummy data
+        # Log system information
+        echo "Node version: $(node --version)"
+        echo "NPM version: $(npm --version)"
+        echo "Available memory: $(free -h 2>/dev/null | grep Mem || echo 'N/A')"
+        
+        # Create a minimal test with a data URI instead of external URL
         echo "Creating minimal props for test..."
         cat > test_props.json << 'EOF'
         {
-          "images": ["https://via.placeholder.com/1920x1080.jpg"],
+          "images": [],
           "propertyDetails": {
             "address": "Test Property",
             "city": "Test City"
           },
           "settings": {
-            "durationPerImage": 2,
+            "durationPerImage": 1,
             "effectSpeed": "fast",
-            "transitionDuration": 1
+            "transitionDuration": 0.5
           }
         }
         EOF
         
-        echo "Running minimal test render (2 seconds, 1 placeholder image)..."
+        echo "Running minimal test render (using default images)..."
         npx remotion render RealEstateTour test_minimal.mp4 \
           --props="$(cat test_props.json)" \
-          --frames=0-60 \
+          --frames=0-30 \
+          --concurrency=2 \
           2>&1 | tee test_render.log || {
             echo "WARNING: Minimal test render failed!"
-            echo "Last 20 lines of test render log:"
-            tail -20 test_render.log
-            echo "Remotion might have issues with the composition itself"
+            echo "Full test render log:"
+            cat test_render.log
+            echo "Continuing anyway to attempt main render..."
         }
         
         if [ -f "test_minimal.mp4" ]; then
@@ -175,7 +189,7 @@ jobs:
           echo "✓ Minimal test render succeeded! Size: $TEST_SIZE bytes"
           rm -f test_minimal.mp4
         else
-          echo "✗ Minimal test render failed - Remotion has fundamental issues"
+          echo "✗ Minimal test render did not produce output - checking for errors"
         fi
     
     - name: Render video with Remotion
@@ -254,14 +268,17 @@ jobs:
         
         # Render the video with error handling
         echo "Executing Remotion render command..."
+        echo "Memory before render: $(free -h 2>/dev/null | grep Mem || echo 'N/A')"
+        
+        # Try with reduced concurrency to avoid memory issues
         npx remotion render RealEstateTour out/${{ inputs.jobId }}.mp4 \
           --props="$(cat props_output.json)" \
-          --log=verbose \
+          --concurrency=4 \
           --timeout=300000 \
           2>&1 | tee render.log || {
             echo "ERROR: Remotion render failed!"
-            echo "Last 100 lines of render log:"
-            tail -100 render.log
+            echo "Full render log:"
+            cat render.log
             
             # Check for specific error patterns
             if grep -q "Failed to fetch" render.log; then
@@ -271,11 +288,18 @@ jobs:
             
             if grep -q "out of memory" render.log; then
               echo "ERROR: Remotion ran out of memory"
-              echo "Too many high-resolution images"
+              echo "Reducing image count or resolution may help"
+            fi
+            
+            if grep -q "durationInFrames" render.log; then
+              echo "ERROR: Duration calculation issue"
+              echo "Check the composition's calculateMetadata function"
             fi
             
             exit 1
           }
+        
+        echo "Memory after render: $(free -h 2>/dev/null | grep Mem || echo 'N/A')"
         
         # Check if video was created
         if [ -f "out/${{ inputs.jobId }}.mp4" ]; then
