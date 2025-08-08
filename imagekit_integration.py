@@ -58,9 +58,22 @@ class ImageKitIntegration:
             # Encode to base64
             file_base64 = base64.b64encode(file_data).decode()
             
-            # Prepare upload data
+            # Determine MIME type based on file extension
+            mime_type = 'image/jpeg'  # Default
+            if file_name.lower().endswith('.mp4'):
+                mime_type = 'video/mp4'
+            elif file_name.lower().endswith('.png'):
+                mime_type = 'image/png'
+            elif file_name.lower().endswith('.jpg') or file_name.lower().endswith('.jpeg'):
+                mime_type = 'image/jpeg'
+            elif file_name.lower().endswith('.gif'):
+                mime_type = 'image/gif'
+            elif file_name.lower().endswith('.webp'):
+                mime_type = 'image/webp'
+            
+            # Prepare upload data with proper data URI format
             upload_data = {
-                'file': f'data:video/mp4;base64,{file_base64}' if file_name.endswith('.mp4') else file_base64,
+                'file': f'data:{mime_type};base64,{file_base64}',
                 'fileName': file_name,
                 'folder': folder,
                 'useUniqueFileName': False  # Use our job ID as filename
