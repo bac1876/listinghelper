@@ -20,9 +20,17 @@ def upload_files_to_imagekit(file_paths: List[str], folder: str = "/tours/temp/"
     Returns:
         List of ImageKit URLs for the uploaded files
     """
-    imagekit = get_imagekit()
-    if not imagekit:
-        logger.error("ImageKit not configured")
+    try:
+        logger.info("Attempting to get ImageKit instance...")
+        imagekit = get_imagekit()
+        if not imagekit:
+            logger.error("✗ ImageKit not configured or initialization failed")
+            logger.error("Will return empty list - no files uploaded")
+            return []
+        logger.info("✓ ImageKit instance obtained successfully")
+    except Exception as e:
+        logger.error(f"✗ Fatal error getting ImageKit instance: {e}")
+        logger.error("Will return empty list - no files uploaded")
         return []
     
     uploaded_urls = []
@@ -63,9 +71,17 @@ def upload_video_to_imagekit(video_path: str, job_id: str) -> Optional[str]:
     Returns:
         ImageKit URL of the uploaded video, or None if failed
     """
-    imagekit = get_imagekit()
-    if not imagekit:
-        logger.error("ImageKit not configured")
+    try:
+        logger.info("Attempting to get ImageKit instance for video upload...")
+        imagekit = get_imagekit()
+        if not imagekit:
+            logger.error("✗ ImageKit not configured or initialization failed")
+            logger.error("Video upload failed - will return None")
+            return None
+        logger.info("✓ ImageKit instance obtained for video upload")
+    except Exception as e:
+        logger.error(f"✗ Fatal error getting ImageKit instance for video: {e}")
+        logger.error("Video upload failed - will return None")
         return None
     
     try:
@@ -97,8 +113,15 @@ def get_video_url_imagekit(job_id: str) -> str:
     Returns:
         ImageKit URL for the video
     """
-    imagekit = get_imagekit()
-    if not imagekit:
+    try:
+        logger.info("Attempting to get ImageKit instance for video URL...")
+        imagekit = get_imagekit()
+        if not imagekit:
+            logger.error("✗ ImageKit not configured - cannot get video URL")
+            return ""
+        logger.info("✓ ImageKit instance obtained for video URL")
+    except Exception as e:
+        logger.error(f"✗ Fatal error getting ImageKit instance for URL: {e}")
         return ""
     
     return imagekit.get_video_url(f"{job_id}.mp4", "/tours/videos/")

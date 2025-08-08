@@ -6,14 +6,63 @@ import os
 import logging
 import inspect
 from typing import Optional, Dict, Any
-from imagekitio import ImageKit
-from imagekitio.models.UploadFileRequestOptions import UploadFileRequestOptions
-import imagekitio
 
 logger = logging.getLogger(__name__)
 
+# Defensive imports to prevent crashes
+ImageKit = None
+UploadFileRequestOptions = None
+imagekitio = None
+
+try:
+    logger.info("🔍 Starting ImageKit package import process...")
+    
+    # Check if packages are available
+    logger.info("Checking for required packages...")
+    import sys
+    import pkg_resources
+    
+    # Log Python version
+    logger.info(f"Python version: {sys.version}")
+    
+    # Check for package dependencies
+    required_packages = ['imagekitio', 'requests', 'requests-toolbelt', 'urllib3']
+    for package in required_packages:
+        try:
+            version = pkg_resources.get_distribution(package).version
+            logger.info(f"✓ {package} version {version} is installed")
+        except pkg_resources.DistributionNotFound:
+            logger.error(f"✗ {package} is NOT installed")
+        except Exception as e:
+            logger.error(f"? Error checking {package}: {e}")
+    
+    logger.info("Attempting to import imagekitio package...")
+    import imagekitio
+    logger.info(f"✓ imagekitio package imported successfully, version: {getattr(imagekitio, '__version__', 'unknown')}")
+    
+    from imagekitio import ImageKit
+    logger.info("✓ ImageKit class imported successfully")
+    
+    from imagekitio.models.UploadFileRequestOptions import UploadFileRequestOptions
+    logger.info("✓ UploadFileRequestOptions imported successfully")
+    
+except ImportError as e:
+    logger.error(f"✗ Failed to import imagekitio: {e}")
+    logger.error("ImageKit functionality will be disabled")
+except Exception as e:
+    logger.error(f"✗ Unexpected error importing imagekitio: {e}")
+    logger.error("ImageKit functionality will be disabled")
+
 class ImageKitIntegration:
     def __init__(self):
+        # Check if imports were successful
+        if ImageKit is None:
+            error_msg = "ImageKit SDK not available - import failed during module initialization"
+            logger.error(error_msg)
+            raise ImportError(error_msg)
+        
+        logger.info("Starting ImageKit initialization...")
+        
         self.private_key = os.environ.get('IMAGEKIT_PRIVATE_KEY')
         self.public_key = os.environ.get('IMAGEKIT_PUBLIC_KEY')
         self.url_endpoint = os.environ.get('IMAGEKIT_URL_ENDPOINT')
@@ -29,6 +78,7 @@ class ImageKitIntegration:
             
         if missing:
             error_msg = f"Missing ImageKit credentials: {', '.join(missing)}. Please set these environment variables."
+            logger.error(error_msg)
             raise ValueError(error_msg)
         
         # Initialize ImageKit SDK
@@ -72,6 +122,9 @@ class ImageKitIntegration:
             # Approach 1: Use UploadFileRequestOptions object
             try:
                 logger.info("Trying UploadFileRequestOptions approach...")
+                if UploadFileRequestOptions is None:
+                    raise ImportError("UploadFileRequestOptions not available")
+                    
                 options = UploadFileRequestOptions(
                     folder=folder,
                     use_unique_file_name=False,
@@ -194,7 +247,10 @@ class ImageKitIntegration:
         try:
             logger.info(f"Uploading from URL {source_url} to ImageKit")
             
-            # Create options object
+            # Create options object  
+            if UploadFileRequestOptions is None:
+                raise ImportError("UploadFileRequestOptions not available")
+                
             options = UploadFileRequestOptions(
                 folder=folder,
                 use_unique_file_name=False
@@ -299,11 +355,22 @@ def get_imagekit():
             logger.info(f"  Public key starts with: {public_key[:10]}...")
             
         try:
+            logger.info("Attempting to create ImageKitIntegration instance...")
             _imagekit_instance = ImageKitIntegration()
-            logger.info("ImageKit successfully initialized")
+            logger.info("✓ ImageKit successfully initialized")
+        except ImportError as e:
+            logger.error(f"✗ ImageKit SDK import failed: {e}")
+            logger.error("ImageKit functionality completely disabled due to import failure")
+            return None
+        except ValueError as e:
+            logger.error(f"✗ ImageKit configuration error: {e}")
+            logger.error("ImageKit credentials missing or invalid")
+            return None
         except Exception as e:
-            logger.warning(f"ImageKit not configured: {e}")
-            logger.warning("ImageKit initialization failed - will use Cloudinary as fallback")
+            logger.error(f"✗ Unexpected ImageKit initialization error: {e}")
+            logger.error("ImageKit functionality disabled due to unknown error")
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             return None
     return _imagekit_instance
 
