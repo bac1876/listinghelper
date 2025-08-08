@@ -240,6 +240,48 @@ def compress_image(file_obj, filename, max_width=1920, max_height=1080, quality=
         file_obj.seek(0)
         return file_obj, filename
 
+@virtual_tour_bp.route('/env-check', methods=['GET'])
+def env_check():
+    """Debug endpoint to check environment variables"""
+    env_vars = {}
+    
+    # Check ImageKit variables
+    imagekit_vars = ['IMAGEKIT_PRIVATE_KEY', 'IMAGEKIT_PUBLIC_KEY', 'IMAGEKIT_URL_ENDPOINT']
+    for var in imagekit_vars:
+        value = os.environ.get(var)
+        if value:
+            if 'PRIVATE' in var:
+                env_vars[var] = f"{value[:20]}..." if len(value) > 20 else "SET"
+            elif 'PUBLIC' in var:
+                env_vars[var] = f"{value[:20]}..." if len(value) > 20 else "SET"
+            else:
+                env_vars[var] = value  # URL is not sensitive
+        else:
+            env_vars[var] = "NOT_SET"
+    
+    # Check other important vars
+    other_vars = ['USE_GITHUB_ACTIONS', 'GITHUB_TOKEN', 'CLOUDINARY_CLOUD_NAME']
+    for var in other_vars:
+        value = os.environ.get(var)
+        if value:
+            if 'TOKEN' in var or 'SECRET' in var:
+                env_vars[var] = "SET (hidden)"
+            else:
+                env_vars[var] = value
+        else:
+            env_vars[var] = "NOT_SET"
+    
+    # Test ImageKit initialization
+    from imagekit_integration import test_imagekit_initialization
+    imagekit_status = test_imagekit_initialization()
+    
+    return jsonify({
+        'environment_variables': env_vars,
+        'imagekit_initialized': imagekit_status,
+        'railway_deployment': os.environ.get('RAILWAY_ENVIRONMENT', 'NOT_RAILWAY'),
+        'python_path': os.environ.get('PYTHONPATH', 'NOT_SET')
+    })
+
 @virtual_tour_bp.route('/health', methods=['GET'])
 def health_check():
     """Check system health - GitHub Actions, ImageKit, and storage"""
