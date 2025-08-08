@@ -7,13 +7,18 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Initialize ImageKit after loading env vars
-from imagekit_integration import get_imagekit
-imagekit = get_imagekit()
-if imagekit:
-    print(f"ImageKit initialized successfully")
-else:
-    print("WARNING: ImageKit not configured. Video generation may fail.")
+# Initialize and test ImageKit after loading env vars
+from imagekit_integration import test_imagekit_initialization
+imagekit_ready = test_imagekit_initialization()
+if not imagekit_ready:
+    print("=" * 60)
+    print("WARNING: ImageKit not configured!")
+    print("Using Cloudinary as fallback (100MB limit, 25 credits only)")
+    print("To use ImageKit, ensure these env vars are set in Railway:")
+    print("  - IMAGEKIT_PRIVATE_KEY")
+    print("  - IMAGEKIT_PUBLIC_KEY")
+    print("  - IMAGEKIT_URL_ENDPOINT")
+    print("=" * 60)
 
 # Import the blueprint - use GitHub Actions version if configured
 use_github_actions = os.environ.get('USE_GITHUB_ACTIONS', 'false').lower() == 'true'

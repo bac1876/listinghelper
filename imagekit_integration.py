@@ -16,8 +16,18 @@ class ImageKitIntegration:
         self.public_key = os.environ.get('IMAGEKIT_PUBLIC_KEY')
         self.url_endpoint = os.environ.get('IMAGEKIT_URL_ENDPOINT')
         
-        if not all([self.private_key, self.public_key, self.url_endpoint]):
-            raise ValueError("Missing ImageKit credentials. Please set IMAGEKIT_PRIVATE_KEY, IMAGEKIT_PUBLIC_KEY, and IMAGEKIT_URL_ENDPOINT")
+        # Debug logging
+        missing = []
+        if not self.private_key:
+            missing.append('IMAGEKIT_PRIVATE_KEY')
+        if not self.public_key:
+            missing.append('IMAGEKIT_PUBLIC_KEY')
+        if not self.url_endpoint:
+            missing.append('IMAGEKIT_URL_ENDPOINT')
+            
+        if missing:
+            error_msg = f"Missing ImageKit credentials: {', '.join(missing)}. Please set these environment variables."
+            raise ValueError(error_msg)
         
         # ImageKit API endpoint
         self.api_base = "https://upload.imagekit.io/api/v1"
@@ -203,11 +213,27 @@ def get_imagekit():
     """Get or create ImageKit instance with lazy initialization"""
     global _imagekit_instance
     if _imagekit_instance is None:
+        # Debug: Log which environment variables are present
+        private_key = os.environ.get('IMAGEKIT_PRIVATE_KEY')
+        public_key = os.environ.get('IMAGEKIT_PUBLIC_KEY')
+        url_endpoint = os.environ.get('IMAGEKIT_URL_ENDPOINT')
+        
+        logger.info("ImageKit environment check:")
+        logger.info(f"  IMAGEKIT_PRIVATE_KEY: {'SET' if private_key else 'NOT SET'}")
+        logger.info(f"  IMAGEKIT_PUBLIC_KEY: {'SET' if public_key else 'NOT SET'}")
+        logger.info(f"  IMAGEKIT_URL_ENDPOINT: {url_endpoint if url_endpoint else 'NOT SET'}")
+        
+        if private_key:
+            logger.info(f"  Private key starts with: {private_key[:10]}...")
+        if public_key:
+            logger.info(f"  Public key starts with: {public_key[:10]}...")
+            
         try:
             _imagekit_instance = ImageKitIntegration()
             logger.info("ImageKit successfully initialized")
         except Exception as e:
             logger.warning(f"ImageKit not configured: {e}")
+            logger.warning("ImageKit initialization failed - will use Cloudinary as fallback")
             return None
     return _imagekit_instance
 
@@ -224,3 +250,37 @@ class LazyImageKit:
         return getattr(instance, name)
 
 imagekit = LazyImageKit()
+
+def test_imagekit_initialization():
+    """Test ImageKit initialization and return status"""
+    logger.info("Testing ImageKit initialization...")
+    
+    # Check environment variables
+    env_vars = {
+        'IMAGEKIT_PRIVATE_KEY': os.environ.get('IMAGEKIT_PRIVATE_KEY'),
+        'IMAGEKIT_PUBLIC_KEY': os.environ.get('IMAGEKIT_PUBLIC_KEY'),
+        'IMAGEKIT_URL_ENDPOINT': os.environ.get('IMAGEKIT_URL_ENDPOINT')
+    }
+    
+    logger.info("Environment variables check:")
+    for key, value in env_vars.items():
+        if value:
+            # Mask sensitive parts but show enough to verify format
+            if 'PRIVATE' in key:
+                masked = f"{value[:15]}..." if len(value) > 15 else "TOO_SHORT"
+            elif 'PUBLIC' in key:
+                masked = f"{value[:15]}..." if len(value) > 15 else "TOO_SHORT"
+            else:
+                masked = value  # URL endpoint is not sensitive
+            logger.info(f"  {key}: {masked}")
+        else:
+            logger.error(f"  {key}: NOT SET")
+    
+    # Try to initialize
+    instance = get_imagekit()
+    if instance:
+        logger.info("✓ ImageKit initialization successful!")
+        return True
+    else:
+        logger.error("✗ ImageKit initialization failed!")
+        return False

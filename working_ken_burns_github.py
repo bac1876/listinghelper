@@ -242,13 +242,20 @@ def compress_image(file_obj, filename, max_width=1920, max_height=1080, quality=
 
 @virtual_tour_bp.route('/health', methods=['GET'])
 def health_check():
-    """Check system health - GitHub Actions and storage"""
+    """Check system health - GitHub Actions, ImageKit, and storage"""
+    # Check ImageKit status
+    imagekit_instance = get_imagekit()
+    imagekit_configured = imagekit_instance is not None
+    
     health_status = {
         'status': 'healthy',
         'storage_writable': False,
         'storage_path': STORAGE_DIR,
         'github_actions_available': github_actions is not None,
-        'cloudinary_configured': bool(os.environ.get('CLOUDINARY_CLOUD_NAME'))
+        'cloudinary_configured': bool(os.environ.get('CLOUDINARY_CLOUD_NAME')),
+        'imagekit_configured': imagekit_configured,
+        'imagekit_endpoint': os.environ.get('IMAGEKIT_URL_ENDPOINT', 'NOT_SET'),
+        'primary_storage': 'ImageKit' if imagekit_configured else 'Cloudinary'
     }
     
     # Check storage
