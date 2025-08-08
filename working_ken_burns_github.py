@@ -19,8 +19,6 @@ logger = logging.getLogger(__name__)
 from imagekit_integration import get_imagekit
 from upload_to_imagekit import upload_files_to_imagekit, upload_video_to_imagekit, get_video_url_imagekit
 from github_actions_integration import GitHubActionsIntegration
-# Keep cloudinary import for backward compatibility during transition
-from upload_to_cloudinary import upload_files_to_cloudinary
 from PIL import Image
 import io
 
@@ -260,7 +258,7 @@ def env_check():
             env_vars[var] = "NOT_SET"
     
     # Check other important vars
-    other_vars = ['USE_GITHUB_ACTIONS', 'GITHUB_TOKEN', 'CLOUDINARY_CLOUD_NAME']
+    other_vars = ['USE_GITHUB_ACTIONS', 'GITHUB_TOKEN']
     for var in other_vars:
         value = os.environ.get(var)
         if value:
@@ -294,10 +292,9 @@ def health_check():
         'storage_writable': False,
         'storage_path': STORAGE_DIR,
         'github_actions_available': github_actions is not None,
-        'cloudinary_configured': bool(os.environ.get('CLOUDINARY_CLOUD_NAME')),
         'imagekit_configured': imagekit_configured,
         'imagekit_endpoint': os.environ.get('IMAGEKIT_URL_ENDPOINT', 'NOT_SET'),
-        'primary_storage': 'ImageKit' if imagekit_configured else 'Cloudinary'
+        'primary_storage': 'ImageKit' if imagekit_configured else 'NOT_CONFIGURED'
     }
     
     # Check storage
@@ -346,8 +343,7 @@ def upload_images():
                     'current_step': job.get('current_step', ''),
                     'video_available': job.get('video_available', False),
                     'virtual_tour_available': job.get('virtual_tour_available', False),
-                    'cloudinary_video': job.get('cloudinary_video', False),
-                    'images_processed': job.get('images_processed', 0),
+                                'images_processed': job.get('images_processed', 0),
                     'processing_time': job.get('processing_time', ''),
                     'files_generated': job.get('files_generated', {})
                 })
@@ -359,7 +355,6 @@ def upload_images():
             'current_step': 'Initializing',
             'video_available': False,
             'virtual_tour_available': False,
-            'cloudinary_video': False,
             'images_processed': 0,
             'files_generated': {}
         }
@@ -522,22 +517,26 @@ def upload_images():
         # If we have uploaded files but no URLs, upload them to Cloudinary first
         if use_github_actions and 'saved_files' in locals() and saved_files and not image_urls:
             try:
-                active_jobs[job_id]['current_step'] = 'Uploading images to Cloudinary for GitHub Actions'
+                active_jobs[job_id]['current_step'] = 'Uploading images to ImageKit for GitHub Actions'
                 active_jobs[job_id]['progress'] = 40
                 
-                # Upload files to Cloudinary
-                logger.info(f"Uploading {len(saved_files)} files to Cloudinary...")
+                # Upload files to ImageKit
+                logger.info(f"Uploading {len(saved_files)} files to ImageKit...")
                 for i, file in enumerate(saved_files):
                     logger.info(f"  Will upload file {i+1}: {os.path.basename(file)}")
                 
-                # Try ImageKit first, fall back to Cloudinary if not configured
+                # Use ImageKit for image uploads (required)
                 imagekit_instance = get_imagekit()
-                if imagekit_instance:
-                    logger.info("Using ImageKit for image uploads (no size limits!)")
-                    github_image_urls = upload_files_to_imagekit(saved_files, "/tours/images/")
-                else:
-                    logger.info("Using Cloudinary for image uploads")
-                    github_image_urls = upload_files_to_cloudinary(saved_files)
+                if not imagekit_instance:
+                    logger.error("ImageKit not configured! Cannot upload images.")
+                    logger.error("Please set IMAGEKIT_PRIVATE_KEY, IMAGEKIT_PUBLIC_KEY, and IMAGEKIT_URL_ENDPOINT")
+                    active_jobs[job_id]['status'] = 'error'
+                    active_jobs[job_id]['current_step'] = 'ImageKit not configured - cannot proceed'
+                    active_jobs[job_id]['error'] = 'ImageKit configuration missing'
+                    raise ValueError("ImageKit not configured. Please set environment variables.")
+                
+                logger.info("Using ImageKit for image uploads (no size limits!)")
+                github_image_urls = upload_files_to_imagekit(saved_files, "/tours/images/")
                 
                 if github_image_urls:
                     logger.info(f"Successfully uploaded {len(github_image_urls)} images")
@@ -546,13 +545,13 @@ def upload_images():
                     active_jobs[job_id]['current_step'] = f'Uploaded {len(github_image_urls)} images to cloud'
                     active_jobs[job_id]['progress'] = 50
                 else:
-                    error_msg = "Failed to upload images to Cloudinary - check CLOUDINARY credentials"
+                    error_msg = "Failed to upload images to ImageKit - check IMAGEKIT credentials"
                     logger.error(error_msg)
                     active_jobs[job_id]['current_step'] = error_msg
                     # Continue anyway - local video was created
                     
             except Exception as e:
-                error_msg = f"Error uploading to Cloudinary: {str(e)}"
+                error_msg = f"Error uploading to ImageKit: {str(e)}"
                 logger.error(error_msg)
                 active_jobs[job_id]['current_step'] = error_msg
                 github_image_urls = []
@@ -622,35 +621,7 @@ def upload_images():
                 logger.error(f"Error with GitHub Actions: {e}")
                 active_jobs[job_id]['current_step'] = f'GitHub Actions error: {str(e)}'
         
-        # Use Cloudinary as fallback
-        elif image_urls:
-            try:
-                active_jobs[job_id]['current_step'] = 'Creating video with Cloudinary'
-                active_jobs[job_id]['progress'] = 60
-                
-                cloudinary_result = generate_cloudinary_video(
-                    image_urls,
-                    property_details={
-                        'address': address,
-                        'city': city,
-                        'details1': details1,
-                        'details2': details2,
-                        'agent_name': agent_name,
-                        'agent_email': agent_email,
-                        'agent_phone': agent_phone,
-                        'brand_name': brand_name
-                    }
-                )
-                
-                if cloudinary_result.get('success'):
-                    active_jobs[job_id]['cloudinary_video'] = True
-                    active_jobs[job_id]['files_generated']['cloudinary_url'] = cloudinary_result['url']
-                    active_jobs[job_id]['progress'] = 80
-                    logger.info(f"Cloudinary video created: {cloudinary_result['url']}")
-                    
-            except Exception as e:
-                logger.error(f"Error with Cloudinary: {e}")
-                active_jobs[job_id]['current_step'] = f'Cloudinary error: {str(e)}'
+        # No fallback - ImageKit is required
         
         # Create virtual tour HTML
         try:
@@ -680,7 +651,7 @@ def upload_images():
             active_jobs[job_id]['progress'] = 75
             active_jobs[job_id]['current_step'] = 'Rendering high-quality video with Remotion'
             active_jobs[job_id]['processing_time'] = f"{processing_time:.2f} seconds"
-            logger.info(f"Job {job_id} - GitHub Actions triggered, starting Cloudinary polling")
+            logger.info(f"Job {job_id} - GitHub Actions triggered, starting video polling")
             
             # Start background polling for GitHub Actions and ImageKit video
             github_job_id = active_jobs[job_id]['github_job_id']
@@ -697,7 +668,7 @@ def upload_images():
             'status': active_jobs[job_id]['status'],  # Return actual status, not always 'completed'
             'video_available': active_jobs[job_id]['video_available'],
             'virtual_tour_available': active_jobs[job_id]['virtual_tour_available'],
-            'cloudinary_video': active_jobs[job_id]['cloudinary_video'],
+            'video_available': active_jobs[job_id]['video_available'],
             'github_job_id': active_jobs[job_id].get('github_job_id'),
             'images_processed': active_jobs[job_id]['images_processed'],
             'processing_time': active_jobs[job_id]['processing_time'],
@@ -958,7 +929,6 @@ def get_job_status(job_id):
         'current_step': job.get('current_step', ''),
         'video_available': job.get('video_available', False),
         'virtual_tour_available': job.get('virtual_tour_available', False),
-        'cloudinary_video': job.get('cloudinary_video', False),
         'images_processed': job.get('images_processed', 0),
         'processing_time': job.get('processing_time', ''),
         'error': job.get('error', None),
