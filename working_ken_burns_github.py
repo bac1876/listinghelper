@@ -15,9 +15,11 @@ import requests
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# FFmpeg removed - only using GitHub Actions + Remotion or Cloudinary
-from cloudinary_integration import generate_cloudinary_video
+# Using ImageKit instead of Cloudinary (no 100MB limit!)
+from imagekit_integration import imagekit
+from upload_to_imagekit import upload_files_to_imagekit, upload_video_to_imagekit, get_video_url_imagekit
 from github_actions_integration import GitHubActionsIntegration
+# Keep cloudinary import for backward compatibility during transition
 from upload_to_cloudinary import upload_files_to_cloudinary
 from PIL import Image
 import io
@@ -32,13 +34,13 @@ if not os.path.exists(STORAGE_DIR):
 # In-memory job tracking with detailed status
 active_jobs = {}
 
-def start_cloudinary_polling(job_id, github_job_id):
-    """Start a background thread to poll Cloudinary for the completed video"""
-    def poll_cloudinary():
-        cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dib3kbifc')
-        video_url = f"https://res.cloudinary.com/{cloud_name}/video/upload/tours/{github_job_id}.mp4"
+def start_imagekit_polling(job_id, github_job_id):
+    """Start a background thread to poll ImageKit for the completed video"""
+    def poll_imagekit():
+        # Get ImageKit URL for the video
+        video_url = get_video_url_imagekit(github_job_id)
         
-        logger.info(f"Starting Cloudinary polling for job {job_id}")
+        logger.info(f"Starting ImageKit polling for job {job_id}")
         logger.info(f"Checking URL: {video_url}")
         
         max_attempts = 30  # Poll for up to 5 minutes (30 * 10 seconds)
@@ -61,20 +63,20 @@ def start_cloudinary_polling(job_id, github_job_id):
                 
                 if response.status_code == 200:
                     # Video found!
-                    logger.info(f"Video found on Cloudinary for job {job_id}!")
+                    logger.info(f"Video found on ImageKit for job {job_id}!")
                     
                     # Update job status
                     active_jobs[job_id]['status'] = 'completed'
                     active_jobs[job_id]['progress'] = 100
                     active_jobs[job_id]['current_step'] = 'Video ready!'
-                    active_jobs[job_id]['cloudinary_video'] = True
+                    active_jobs[job_id]['imagekit_video'] = True
                     active_jobs[job_id]['video_available'] = True
                     
                     if 'files_generated' not in active_jobs[job_id]:
                         active_jobs[job_id]['files_generated'] = {}
-                    active_jobs[job_id]['files_generated']['cloudinary_url'] = video_url
+                    active_jobs[job_id]['files_generated']['imagekit_url'] = video_url
                     
-                    logger.info(f"Job {job_id} completed successfully with Cloudinary URL: {video_url}")
+                    logger.info(f"Job {job_id} completed successfully with ImageKit URL: {video_url}")
                     return
                 
                 elif response.status_code == 404:
@@ -96,9 +98,9 @@ def start_cloudinary_polling(job_id, github_job_id):
         active_jobs[job_id]['progress'] = 100
     
     # Start polling in background thread
-    polling_thread = threading.Thread(target=poll_cloudinary, daemon=True)
+    polling_thread = threading.Thread(target=poll_imagekit, daemon=True)
     polling_thread.start()
-    logger.info(f"Started polling thread for job {job_id}")
+    logger.info(f"Started ImageKit polling thread for job {job_id}")
 
 # Initialize GitHub Actions integration if configured
 github_actions = None
@@ -447,10 +449,16 @@ def upload_images():
                 for i, file in enumerate(saved_files):
                     logger.info(f"  Will upload file {i+1}: {os.path.basename(file)}")
                 
-                github_image_urls = upload_files_to_cloudinary(saved_files)
+                # Try ImageKit first, fall back to Cloudinary if not configured
+                if imagekit:
+                    logger.info("Using ImageKit for image uploads (no size limits!)")
+                    github_image_urls = upload_files_to_imagekit(saved_files, "/tours/images/")
+                else:
+                    logger.info("Using Cloudinary for image uploads")
+                    github_image_urls = upload_files_to_cloudinary(saved_files)
                 
                 if github_image_urls:
-                    logger.info(f"Successfully uploaded {len(github_image_urls)} images to Cloudinary")
+                    logger.info(f"Successfully uploaded {len(github_image_urls)} images")
                     for i, url in enumerate(github_image_urls):
                         logger.info(f"  Uploaded URL {i+1}: {url}")
                     active_jobs[job_id]['current_step'] = f'Uploaded {len(github_image_urls)} images to cloud'
@@ -592,9 +600,9 @@ def upload_images():
             active_jobs[job_id]['processing_time'] = f"{processing_time:.2f} seconds"
             logger.info(f"Job {job_id} - GitHub Actions triggered, starting Cloudinary polling")
             
-            # Start background polling for Cloudinary video
+            # Start background polling for ImageKit video
             github_job_id = active_jobs[job_id]['github_job_id']
-            start_cloudinary_polling(job_id, github_job_id)
+            start_imagekit_polling(job_id, github_job_id)
         else:
             # Mark as completed even if GitHub Actions didn't run
             active_jobs[job_id]['status'] = 'completed'
@@ -636,11 +644,11 @@ def download_video(job_id):
         
         job = active_jobs[job_id]
         
-        # Check if video is on Cloudinary (GitHub Actions workflow)
-        if job.get('cloudinary_video') and job.get('files_generated', {}).get('cloudinary_url'):
-            cloudinary_url = job['files_generated']['cloudinary_url']
-            # Redirect to Cloudinary URL for download
-            return redirect(cloudinary_url)
+        # Check if video is on ImageKit (GitHub Actions workflow)
+        if job.get('imagekit_video') and job.get('files_generated', {}).get('imagekit_url'):
+            imagekit_url = job['files_generated']['imagekit_url']
+            # Redirect to ImageKit URL for download
+            return redirect(imagekit_url)
         
         # Fallback: If we have a GitHub job ID but webhook hasn't updated yet
         if job.get('github_job_id'):
@@ -895,9 +903,9 @@ def generate_virtual_tour_html(job_id, job_data):
     """Generate HTML for virtual tour viewer"""
     video_url = ""
     
-    # Prefer Cloudinary URL, then local video
-    if job_data.get('cloudinary_video') and 'cloudinary_url' in job_data['files_generated']:
-        video_url = job_data['files_generated']['cloudinary_url']
+    # Prefer ImageKit URL, then local video
+    if job_data.get('imagekit_video') and 'imagekit_url' in job_data['files_generated']:
+        video_url = job_data['files_generated']['imagekit_url']
     elif job_data.get('video_available'):
         video_url = f"/api/virtual-tour/download/{job_id}"
     
