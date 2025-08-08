@@ -450,7 +450,8 @@ def upload_images():
                     logger.info(f"  Will upload file {i+1}: {os.path.basename(file)}")
                 
                 # Try ImageKit first, fall back to Cloudinary if not configured
-                if imagekit:
+                imagekit_instance = get_imagekit()
+                if imagekit_instance:
                     logger.info("Using ImageKit for image uploads (no size limits!)")
                     github_image_urls = upload_files_to_imagekit(saved_files, "/tours/images/")
                 else:
