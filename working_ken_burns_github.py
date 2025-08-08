@@ -717,9 +717,9 @@ def download_video(job_id):
                 import requests
                 response = requests.head(video_url, timeout=5)
                 if response.status_code == 200:
-                    logger.info(f"Video found on Cloudinary (fallback) for job {job_id}")
-                    # Update job status
-                    job['cloudinary_video'] = True
+                    logger.info(f"Video found on ImageKit for job {job_id}")
+                    # Update job status  
+                    job['imagekit_video'] = True
                     job['video_available'] = True
                     if 'files_generated' not in job:
                         job['files_generated'] = {}
