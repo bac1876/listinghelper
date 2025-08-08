@@ -1,12 +1,11 @@
 """
-ImageKit integration for video storage and delivery
+ImageKit integration using official SDK
 Replaces Cloudinary to bypass 100MB limit and credit restrictions
 """
 import os
 import logging
 from typing import Optional, Dict, Any
-import requests
-import base64
+from imagekitio import ImageKit
 
 logger = logging.getLogger(__name__)
 
@@ -29,18 +28,18 @@ class ImageKitIntegration:
             error_msg = f"Missing ImageKit credentials: {', '.join(missing)}. Please set these environment variables."
             raise ValueError(error_msg)
         
-        # ImageKit API endpoint
-        self.api_base = "https://upload.imagekit.io/api/v1"
+        # Initialize ImageKit SDK
+        self.imagekit = ImageKit(
+            private_key=self.private_key,
+            public_key=self.public_key,
+            url_endpoint=self.url_endpoint
+        )
         
-        # Create auth header (private key needs to be base64 encoded with colon)
-        auth_string = f"{self.private_key}:"
-        self.auth_header = base64.b64encode(auth_string.encode()).decode()
-        
-        logger.info(f"ImageKit integration initialized with endpoint: {self.url_endpoint}")
+        logger.info(f"ImageKit SDK initialized with endpoint: {self.url_endpoint}")
     
     def upload_file(self, file_path: str, file_name: str, folder: str = "/tours/") -> Dict[str, Any]:
         """
-        Upload a file to ImageKit
+        Upload a file to ImageKit using the official SDK
         
         Args:
             file_path: Path to the file to upload
@@ -51,64 +50,37 @@ class ImageKitIntegration:
             Dict with upload response including URL
         """
         try:
-            # Read file
-            with open(file_path, 'rb') as f:
-                file_data = f.read()
-            
-            # Encode to base64
-            file_base64 = base64.b64encode(file_data).decode()
-            
-            # Determine MIME type based on file extension
-            mime_type = 'image/jpeg'  # Default
-            if file_name.lower().endswith('.mp4'):
-                mime_type = 'video/mp4'
-            elif file_name.lower().endswith('.png'):
-                mime_type = 'image/png'
-            elif file_name.lower().endswith('.jpg') or file_name.lower().endswith('.jpeg'):
-                mime_type = 'image/jpeg'
-            elif file_name.lower().endswith('.gif'):
-                mime_type = 'image/gif'
-            elif file_name.lower().endswith('.webp'):
-                mime_type = 'image/webp'
-            
-            # Prepare upload data with proper data URI format
-            upload_data = {
-                'file': f'data:{mime_type};base64,{file_base64}',
-                'fileName': file_name,
-                'folder': folder,
-                'useUniqueFileName': False  # Use our job ID as filename
-            }
-            
-            # Headers
-            headers = {
-                'Authorization': f'Basic {self.auth_header}'
-            }
-            
-            # Upload to ImageKit
             logger.info(f"Uploading {file_name} to ImageKit folder {folder}")
-            response = requests.post(
-                f"{self.api_base}/files/upload",
-                json=upload_data,
-                headers=headers,
-                timeout=300  # 5 minute timeout for large videos
+            
+            # Upload using SDK
+            result = self.imagekit.upload_file(
+                file=open(file_path, "rb"),
+                file_name=file_name,
+                options={
+                    "folder": folder,
+                    "use_unique_file_name": False,
+                    "response_fields": ["url", "name", "size", "fileId"]
+                }
             )
             
-            if response.status_code == 200:
-                result = response.json()
-                logger.info(f"Successfully uploaded to ImageKit: {result.get('url')}")
+            # Check if upload was successful
+            if result and result.url:
+                logger.info(f"Successfully uploaded to ImageKit: {result.url}")
                 return {
                     'success': True,
-                    'url': result.get('url'),
-                    'fileId': result.get('fileId'),
-                    'name': result.get('name'),
-                    'size': result.get('size')
+                    'url': result.url,
+                    'fileId': result.file_id,
+                    'name': result.name,
+                    'size': result.size
                 }
             else:
-                logger.error(f"ImageKit upload failed: {response.status_code} - {response.text}")
+                error_msg = "Upload failed - no URL returned"
+                if hasattr(result, 'error'):
+                    error_msg = f"Upload failed: {result.error}"
+                logger.error(error_msg)
                 return {
                     'success': False,
-                    'error': f"Upload failed: {response.status_code}",
-                    'details': response.text
+                    'error': error_msg
                 }
                 
         except Exception as e:
@@ -120,7 +92,7 @@ class ImageKitIntegration:
     
     def upload_from_url(self, source_url: str, file_name: str, folder: str = "/tours/") -> Dict[str, Any]:
         """
-        Upload a file to ImageKit from a URL
+        Upload a file to ImageKit from a URL using the official SDK
         
         Args:
             source_url: URL of the file to upload
@@ -131,38 +103,32 @@ class ImageKitIntegration:
             Dict with upload response
         """
         try:
-            upload_data = {
-                'file': source_url,
-                'fileName': file_name,
-                'folder': folder,
-                'useUniqueFileName': False
-            }
-            
-            headers = {
-                'Authorization': f'Basic {self.auth_header}'
-            }
-            
             logger.info(f"Uploading from URL {source_url} to ImageKit")
-            response = requests.post(
-                f"{self.api_base}/files/upload",
-                json=upload_data,
-                headers=headers,
-                timeout=300
+            
+            result = self.imagekit.upload_file(
+                file=source_url,
+                file_name=file_name,
+                options={
+                    "folder": folder,
+                    "use_unique_file_name": False
+                }
             )
             
-            if response.status_code == 200:
-                result = response.json()
-                logger.info(f"Successfully uploaded from URL to ImageKit: {result.get('url')}")
+            if result and result.url:
+                logger.info(f"Successfully uploaded from URL to ImageKit: {result.url}")
                 return {
                     'success': True,
-                    'url': result.get('url'),
-                    'fileId': result.get('fileId')
+                    'url': result.url,
+                    'fileId': result.file_id
                 }
             else:
-                logger.error(f"ImageKit URL upload failed: {response.status_code}")
+                error_msg = "Upload from URL failed"
+                if hasattr(result, 'error'):
+                    error_msg = f"Upload failed: {result.error}"
+                logger.error(error_msg)
                 return {
                     'success': False,
-                    'error': f"Upload failed: {response.status_code}"
+                    'error': error_msg
                 }
                 
         except Exception as e:
@@ -195,7 +161,7 @@ class ImageKitIntegration:
     
     def delete_file(self, file_id: str) -> bool:
         """
-        Delete a file from ImageKit
+        Delete a file from ImageKit using the official SDK
         
         Args:
             file_id: ImageKit file ID
@@ -204,16 +170,8 @@ class ImageKitIntegration:
             True if successful, False otherwise
         """
         try:
-            headers = {
-                'Authorization': f'Basic {self.auth_header}'
-            }
-            
-            response = requests.delete(
-                f"{self.api_base}/files/{file_id}",
-                headers=headers
-            )
-            
-            return response.status_code == 204
+            result = self.imagekit.delete_file(file_id)
+            return True
             
         except Exception as e:
             logger.error(f"Error deleting from ImageKit: {e}")
