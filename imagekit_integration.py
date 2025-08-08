@@ -6,6 +6,7 @@ import os
 import logging
 from typing import Optional, Dict, Any
 from imagekitio import ImageKit
+from imagekitio.models.UploadFileRequestOptions import UploadFileRequestOptions
 
 logger = logging.getLogger(__name__)
 
@@ -52,62 +53,46 @@ class ImageKitIntegration:
         try:
             logger.info(f"Uploading {file_name} to ImageKit folder {folder}")
             
-            # Upload using SDK
-            result = self.imagekit.upload_file(
-                file=open(file_path, "rb"),
-                file_name=file_name,
+            # Create options object
+            options = UploadFileRequestOptions(
                 folder=folder,
                 use_unique_file_name=False,
                 response_fields=["url", "name", "size", "fileId"]
             )
             
-            # Check if upload was successful
-            # The SDK returns a dict with response details
-            if result:
-                # Handle both dict and object responses
-                if isinstance(result, dict):
-                    if 'url' in result:
-                        logger.info(f"Successfully uploaded to ImageKit: {result['url']}")
-                        return {
-                            'success': True,
-                            'url': result['url'],
-                            'fileId': result.get('fileId', ''),
-                            'name': result.get('name', ''),
-                            'size': result.get('size', 0)
-                        }
-                    elif 'error' in result:
-                        error_msg = f"Upload failed: {result['error']}"
-                        logger.error(error_msg)
-                        return {
-                            'success': False,
-                            'error': error_msg
-                        }
-                else:
-                    # Handle object response (if SDK returns object)
-                    if hasattr(result, 'url') and result.url:
-                        logger.info(f"Successfully uploaded to ImageKit: {result.url}")
-                        return {
-                            'success': True,
-                            'url': result.url,
-                            'fileId': getattr(result, 'file_id', ''),
-                            'name': getattr(result, 'name', ''),
-                            'size': getattr(result, 'size', 0)
-                        }
-                    elif hasattr(result, 'error'):
-                        error_msg = f"Upload failed: {result.error}"
-                        logger.error(error_msg)
-                        return {
-                            'success': False,
-                            'error': error_msg
-                        }
+            # Upload using SDK
+            result = self.imagekit.upload_file(
+                file=open(file_path, "rb"),
+                file_name=file_name,
+                options=options
+            )
             
-            # If we get here, something went wrong
-            error_msg = "Upload failed - unexpected response format"
-            logger.error(f"{error_msg}: {result}")
-            return {
-                'success': False,
-                'error': error_msg
-            }
+            # Check if upload was successful
+            # The SDK returns an UploadFileResult object
+            if result and hasattr(result, 'url') and result.url:
+                logger.info(f"Successfully uploaded to ImageKit: {result.url}")
+                return {
+                    'success': True,
+                    'url': result.url,
+                    'fileId': getattr(result, 'file_id', ''),
+                    'name': getattr(result, 'name', ''),
+                    'size': getattr(result, 'size', 0)
+                }
+            elif hasattr(result, 'error') and result.error:
+                error_msg = f"Upload failed: {result.error}"
+                logger.error(error_msg)
+                return {
+                    'success': False,
+                    'error': error_msg
+                }
+            else:
+                # If we get here, something went wrong
+                error_msg = "Upload failed - unexpected response"
+                logger.error(f"{error_msg}: {result}")
+                return {
+                    'success': False,
+                    'error': error_msg
+                }
                 
         except Exception as e:
             logger.error(f"Error uploading to ImageKit: {e}")
@@ -131,52 +116,41 @@ class ImageKitIntegration:
         try:
             logger.info(f"Uploading from URL {source_url} to ImageKit")
             
-            result = self.imagekit.upload_file(
-                file=source_url,
-                file_name=file_name,
+            # Create options object
+            options = UploadFileRequestOptions(
                 folder=folder,
                 use_unique_file_name=False
             )
             
-            if result:
-                # Handle both dict and object responses
-                if isinstance(result, dict):
-                    if 'url' in result:
-                        logger.info(f"Successfully uploaded from URL to ImageKit: {result['url']}")
-                        return {
-                            'success': True,
-                            'url': result['url'],
-                            'fileId': result.get('fileId', '')
-                        }
-                    elif 'error' in result:
-                        error_msg = f"Upload failed: {result['error']}"
-                        logger.error(error_msg)
-                        return {
-                            'success': False,
-                            'error': error_msg
-                        }
-                else:
-                    if hasattr(result, 'url') and result.url:
-                        logger.info(f"Successfully uploaded from URL to ImageKit: {result.url}")
-                        return {
-                            'success': True,
-                            'url': result.url,
-                            'fileId': getattr(result, 'file_id', '')
-                        }
-                    elif hasattr(result, 'error'):
-                        error_msg = f"Upload failed: {result.error}"
-                        logger.error(error_msg)
-                        return {
-                            'success': False,
-                            'error': error_msg
-                        }
+            result = self.imagekit.upload_file(
+                file=source_url,
+                file_name=file_name,
+                options=options
+            )
             
-            error_msg = "Upload from URL failed - unexpected response"
-            logger.error(f"{error_msg}: {result}")
-            return {
-                'success': False,
-                'error': error_msg
-            }
+            # Check if upload was successful
+            # The SDK returns an UploadFileResult object
+            if result and hasattr(result, 'url') and result.url:
+                logger.info(f"Successfully uploaded from URL to ImageKit: {result.url}")
+                return {
+                    'success': True,
+                    'url': result.url,
+                    'fileId': getattr(result, 'file_id', '')
+                }
+            elif hasattr(result, 'error') and result.error:
+                error_msg = f"Upload failed: {result.error}"
+                logger.error(error_msg)
+                return {
+                    'success': False,
+                    'error': error_msg
+                }
+            else:
+                error_msg = "Upload from URL failed - unexpected response"
+                logger.error(f"{error_msg}: {result}")
+                return {
+                    'success': False,
+                    'error': error_msg
+                }
                 
         except Exception as e:
             logger.error(f"Error uploading URL to ImageKit: {e}")
