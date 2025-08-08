@@ -40,9 +40,34 @@ jobs:
     - name: Install dependencies
       working-directory: ./remotion-tours
       run: |
-        npm ci
+        echo "Installing dependencies..."
+        echo "Node version: $(node --version)"
+        echo "NPM version: $(npm --version)"
+        
+        # Check if package-lock.json exists
+        if [ ! -f "package-lock.json" ]; then
+          echo "ERROR: package-lock.json not found!"
+          echo "Running npm install instead of npm ci..."
+          npm install
+        else
+          echo "package-lock.json found, running npm ci..."
+          npm ci || {
+            echo "npm ci failed, trying npm install..."
+            rm -rf node_modules package-lock.json
+            npm install
+          }
+        fi
+        
         # Install additional dependencies for GitHub Actions
-        npm install -g @remotion/cli
+        echo "Installing Remotion CLI globally..."
+        npm install -g @remotion/cli || {
+          echo "Failed to install Remotion CLI globally, installing locally..."
+          npm install @remotion/cli
+        }
+        
+        # Verify Remotion is installed
+        echo "Verifying Remotion installation..."
+        npx remotion --version || echo "WARNING: Remotion CLI not accessible"
     
     - name: Parse inputs
       id: parse
@@ -82,37 +107,77 @@ jobs:
       run: |
         echo "Starting Remotion render..."
         
+        # Debug: Check current directory and files
+        echo "Current directory: $(pwd)"
+        echo "Directory contents:"
+        ls -la
+        
+        # Verify src files exist
+        echo "Checking src directory:"
+        ls -la src/ || echo "ERROR: src directory not found!"
+        
         # Log the number of images received
         echo "Images input: ${{ inputs.images }}"
-        echo "Number of images: $(node -e "console.log(JSON.parse(process.env.REMOTION_IMAGES).length)")"
+        echo "Number of images: $(node -e "console.log(JSON.parse(process.env.REMOTION_IMAGES).length)" 2>/dev/null || echo "ERROR parsing images")"
         
         # Log each image URL
         node -e "
-          const images = JSON.parse(process.env.REMOTION_IMAGES);
-          console.log('Image URLs received:');
-          images.forEach((url, index) => {
-            console.log(\`  Image \${index + 1}: \${url}\`);
-          });
-        "
+          try {
+            const images = JSON.parse(process.env.REMOTION_IMAGES);
+            console.log('Image URLs received:');
+            images.forEach((url, index) => {
+              console.log(\`  Image \${index + 1}: \${url}\`);
+            });
+          } catch (e) {
+            console.error('ERROR parsing images:', e.message);
+            process.exit(1);
+          }
+        " || exit 1
         
         # Create output directory
         mkdir -p out
         
-        # Render the video
-        npx remotion render RealEstateTour out/${{ inputs.jobId }}.mp4 \
-          --props="$(node -e "
+        # Generate props JSON file for debugging
+        node -e "
+          try {
             const images = JSON.parse(process.env.REMOTION_IMAGES);
             const propertyDetails = JSON.parse(process.env.REMOTION_PROPERTY_DETAILS);
             const settings = JSON.parse(process.env.REMOTION_SETTINGS);
-            console.log(JSON.stringify({ images, propertyDetails, settings }));
-          ")"
+            const props = { images, propertyDetails, settings };
+            require('fs').writeFileSync('props.json', JSON.stringify(props, null, 2));
+            console.log('Props saved to props.json');
+            console.log(JSON.stringify(props));
+          } catch (e) {
+            console.error('ERROR generating props:', e.message);
+            process.exit(1);
+          }
+        " > props_output.json || exit 1
+        
+        echo "Props JSON:"
+        cat props.json || echo "ERROR: props.json not created"
+        
+        # Render the video with error handling
+        echo "Executing Remotion render command..."
+        npx remotion render RealEstateTour out/${{ inputs.jobId }}.mp4 \
+          --props="$(cat props_output.json)" \
+          --log=verbose \
+          2>&1 | tee render.log || {
+            echo "ERROR: Remotion render failed!"
+            echo "Last 50 lines of render log:"
+            tail -50 render.log
+            exit 1
+          }
         
         # Check if video was created
         if [ -f "out/${{ inputs.jobId }}.mp4" ]; then
           echo "Video rendered successfully!"
+          VIDEO_SIZE=$(stat -c%s "out/${{ inputs.jobId }}.mp4" 2>/dev/null || stat -f%z "out/${{ inputs.jobId }}.mp4" 2>/dev/null || echo "0")
+          echo "Video size: ${VIDEO_SIZE} bytes"
           echo "VIDEO_PATH=out/${{ inputs.jobId }}.mp4" >> $GITHUB_ENV
         else
-          echo "Error: Video file not found!"
+          echo "ERROR: Video file not found after render!"
+          echo "Directory contents:"
+          ls -la out/
           exit 1
         fi
     
@@ -125,9 +190,30 @@ jobs:
         VIDEO_PATH: ${{ env.VIDEO_PATH }}
         JOB_ID: ${{ inputs.jobId }}
       run: |
-        echo "Uploading video to ImageKit (no size limits!)..."
+        echo "Uploading video to ImageKit..."
         echo "Current directory: $(pwd)"
         echo "Video path: ${VIDEO_PATH}"
+        
+        # Verify environment variables
+        if [ -z "${IMAGEKIT_PRIVATE_KEY}" ]; then
+          echo "ERROR: IMAGEKIT_PRIVATE_KEY is not set!"
+          echo "Please add IMAGEKIT_PRIVATE_KEY to GitHub Secrets"
+          exit 1
+        fi
+        
+        if [ -z "${IMAGEKIT_PUBLIC_KEY}" ]; then
+          echo "ERROR: IMAGEKIT_PUBLIC_KEY is not set!"
+          echo "Please add IMAGEKIT_PUBLIC_KEY to GitHub Secrets"
+          exit 1
+        fi
+        
+        if [ -z "${IMAGEKIT_URL_ENDPOINT}" ]; then
+          echo "ERROR: IMAGEKIT_URL_ENDPOINT is not set!"
+          echo "Please add IMAGEKIT_URL_ENDPOINT to GitHub Secrets"
+          exit 1
+        fi
+        
+        echo "ImageKit credentials are configured (values hidden for security)"
         
         # Verify video file exists and has content
         if [ ! -f "${VIDEO_PATH}" ]; then
@@ -137,7 +223,7 @@ jobs:
           exit 1
         fi
         
-        VIDEO_SIZE=$(stat -c%s "${VIDEO_PATH}" 2>/dev/null || stat -f%z "${VIDEO_PATH}" 2>/dev/null)
+        VIDEO_SIZE=$(stat -c%s "${VIDEO_PATH}" 2>/dev/null || stat -f%z "${VIDEO_PATH}" 2>/dev/null || echo "0")
         echo "Video file size: ${VIDEO_SIZE} bytes"
         VIDEO_SIZE_MB=$((VIDEO_SIZE / 1048576))
         echo "Video file size: ${VIDEO_SIZE_MB} MB"
@@ -147,8 +233,13 @@ jobs:
           exit 1
         fi
         
-        # Install imagekit SDK
-        npm install imagekit
+        # Install imagekit SDK with error handling
+        echo "Installing ImageKit SDK..."
+        npm install imagekit || {
+          echo "ERROR: Failed to install ImageKit SDK"
+          echo "Trying with --force flag..."
+          npm install imagekit --force || exit 1
+        }
         
         # Create and run upload script
         cat > upload.js << 'EOF'
@@ -259,6 +350,15 @@ jobs:
         name: render-result-${{ inputs.jobId }}
         path: result.json
         retention-days: 7
+    
+    - name: Upload video as artifact (backup)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: video-${{ inputs.jobId }}
+        path: remotion-tours/out/${{ inputs.jobId }}.mp4
+        retention-days: 7
+      continue-on-error: true
     
     - name: Notify completion (webhook)
       if: always()
