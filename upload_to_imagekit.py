@@ -5,7 +5,7 @@ No size limits, better free tier
 import os
 import logging
 from typing import List, Optional
-from imagekit_integration import imagekit
+from imagekit_integration import get_imagekit
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +20,7 @@ def upload_files_to_imagekit(file_paths: List[str], folder: str = "/tours/temp/"
     Returns:
         List of ImageKit URLs for the uploaded files
     """
+    imagekit = get_imagekit()
     if not imagekit:
         logger.error("ImageKit not configured")
         return []
@@ -62,6 +63,7 @@ def upload_video_to_imagekit(video_path: str, job_id: str) -> Optional[str]:
     Returns:
         ImageKit URL of the uploaded video, or None if failed
     """
+    imagekit = get_imagekit()
     if not imagekit:
         logger.error("ImageKit not configured")
         return None
@@ -95,6 +97,7 @@ def get_video_url_imagekit(job_id: str) -> str:
     Returns:
         ImageKit URL for the video
     """
+    imagekit = get_imagekit()
     if not imagekit:
         return ""
     

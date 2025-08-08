@@ -196,9 +196,31 @@ class ImageKitIntegration:
             logger.error(f"Error deleting from ImageKit: {e}")
             return False
 
-# Initialize singleton
-imagekit = None
-try:
-    imagekit = ImageKitIntegration()
-except Exception as e:
-    logger.warning(f"ImageKit not configured: {e}")
+# Lazy initialization - will be initialized when first used
+_imagekit_instance = None
+
+def get_imagekit():
+    """Get or create ImageKit instance with lazy initialization"""
+    global _imagekit_instance
+    if _imagekit_instance is None:
+        try:
+            _imagekit_instance = ImageKitIntegration()
+            logger.info("ImageKit successfully initialized")
+        except Exception as e:
+            logger.warning(f"ImageKit not configured: {e}")
+            return None
+    return _imagekit_instance
+
+# For backward compatibility, create a property that initializes on first access
+class LazyImageKit:
+    @property
+    def instance(self):
+        return get_imagekit()
+    
+    def __getattr__(self, name):
+        instance = self.instance
+        if instance is None:
+            raise RuntimeError("ImageKit not configured. Please set IMAGEKIT_PRIVATE_KEY, IMAGEKIT_PUBLIC_KEY, and IMAGEKIT_URL_ENDPOINT")
+        return getattr(instance, name)
+
+imagekit = LazyImageKit()

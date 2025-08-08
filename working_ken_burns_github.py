@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Using ImageKit instead of Cloudinary (no 100MB limit!)
-from imagekit_integration import imagekit
+from imagekit_integration import get_imagekit
 from upload_to_imagekit import upload_files_to_imagekit, upload_video_to_imagekit, get_video_url_imagekit
 from github_actions_integration import GitHubActionsIntegration
 # Keep cloudinary import for backward compatibility during transition

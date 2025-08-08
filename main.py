@@ -7,6 +7,14 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Initialize ImageKit after loading env vars
+from imagekit_integration import get_imagekit
+imagekit = get_imagekit()
+if imagekit:
+    print(f"ImageKit initialized successfully")
+else:
+    print("WARNING: ImageKit not configured. Video generation may fail.")
+
 # Import the blueprint - use GitHub Actions version if configured
 use_github_actions = os.environ.get('USE_GITHUB_ACTIONS', 'false').lower() == 'true'
 if use_github_actions and all([os.environ.get('GITHUB_TOKEN'), os.environ.get('GITHUB_OWNER'), os.environ.get('GITHUB_REPO')]):
