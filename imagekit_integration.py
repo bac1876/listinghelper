@@ -115,115 +115,47 @@ class ImageKitIntegration:
         try:
             logger.info(f"Uploading {file_name} to ImageKit folder {folder}")
             
-            # Try multiple parameter formats for SDK compatibility
-            result = None
-            last_error = None
-            
-            # Approach 1: Use UploadFileRequestOptions object
-            try:
-                logger.info("Trying UploadFileRequestOptions approach...")
-                if UploadFileRequestOptions is None:
-                    raise ImportError("UploadFileRequestOptions not available")
-                    
-                options = UploadFileRequestOptions(
-                    folder=folder,
-                    use_unique_file_name=False,
-                    response_fields=["url", "name", "size", "fileId"]
-                )
-                result = self.imagekit.upload_file(
-                    file=open(file_path, "rb"),
-                    file_name=file_name,
-                    options=options
-                )
-                logger.info("✓ UploadFileRequestOptions approach succeeded")
-            except Exception as e1:
-                last_error = e1
-                logger.warning(f"UploadFileRequestOptions approach failed: {e1}")
-                
-                # Approach 2: Use direct parameters (older SDK versions)
-                try:
-                    logger.info("Trying direct parameters approach...")
-                    result = self.imagekit.upload_file(
-                        file=open(file_path, "rb"),
-                        file_name=file_name,
+            # Use the simplest approach that works
+            with open(file_path, "rb") as file_obj:
+                if UploadFileRequestOptions is not None and folder != "/tours/":
+                    # Use folder option if available and needed
+                    options = UploadFileRequestOptions(
                         folder=folder,
                         use_unique_file_name=False
                     )
-                    logger.info("✓ Direct parameters approach succeeded")
-                except Exception as e2:
-                    last_error = e2
-                    logger.warning(f"Direct parameters approach failed: {e2}")
-                    
-                    # Approach 3: Use options dict (fallback)
-                    try:
-                        logger.info("Trying options dict approach...")
-                        result = self.imagekit.upload_file(
-                            file=open(file_path, "rb"),
-                            file_name=file_name,
-                            options={
-                                "folder": folder,
-                                "use_unique_file_name": False
-                            }
-                        )
-                        logger.info("✓ Options dict approach succeeded")
-                    except Exception as e3:
-                        last_error = e3
-                        logger.error(f"All upload approaches failed. Last error: {e3}")
-                        raise e3
+                    result = self.imagekit.upload_file(
+                        file=file_obj,
+                        file_name=file_name,
+                        options=options
+                    )
+                else:
+                    # Simple upload without folder
+                    result = self.imagekit.upload_file(
+                        file=file_obj,
+                        file_name=file_name
+                    )
             
-            # Check if upload was successful - handle both dict and object responses
+            # Check if upload was successful - SDK returns UploadFileResult object
             logger.info(f"Upload result type: {type(result)}")
-            if hasattr(result, '__dict__'):
-                logger.info(f"Result attributes: {result.__dict__}")
             
-            # Handle object response (UploadFileResult)
-            if hasattr(result, 'url'):
-                url = getattr(result, 'url', None)
-                if url:
-                    logger.info(f"Successfully uploaded to ImageKit: {url}")
-                    return {
-                        'success': True,
-                        'url': url,
-                        'fileId': getattr(result, 'file_id', '') or getattr(result, 'fileId', ''),
-                        'name': getattr(result, 'name', ''),
-                        'size': getattr(result, 'size', 0)
-                    }
-            
-            # Handle dict response (if SDK returns dict)
-            elif isinstance(result, dict):
-                if 'url' in result and result['url']:
-                    logger.info(f"Successfully uploaded to ImageKit: {result['url']}")
-                    return {
-                        'success': True,
-                        'url': result['url'],
-                        'fileId': result.get('file_id', '') or result.get('fileId', ''),
-                        'name': result.get('name', ''),
-                        'size': result.get('size', 0)
-                    }
-                elif 'error' in result:
-                    error_msg = f"Upload failed: {result['error']}"
-                    logger.error(error_msg)
-                    return {
-                        'success': False,
-                        'error': error_msg
-                    }
-            
-            # Handle error in object response
-            if hasattr(result, 'error') and result.error:
-                error_msg = f"Upload failed: {result.error}"
-                logger.error(error_msg)
+            # The SDK always returns an UploadFileResult object
+            if result and hasattr(result, 'url') and result.url:
+                logger.info(f"Successfully uploaded to ImageKit: {result.url}")
+                return {
+                    'success': True,
+                    'url': result.url,
+                    'fileId': getattr(result, 'file_id', ''),
+                    'name': getattr(result, 'name', ''),
+                    'size': getattr(result, 'size', 0)
+                }
+            else:
+                # If no URL, the upload failed
+                error_msg = "Upload failed - no URL returned from ImageKit"
+                logger.error(f"{error_msg}. Result object: {result}")
                 return {
                     'success': False,
                     'error': error_msg
                 }
-            
-            # If we get here, something went wrong
-            error_msg = "Upload failed - unexpected response format"
-            logger.error(f"{error_msg}. Result: {result}")
-            return {
-                'success': False,
-                'error': error_msg
-            }
                 
         except Exception as e:
             logger.error(f"Error uploading to ImageKit: {e}")
@@ -262,8 +194,7 @@ class ImageKitIntegration:
                 options=options
             )
             
-            # Check if upload was successful
-            # The SDK returns an UploadFileResult object
+            # Check if upload was successful - SDK returns UploadFileResult object
             if result and hasattr(result, 'url') and result.url:
                 logger.info(f"Successfully uploaded from URL to ImageKit: {result.url}")
                 return {
@@ -271,16 +202,9 @@ class ImageKitIntegration:
                     'url': result.url,
                     'fileId': getattr(result, 'file_id', '')
                 }
-            elif hasattr(result, 'error') and result.error:
-                error_msg = f"Upload failed: {result.error}"
-                logger.error(error_msg)
-                return {
-                    'success': False,
-                    'error': error_msg
-                }
             else:
-                error_msg = "Upload from URL failed - unexpected response"
-                logger.error(f"{error_msg}: {result}")
+                error_msg = "Upload from URL failed - no URL returned"
+                logger.error(f"{error_msg}. Result object: {result}")
                 return {
                     'success': False,
                     'error': error_msg
