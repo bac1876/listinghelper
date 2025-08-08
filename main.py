@@ -77,6 +77,33 @@ def index():
 def health():
     return {'status': 'healthy', 'app': 'Virtual Tour Generator'}
 
+# Version check route to verify deployment
+@app.route('/api/version')
+def version():
+    import datetime
+    
+    # Check if the fixed GitHub Actions integration is present
+    has_fixed_github = False
+    try:
+        from github_actions_integration import GitHubActionsIntegration
+        gh = GitHubActionsIntegration()
+        # Check if the fixed method exists (with job_to_run_mapping)
+        has_fixed_github = hasattr(gh, 'job_to_run_mapping')
+    except:
+        pass
+    
+    return {
+        'version': '1.0.3',
+        'deployment_time': datetime.datetime.now().isoformat(),
+        'github_actions_enabled': use_github_actions,
+        'github_actions_fixed': has_fixed_github,
+        'imagekit_ready': imagekit_ready,
+        'features': {
+            'workflow_status_fix': has_fixed_github,
+            'job_run_mapping': has_fixed_github
+        }
+    }
+
 if __name__ == '__main__':
     # Create necessary directories
     os.makedirs('static', exist_ok=True)
