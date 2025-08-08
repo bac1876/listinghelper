@@ -706,10 +706,13 @@ def download_video(job_id):
         # Fallback: If we have a GitHub job ID but webhook hasn't updated yet
         if job.get('github_job_id'):
             github_job_id = job['github_job_id']
-            cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dib3kbifc')
-            video_url = f"https://res.cloudinary.com/{cloud_name}/video/upload/tours/{github_job_id}.mp4"
+            # Use ImageKit for video URL
+            imagekit_endpoint = os.environ.get('IMAGEKIT_URL_ENDPOINT', 'https://ik.imagekit.io/brianosris/')
+            if not imagekit_endpoint.endswith('/'):
+                imagekit_endpoint += '/'
+            video_url = f"{imagekit_endpoint}tours/videos/{github_job_id}.mp4"
             
-            # Check if video exists on Cloudinary
+            # Check if video exists on ImageKit
             try:
                 import requests
                 response = requests.head(video_url, timeout=5)
@@ -791,11 +794,13 @@ def download_file(job_id, file_type):
                 # Second priority: If we have a GitHub job ID, check if Cloudinary URL exists
                 elif job.get('github_job_id'):
                     github_job_id = job['github_job_id']
-                    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dib3kbifc')
-                    # Include attachment flag in URL to force download
-                    video_url = f"https://res.cloudinary.com/{cloud_name}/video/upload/fl_attachment/tours/{github_job_id}.mp4"
+                    # Use ImageKit for video URL with download parameter
+                    imagekit_endpoint = os.environ.get('IMAGEKIT_URL_ENDPOINT', 'https://ik.imagekit.io/brianosris/')
+                    if not imagekit_endpoint.endswith('/'):
+                        imagekit_endpoint += '/'
+                    video_url = f"{imagekit_endpoint}tours/videos/{github_job_id}.mp4?dl=1"
                     
-                    # Check if the Cloudinary URL actually exists before redirecting
+                    # Check if the ImageKit URL actually exists before redirecting
                     try:
                         import requests
                         check_url = video_url.replace('/fl_attachment/', '/')  # Check without attachment flag
@@ -902,10 +907,12 @@ def get_job_status(job_id):
     # The Cloudinary polling thread already handles checking for video completion
     # Each status check was making an API call, causing 30+ calls per minute
     
-    # Fallback: Check if video exists on Cloudinary directly
+    # Fallback: Check if video exists on ImageKit directly
     if job.get('github_job_id') and job.get('status') != 'completed':
-        cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dib3kbifc')
-        video_url = f"https://res.cloudinary.com/{cloud_name}/video/upload/tours/{job['github_job_id']}.mp4"
+        imagekit_endpoint = os.environ.get('IMAGEKIT_URL_ENDPOINT', 'https://ik.imagekit.io/brianosris/')
+        if not imagekit_endpoint.endswith('/'):
+            imagekit_endpoint += '/'
+        video_url = f"{imagekit_endpoint}tours/videos/{job['github_job_id']}.mp4"
         
         # Simple HEAD request to check if video exists
         try:
@@ -942,8 +949,10 @@ def get_job_status(job_id):
     elif job.get('github_job_id'):
         # Always construct URL if we have a GitHub job ID, regardless of status
         github_job_id = job['github_job_id']
-        cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dib3kbifc')
-        video_url = f"https://res.cloudinary.com/{cloud_name}/video/upload/tours/{github_job_id}.mp4"
+        imagekit_endpoint = os.environ.get('IMAGEKIT_URL_ENDPOINT', 'https://ik.imagekit.io/brianosris/')
+        if not imagekit_endpoint.endswith('/'):
+            imagekit_endpoint += '/'
+        video_url = f"{imagekit_endpoint}tours/videos/{github_job_id}.mp4"
         response_data['video_url'] = video_url
         # Also update the files_generated for consistency
         response_data['files_generated']['cloudinary_url'] = video_url

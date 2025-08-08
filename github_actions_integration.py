@@ -396,12 +396,12 @@ class GitHubActionsIntegration:
                 "error": str(e)
             }
     
-    def get_workflow_status(self) -> Dict[str, Any]:
+    def get_workflow_info(self) -> Dict[str, Any]:
         """
-        Get the overall status of the render-video workflow
+        Get the overall info of the render-video workflow
         
         Returns:
-            Dict with workflow status information
+            Dict with workflow information
         """
         try:
             workflow_url = f"{self.base_url}/actions/workflows/{self.workflow_file}"

@@ -1,0 +1,176 @@
+{
+  "summary": {
+    "total_tests": 11,
+    "passed": 0,
+    "failed": 11,
+    "timestamp": "2025-08-07T10:39:19.535759"
+  },
+  "results": [
+    {
+      "test_name": "Small Batch 3 Images",
+      "image_count": 3,
+      "start_time": "2025-08-07T10:32:34.044179",
+      "config": {},
+      "success": false,
+      "error": "Unknown failure",
+      "metrics": {
+        "duration_seconds": 36.693089723587036,
+        "memory_start_mb": 17.85546875,
+        "memory_end_mb": 17.9296875,
+        "memory_increase_mb": 0.07421875
+      }
+    },
+    {
+      "test_name": "Medium Batch 6 Images",
+      "image_count": 6,
+      "start_time": "2025-08-07T10:33:15.738021",
+      "config": {},
+      "success": false,
+      "error": "Unknown failure",
+      "metrics": {
+        "duration_seconds": 36.6266028881073,
+        "memory_start_mb": 17.9296875,
+        "memory_end_mb": 17.8828125,
+        "memory_increase_mb": -0.046875
+      }
+    },
+    {
+      "test_name": "Large Batch 10 Images",
+      "image_count": 10,
+      "start_time": "2025-08-07T10:33:57.365775",
+      "config": {},
+      "success": false,
+      "error": "Unknown failure",
+      "metrics": {
+        "duration_seconds": 32.02922177314758,
+        "memory_start_mb": 17.8828125,
+        "memory_end_mb": 17.8828125,
+        "memory_increase_mb": 0.0
+      }
+    },
+    {
+      "test_name": "Maximum Batch 12 Images",
+      "image_count": 12,
+      "start_time": "2025-08-07T10:34:34.395845",
+      "config": {
+        "description": "Reproducing reported failure"
+      },
+      "success": false,
+      "error": "Unknown failure",
+      "metrics": {
+        "duration_seconds": 31.845850706100464,
+        "memory_start_mb": 17.8828125,
+        "memory_end_mb": 17.859375,
+        "memory_increase_mb": -0.0234375
+      }
+    },
+    {
+      "test_name": "Large Files Test",
+      "image_count": 5,
+      "start_time": "2025-08-07T10:35:11.242138",
+      "config": {
+        "total_size_mb": 3.833420753479004
+      },
+      "success": false,
+      "error": "Unknown failure",
+      "metrics": {
+        "duration_seconds": 29.5147385597229,
+        "memory_start_mb": 17.86328125,
+        "memory_end_mb": 17.87109375,
+        "memory_increase_mb": 0.0078125
+      }
+    },
+    {
+      "test_name": "Many Small Files",
+      "image_count": 8,
+      "start_time": "2025-08-07T10:35:45.757964",
+      "config": {
+        "total_size_mb": 2.085421562194824
+      },
+      "success": false,
+      "error": "Unknown failure",
+      "metrics": {
+        "duration_seconds": 31.88756823539734,
+        "memory_start_mb": 17.87109375,
+        "memory_end_mb": 17.87109375,
+        "memory_increase_mb": 0.0
+      }
+    },
+    {
+      "test_name": "Single Large File",
+      "image_count": 1,
+      "start_time": "2025-08-07T10:36:22.646270",
+      "config": {
+        "file_size_mb": 0.854527473449707
+      },
+      "success": false,
+      "error": "Unknown failure",
+      "metrics": {
+        "duration_seconds": 31.96853256225586,
+        "memory_start_mb": 17.875,
+        "memory_end_mb": 17.875,
+        "memory_increase_mb": 0.0
+      }
+    },
+    {
+      "test_name": "Incremental First 4",
+      "image_count": 4,
+      "start_time": "2025-08-07T10:36:59.616169",
+      "config": {},
+      "success": false,
+      "error": "Unknown failure",
+      "metrics": {
+        "duration_seconds": 32.0019052028656,
+        "memory_start_mb": 17.875,
+        "memory_end_mb": 17.94921875,
+        "memory_increase_mb": 0.07421875
+      }
+    },
+    {
+      "test_name": "Incremental Next 4",
+      "image_count": 4,
+      "start_time": "2025-08-07T10:37:33.618543",
+      "config": {},
+      "success": false,
+      "error": "Unknown failure",
+      "metrics": {
+        "duration_seconds": 31.954012155532837,
+        "memory_start_mb": 17.94921875,
+        "memory_end_mb": 17.953125,
+        "memory_increase_mb": 0.00390625
+      }
+    },
+    {
+      "test_name": "Stress Test All 41 Images",
+      "image_count": 41,
+      "start_time": "2025-08-07T10:38:10.574138",
+      "config": {
+        "warning": "This may fail due to limits"
+      },
+      "success": false,
+      "error": "Unknown failure",
+      "metrics": {
+        "duration_seconds": 31.969695329666138,
+        "memory_start_mb": 17.95703125,
+        "memory_end_mb": 17.95703125,
+        "memory_increase_mb": 0.0
+      }
+    },
+    {
+      "test_name": "Recovery Test 3 Images",
+      "image_count": 3,
+      "start_time": "2025-08-07T10:38:47.545191",
+      "config": {
+        "description": "Testing server recovery after stress"
+      },
+      "success": false,
+      "error": "Unknown failure",
+      "metrics": {
+        "duration_seconds": 31.97952699661255,
+        "memory_start_mb": 17.95703125,
+        "memory_end_mb": 17.94140625,
+        "memory_increase_mb": -0.015625
+      }
+    }
+  ]
+}
