@@ -78,7 +78,7 @@ export const RealEstateTour: React.FC<RealEstateTourProps> = ({
             
             {/* Fade transition to next image */}
             {index < displayImages.length - 1 && (
-              <Sequence from={imageFrames - transitionFrames}>
+              <Sequence from={imageFrames - transitionFrames} durationInFrames={transitionFrames}>
                 <TransitionFade duration={settings.transitionDuration} />
               </Sequence>
             )}

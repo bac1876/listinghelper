@@ -2,6 +2,7 @@ import os
 import json
 import time
 import requests
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 import logging
 
@@ -13,6 +14,9 @@ class GitHubActionsIntegration:
         self.github_owner = os.environ.get('GITHUB_OWNER')
         self.github_repo = os.environ.get('GITHUB_REPO')
         self.workflow_file = 'render-video.yml'
+        
+        # Store mapping of job_id to workflow run_id
+        self.job_to_run_mapping = {}
         
         if not all([self.github_token, self.github_owner, self.github_repo]):
             raise ValueError("Missing required GitHub environment variables: GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO")
@@ -107,6 +111,22 @@ class GitHubActionsIntegration:
             
             if response.status_code == 204:
                 logger.info(f"Successfully triggered GitHub Actions workflow for job {job_id}")
+                
+                # Try to find the newly created workflow run
+                time.sleep(2)  # Give GitHub a moment to create the run
+                try:
+                    runs_url = f"{self.base_url}/actions/workflows/{self.workflow_file}/runs?per_page=5"
+                    runs_response = requests.get(runs_url, headers=self.headers)
+                    if runs_response.status_code == 200:
+                        runs = runs_response.json()
+                        # The most recent run is likely ours
+                        if runs.get('workflow_runs'):
+                            run_id = runs['workflow_runs'][0]['id']
+                            self.job_to_run_mapping[job_id] = run_id
+                            logger.info(f"Mapped job {job_id} to workflow run {run_id}")
+                except Exception as e:
+                    logger.warning(f"Could not map job to run ID: {e}")
+                
                 return {
                     "success": True,
                     "job_id": job_id,
@@ -139,8 +159,32 @@ class GitHubActionsIntegration:
             Status string: 'queued', 'in_progress', 'completed', 'failed', or 'unknown'
         """
         try:
-            # Get recent workflow runs
-            runs_url = f"{self.base_url}/actions/workflows/{self.workflow_file}/runs?per_page=20"
+            # Check if we have a stored run_id for this job
+            if job_id in self.job_to_run_mapping:
+                run_id = self.job_to_run_mapping[job_id]
+                run_url = f"{self.base_url}/actions/runs/{run_id}"
+                response = requests.get(run_url, headers=self.headers)
+                
+                if response.status_code == 200:
+                    run = response.json()
+                    status = run.get('status', 'unknown')
+                    conclusion = run.get('conclusion', '')
+                    
+                    if status == 'completed':
+                        if conclusion == 'success':
+                            logger.info(f"Workflow run {run_id} for job {job_id} completed successfully")
+                            return 'completed'
+                        else:
+                            logger.info(f"Workflow run {run_id} for job {job_id} failed: {conclusion}")
+                            return 'failed'
+                    elif status in ['queued', 'in_progress']:
+                        logger.info(f"Workflow run {run_id} for job {job_id} is {status}")
+                        return status
+                    else:
+                        return 'unknown'
+            
+            # Fallback to searching through recent runs
+            runs_url = f"{self.base_url}/actions/workflows/{self.workflow_file}/runs?per_page=30"
             response = requests.get(runs_url, headers=self.headers)
             
             if response.status_code != 200:
@@ -149,26 +193,54 @@ class GitHubActionsIntegration:
             
             runs = response.json()
             
-            # Find the run for this job_id by checking inputs
+            # Check for completed runs with our job_id in artifacts
             for run in runs.get('workflow_runs', []):
-                # Check if this run matches our job ID
-                # The job_id is passed as an input to the workflow
-                if run.get('name', '').endswith(job_id) or job_id in run.get('display_title', ''):
-                    status = run.get('status', 'unknown')
-                    conclusion = run.get('conclusion', '')
-                    
-                    if status == 'completed':
-                        if conclusion == 'success':
-                            return 'completed'
-                        else:
-                            return 'failed'
-                    elif status in ['queued', 'in_progress']:
-                        return status
-                    else:
-                        return 'unknown'
+                # Check run status first
+                status = run.get('status', 'unknown')
+                conclusion = run.get('conclusion', '')
+                
+                # If run is completed, check artifacts for our job_id
+                if status == 'completed':
+                    artifacts_url = run.get('artifacts_url')
+                    if artifacts_url:
+                        try:
+                            artifacts_response = requests.get(artifacts_url, headers=self.headers, timeout=5)
+                            if artifacts_response.status_code == 200:
+                                artifacts = artifacts_response.json()
+                                for artifact in artifacts.get('artifacts', []):
+                                    # Check if this artifact is for our job_id
+                                    if job_id in artifact.get('name', ''):
+                                        # Found our job!
+                                        if conclusion == 'success':
+                                            logger.info(f"Found completed workflow for job {job_id}")
+                                            return 'completed'
+                                        else:
+                                            logger.info(f"Found failed workflow for job {job_id}: {conclusion}")
+                                            return 'failed'
+                        except Exception as e:
+                            logger.warning(f"Error checking artifacts for run {run.get('id')}: {e}")
+                            continue
+                
+                # Check if this is a recent in-progress run (within last 10 minutes)
+                elif status in ['queued', 'in_progress']:
+                    # Check if this run was created recently (could be ours)
+                    created_at = run.get('created_at', '')
+                    if created_at:
+                        try:
+                            run_time = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                            now = datetime.now(timezone.utc)
+                            age_minutes = (now - run_time).total_seconds() / 60
+                            
+                            # If run is less than 15 minutes old, it might be ours
+                            if age_minutes < 15:
+                                logger.info(f"Found recent {status} workflow (age: {age_minutes:.1f} min)")
+                                return status
+                        except Exception as e:
+                            logger.warning(f"Error parsing run time: {e}")
             
-            # If not found, assume it's still queued or starting
-            return 'queued'
+            # If we didn't find our specific job, return unknown
+            logger.warning(f"Could not find workflow run for job_id: {job_id}")
+            return 'unknown'
             
         except Exception as e:
             logger.error(f"Error checking workflow status: {e}")
