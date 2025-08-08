@@ -56,11 +56,9 @@ class ImageKitIntegration:
             result = self.imagekit.upload_file(
                 file=open(file_path, "rb"),
                 file_name=file_name,
-                options={
-                    "folder": folder,
-                    "use_unique_file_name": False,
-                    "response_fields": ["url", "name", "size", "fileId"]
-                }
+                folder=folder,
+                use_unique_file_name=False,
+                response_fields=["url", "name", "size", "fileId"]
             )
             
             # Check if upload was successful
@@ -136,10 +134,8 @@ class ImageKitIntegration:
             result = self.imagekit.upload_file(
                 file=source_url,
                 file_name=file_name,
-                options={
-                    "folder": folder,
-                    "use_unique_file_name": False
-                }
+                folder=folder,
+                use_unique_file_name=False
             )
             
             if result:
