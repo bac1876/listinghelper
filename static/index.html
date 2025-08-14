@@ -1069,7 +1069,7 @@
             <h1>🏠 Virtual Tour Generator</h1>
             <p>Transform Your Real Estate Photos into Cinematic Video Tours with Professional Ken Burns Effects</p>
             <div class="version-badge">
-                v1.1.0 • Watermark Feature Added
+                v1.2.0 • Enhanced Error Recovery
             </div>
         </div>
     </div>
@@ -1621,7 +1621,22 @@
                         lastProgress = progress;
                     }
                     
-                    updateProgress(progress, data.current_step || 'Processing...');
+                    // Handle special status messages for fallback processing
+                    let statusMsg = data.current_step || 'Processing...';
+                    
+                    // Show special status for FFmpeg fallback
+                    if (statusMsg.includes('switching to local processing')) {
+                        statusMsg = '⚠️ Cloud rendering failed - switching to backup processor...';
+                        subStatus.textContent = 'Using local FFmpeg for video generation (this may take longer)';
+                    } else if (statusMsg.includes('FFmpeg processing')) {
+                        statusMsg = '🔄 Processing video locally...';
+                        subStatus.textContent = 'Creating your virtual tour with backup processor';
+                    } else if (data.error_details) {
+                        // Show error details if available
+                        subStatus.textContent = `Issue detected: ${data.error_details}`;
+                    }
+                    
+                    updateProgress(progress, statusMsg);
                     
                     // Check if completed
                     if (data.status === 'completed') {
@@ -1639,7 +1654,11 @@
                             clearTimeout(statusCheckTimeout);
                             statusCheckTimeout = null;
                         }
-                        showError(data.error || 'Processing failed');
+                        // Include error details in the error message
+                        const errorMsg = data.error_details ? 
+                            `${data.error || 'Processing failed'} - ${data.error_details}` :
+                            (data.error || 'Processing failed');
+                        showError(errorMsg);
                     }
                     
                 } catch (error) {

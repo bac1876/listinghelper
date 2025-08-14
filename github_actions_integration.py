@@ -148,7 +148,7 @@ class GitHubActionsIntegration:
                 "error": str(e)
             }
     
-    def get_workflow_status(self, job_id: str) -> str:
+    def get_workflow_status(self, job_id: str) -> tuple:
         """
         Get the status of a GitHub Actions workflow run by job ID
         
@@ -156,7 +156,8 @@ class GitHubActionsIntegration:
             job_id: The job identifier used when triggering the workflow
             
         Returns:
-            Status string: 'queued', 'in_progress', 'completed', 'failed', or 'unknown'
+            Tuple of (status, error_details) where status is: 'queued', 'in_progress', 'completed', 'failed', or 'unknown'
+            and error_details is None or a string with failure reason
         """
         try:
             # Check if we have a stored run_id for this job
@@ -173,15 +174,17 @@ class GitHubActionsIntegration:
                     if status == 'completed':
                         if conclusion == 'success':
                             logger.info(f"Workflow run {run_id} for job {job_id} completed successfully")
-                            return 'completed'
+                            return 'completed', None
                         else:
+                            # Try to get job logs for error details
+                            error_details = self._get_workflow_error_details(run_id)
                             logger.info(f"Workflow run {run_id} for job {job_id} failed: {conclusion}")
-                            return 'failed'
+                            return 'failed', error_details or f"Workflow failed with conclusion: {conclusion}"
                     elif status in ['queued', 'in_progress']:
                         logger.info(f"Workflow run {run_id} for job {job_id} is {status}")
-                        return status
+                        return status, None
                     else:
-                        return 'unknown'
+                        return 'unknown', None
             
             # Fallback to searching through recent runs
             runs_url = f"{self.base_url}/actions/workflows/{self.workflow_file}/runs?per_page=30"
@@ -189,7 +192,7 @@ class GitHubActionsIntegration:
             
             if response.status_code != 200:
                 logger.error(f"Failed to fetch workflow runs: {response.status_code}")
-                return 'unknown'
+                return 'unknown', "Failed to fetch workflow status"
             
             runs = response.json()
             
@@ -234,17 +237,17 @@ class GitHubActionsIntegration:
                             # If run is less than 15 minutes old, it might be ours
                             if age_minutes < 15:
                                 logger.info(f"Found recent {status} workflow (age: {age_minutes:.1f} min)")
-                                return status
+                                return status, None
                         except Exception as e:
                             logger.warning(f"Error parsing run time: {e}")
             
             # If we didn't find our specific job, return unknown
             logger.warning(f"Could not find workflow run for job_id: {job_id}")
-            return 'unknown'
+            return 'unknown', None
             
         except Exception as e:
             logger.error(f"Error checking workflow status: {e}")
-            return 'unknown'
+            return 'unknown', str(e)
     
     def get_workflow_artifact(self, job_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -288,6 +291,45 @@ class GitHubActionsIntegration:
             
         except Exception as e:
             logger.error(f"Error getting workflow artifact: {e}")
+            return None
+    
+    def _get_workflow_error_details(self, run_id: str) -> Optional[str]:
+        """
+        Get error details from a failed workflow run
+        
+        Args:
+            run_id: The workflow run ID
+            
+        Returns:
+            Error details string or None
+        """
+        try:
+            # Get jobs for this run
+            jobs_url = f"{self.base_url}/actions/runs/{run_id}/jobs"
+            response = requests.get(jobs_url, headers=self.headers)
+            
+            if response.status_code != 200:
+                return None
+            
+            jobs = response.json()
+            error_messages = []
+            
+            for job in jobs.get('jobs', []):
+                if job.get('conclusion') in ['failure', 'cancelled', 'timed_out']:
+                    # Get the failed step
+                    for step in job.get('steps', []):
+                        if step.get('conclusion') == 'failure':
+                            step_name = step.get('name', 'Unknown step')
+                            error_messages.append(f"Failed at step: {step_name}")
+                    
+                    # Add timeout info if applicable
+                    if job.get('conclusion') == 'timed_out':
+                        error_messages.append("Job timed out - video generation took too long")
+            
+            return "; ".join(error_messages) if error_messages else None
+            
+        except Exception as e:
+            logger.error(f"Error getting workflow error details: {e}")
             return None
     
     def check_job_status(self, job_id: str) -> Dict[str, Any]:

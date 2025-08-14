@@ -29,15 +29,104 @@ STORAGE_DIR = '/app/storage'
 if not os.path.exists(STORAGE_DIR):
     os.makedirs(STORAGE_DIR, exist_ok=True)
 
+# Temporary directory for video processing
+TEMP_DIR = os.environ.get('TEMP_DIR', tempfile.gettempdir())
+if not os.path.exists(TEMP_DIR):
+    os.makedirs(TEMP_DIR, exist_ok=True)
+
 # In-memory job tracking with detailed status
 active_jobs = {}
+
+def trigger_ffmpeg_fallback(job_id):
+    """Trigger local FFmpeg processing as a fallback when GitHub Actions fails"""
+    try:
+        if job_id not in active_jobs:
+            logger.error(f"Job {job_id} not found for FFmpeg fallback")
+            return
+        
+        job = active_jobs[job_id]
+        
+        # Update status
+        job['status'] = 'processing'
+        job['current_step'] = 'Falling back to local video generation...'
+        job['progress'] = 50
+        
+        # Get saved files from job
+        saved_files = job.get('saved_files', [])
+        if not saved_files:
+            logger.error(f"No saved files found for job {job_id}")
+            job['status'] = 'error'
+            job['current_step'] = 'No images available for fallback processing'
+            return
+        
+        # Import FFmpeg Ken Burns function
+        from ffmpeg_ken_burns import create_ken_burns_video
+        
+        # Create output path
+        output_filename = f"virtual_tour_{job_id}.mp4"
+        output_path = os.path.join(TEMP_DIR, output_filename)
+        
+        logger.info(f"Starting FFmpeg fallback for job {job_id} with {len(saved_files)} images")
+        
+        # Get duration setting
+        duration_per_image = job.get('duration_per_image', 6)
+        
+        # Create video with FFmpeg
+        try:
+            job['current_step'] = 'Generating video with local processor...'
+            job['progress'] = 60
+            
+            created_video = create_ken_burns_video(
+                saved_files,
+                output_path,
+                job_id,
+                quality='medium'  # Use medium quality for faster processing
+            )
+            
+            if created_video and os.path.exists(created_video):
+                logger.info(f"FFmpeg fallback successful: {created_video}")
+                job['video_path'] = created_video
+                job['video_available'] = True
+                job['status'] = 'completed'
+                job['current_step'] = 'Video generated successfully (fallback mode)'
+                job['progress'] = 90
+                
+                # Try to upload to ImageKit
+                try:
+                    from upload_to_imagekit import upload_video_to_imagekit
+                    video_url = upload_video_to_imagekit(created_video, f"tours/videos/{output_filename}")
+                    if video_url:
+                        job['video_url'] = video_url
+                        job['files_generated']['video_url'] = video_url
+                        logger.info(f"Fallback video uploaded to ImageKit: {video_url}")
+                except Exception as e:
+                    logger.error(f"Failed to upload fallback video to ImageKit: {e}")
+                    # Video still available locally
+                
+                job['progress'] = 100
+                job['current_step'] = 'Video ready (generated locally)'
+            else:
+                raise Exception("FFmpeg failed to create video")
+                
+        except Exception as e:
+            logger.error(f"FFmpeg fallback failed: {e}")
+            job['status'] = 'error'
+            job['current_step'] = f'Video generation failed completely: {str(e)}'
+            job['progress'] = 100
+            
+    except Exception as e:
+        logger.error(f"Error in FFmpeg fallback: {e}")
+        if job_id in active_jobs:
+            active_jobs[job_id]['status'] = 'error'
+            active_jobs[job_id]['current_step'] = f'Fallback failed: {str(e)}'
+            active_jobs[job_id]['progress'] = 100
 
 def start_github_actions_polling(job_id, github_job_id):
     """Start a background thread to poll GitHub Actions and then ImageKit for the completed video"""
     def poll_for_video():
         logger.info(f"Starting GitHub Actions polling for job {job_id}, GitHub job ID: {github_job_id}")
         
-        max_attempts = 60  # Poll for up to 10 minutes (60 * 10 seconds)
+        max_attempts = 45  # Poll for up to 7.5 minutes (45 * 10 seconds) - reduced for faster fallback
         attempt = 0
         github_actions_complete = False
         video_url = None
@@ -57,8 +146,8 @@ def start_github_actions_polling(job_id, github_job_id):
                 # First, check if GitHub Actions has completed
                 if not github_actions_complete and github_actions:
                     try:
-                        # Check GitHub Actions workflow status
-                        workflow_status = github_actions.get_workflow_status(github_job_id)
+                        # Check GitHub Actions workflow status (now returns tuple)
+                        workflow_status, error_details = github_actions.get_workflow_status(github_job_id)
                         logger.info(f"GitHub Actions status for {github_job_id}: {workflow_status}")
                         
                         if workflow_status == 'completed':
@@ -75,10 +164,15 @@ def start_github_actions_polling(job_id, github_job_id):
                                 video_url = get_video_url_imagekit(github_job_id)
                                 logger.info(f"Using constructed ImageKit URL: {video_url}")
                         elif workflow_status == 'failed':
-                            logger.error(f"GitHub Actions workflow failed for job {github_job_id}")
+                            logger.error(f"GitHub Actions workflow failed for job {github_job_id}: {error_details}")
                             active_jobs[job_id]['status'] = 'error'
-                            active_jobs[job_id]['current_step'] = 'Video rendering failed'
+                            active_jobs[job_id]['current_step'] = f'Remotion failed: {error_details or "Unknown error"}'
                             active_jobs[job_id]['progress'] = 100
+                            active_jobs[job_id]['error_details'] = error_details
+                            
+                            # Trigger FFmpeg fallback
+                            logger.info(f"Attempting FFmpeg fallback for job {job_id}")
+                            trigger_ffmpeg_fallback(job_id)
                             return
                     except Exception as e:
                         logger.warning(f"Error checking GitHub Actions status: {e}")
@@ -121,11 +215,15 @@ def start_github_actions_polling(job_id, github_job_id):
             # Wait before next attempt
             time.sleep(10)
         
-        # Timeout - video generation took too long
+        # Timeout - video generation took too long, trigger fallback
         logger.error(f"Video polling timeout for job {job_id} after {max_attempts} attempts")
-        active_jobs[job_id]['status'] = 'error'
-        active_jobs[job_id]['current_step'] = 'Video rendering timeout - please try again'
-        active_jobs[job_id]['progress'] = 100
+        active_jobs[job_id]['status'] = 'processing'
+        active_jobs[job_id]['current_step'] = 'Remotion timeout - switching to local processing...'
+        active_jobs[job_id]['progress'] = 50
+        
+        # Trigger FFmpeg fallback
+        logger.info(f"Triggering FFmpeg fallback due to timeout for job {job_id}")
+        trigger_ffmpeg_fallback(job_id)
     
     # Start polling in background thread
     polling_thread = threading.Thread(target=poll_for_video, daemon=True)
@@ -514,6 +612,7 @@ def upload_images():
             
             # Update job progress with compression info
             active_jobs[job_id]['images_processed'] = len(saved_files)
+            active_jobs[job_id]['saved_files'] = saved_files  # Store for potential fallback
             if original_total_size > 0:
                 total_compression = (1 - compressed_total_size / original_total_size) * 100
                 active_jobs[job_id]['current_step'] = f'Compressed {len(saved_files)} images (saved {total_compression:.0f}% space)'
