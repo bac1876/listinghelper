@@ -686,7 +686,17 @@ def upload_images():
                 active_jobs[job_id]['current_step'] = error_msg
                 github_image_urls = []
         
+        # Track whether we attempted GitHub Actions
+        github_actions_attempted = False
+        
+        # Log why GitHub Actions might not be used
+        if not use_github_actions:
+            logger.info("GitHub Actions not enabled (USE_GITHUB_ACTIONS != 'true' or watermark requested)")
+        elif not github_image_urls:
+            logger.warning("GitHub Actions enabled but no images uploaded to storage - will use local generation")
+        
         if use_github_actions and github_image_urls:
+            github_actions_attempted = True
             try:
                 active_jobs[job_id]['current_step'] = 'Triggering GitHub Actions for high-quality rendering'
                 active_jobs[job_id]['progress'] = 60
@@ -752,9 +762,16 @@ def upload_images():
                     elif 'Not Found' in str(error_detail) or '404' in str(error_detail):
                         active_jobs[job_id]['current_step'] = "GitHub Actions failed - check GITHUB_OWNER and GITHUB_REPO"
                     
+                    # Mark that GitHub Actions failed so we can fallback to local generation
+                    active_jobs[job_id]['github_actions_failed'] = True
+                    logger.info("GitHub Actions failed, will fallback to local video generation")
+                    
             except Exception as e:
                 logger.error(f"Error with GitHub Actions: {e}")
                 active_jobs[job_id]['current_step'] = f'GitHub Actions error: {str(e)}'
+                # Mark that GitHub Actions failed so we can fallback to local generation
+                active_jobs[job_id]['github_actions_failed'] = True
+                logger.info("GitHub Actions error occurred, will fallback to local video generation")
         
         # If watermark is requested, use local FFmpeg processing
         if watermark_id and 'saved_files' in locals() and saved_files:
@@ -823,7 +840,7 @@ def upload_images():
         # Finalize job
         processing_time = time.time() - start_time
         
-        # If GitHub Actions was triggered, start polling for the video
+        # If GitHub Actions was triggered successfully, start polling for the video
         if active_jobs[job_id].get('github_job_id'):
             active_jobs[job_id]['status'] = 'processing'
             active_jobs[job_id]['progress'] = 75
@@ -835,7 +852,12 @@ def upload_images():
             github_job_id = active_jobs[job_id]['github_job_id']
             start_github_actions_polling(job_id, github_job_id)
         else:
-            # GitHub Actions not triggered - create video locally
+            # GitHub Actions was not successful or not attempted - create video locally
+            # This happens when:
+            # 1. GitHub Actions failed (github_actions_failed flag set)
+            # 2. GitHub Actions not enabled (use_github_actions is False)  
+            # 3. No images to upload (github_image_urls empty)
+            # 4. GitHub Actions was attempted but didn't set job_id (any other failure)
             logger.info(f"GitHub Actions not triggered for job {job_id}, creating video locally")
             
             if saved_files:
