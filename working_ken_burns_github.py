@@ -383,19 +383,25 @@ def env_check():
 
 @virtual_tour_bp.route('/health', methods=['GET'])
 def health_check():
-    """Check system health - GitHub Actions, ImageKit, and storage"""
-    # Check ImageKit status
-    imagekit_instance = get_imagekit()
-    imagekit_configured = imagekit_instance is not None
+    """Check system health - GitHub Actions, storage backend, and storage"""
+    # Check storage backend status
+    from storage_adapter import get_storage
+    try:
+        storage_instance = get_storage()
+        storage_configured = True
+        backend_name = storage_instance.get_backend_name()
+    except:
+        storage_configured = False
+        backend_name = 'NOT_CONFIGURED'
     
     health_status = {
         'status': 'healthy',
         'storage_writable': False,
         'storage_path': STORAGE_DIR,
         'github_actions_available': github_actions is not None,
-        'imagekit_configured': imagekit_configured,
-        'imagekit_endpoint': os.environ.get('IMAGEKIT_URL_ENDPOINT', 'NOT_SET'),
-        'primary_storage': 'ImageKit' if imagekit_configured else 'NOT_CONFIGURED'
+        'storage_configured': storage_configured,
+        'storage_backend': backend_name,
+        'primary_storage': backend_name.upper() if storage_configured else 'NOT_CONFIGURED'
     }
     
     # Check storage
