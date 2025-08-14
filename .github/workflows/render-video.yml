@@ -107,7 +107,7 @@ jobs:
     
     - name: Test Image Accessibility
       run: |
-        echo "Testing if GitHub Actions can access ImageKit images..."
+        echo "Testing if GitHub Actions can access storage images..."
         
         # Parse the first image URL for testing
         FIRST_IMAGE=$(node -e "
@@ -138,7 +138,7 @@ jobs:
             fi
             rm -f test_image.jpg
           else
-            echo "✗ Failed to download image from ImageKit"
+            echo "✗ Failed to download image from storage"
             echo "This might be why Remotion is failing!"
           fi
         else
@@ -282,7 +282,7 @@ jobs:
             
             # Check for specific error patterns
             if grep -q "Failed to fetch" render.log; then
-              echo "ERROR: Remotion could not fetch images from ImageKit"
+              echo "ERROR: Remotion could not fetch images from storage"
               echo "This is likely a network/access issue"
             fi
             
@@ -314,39 +314,40 @@ jobs:
           exit 1
         fi
     
-    - name: Upload to ImageKit
+    - name: Upload to Bunny.net Storage
       working-directory: ./remotion-tours
       env:
-        IMAGEKIT_PRIVATE_KEY: ${{ secrets.IMAGEKIT_PRIVATE_KEY }}
-        IMAGEKIT_PUBLIC_KEY: ${{ secrets.IMAGEKIT_PUBLIC_KEY }}
-        IMAGEKIT_URL_ENDPOINT: ${{ secrets.IMAGEKIT_URL_ENDPOINT }}
+        BUNNY_STORAGE_ZONE_NAME: ${{ secrets.BUNNY_STORAGE_ZONE_NAME }}
+        BUNNY_ACCESS_KEY: ${{ secrets.BUNNY_ACCESS_KEY }}
+        BUNNY_PULL_ZONE_URL: ${{ secrets.BUNNY_PULL_ZONE_URL }}
+        BUNNY_REGION: ${{ secrets.BUNNY_REGION }}
         VIDEO_PATH: ${{ env.VIDEO_PATH }}
         JOB_ID: ${{ inputs.jobId }}
       run: |
-        echo "Uploading video to ImageKit..."
+        echo "Uploading video to Bunny.net Storage..."
         echo "Current directory: $(pwd)"
         echo "Video path: ${VIDEO_PATH}"
         
         # Verify environment variables
-        if [ -z "${IMAGEKIT_PRIVATE_KEY}" ]; then
-          echo "ERROR: IMAGEKIT_PRIVATE_KEY is not set!"
-          echo "Please add IMAGEKIT_PRIVATE_KEY to GitHub Secrets"
+        if [ -z "${BUNNY_STORAGE_ZONE_NAME}" ]; then
+          echo "ERROR: BUNNY_STORAGE_ZONE_NAME is not set!"
+          echo "Please add BUNNY_STORAGE_ZONE_NAME to GitHub Secrets"
           exit 1
         fi
         
-        if [ -z "${IMAGEKIT_PUBLIC_KEY}" ]; then
-          echo "ERROR: IMAGEKIT_PUBLIC_KEY is not set!"
-          echo "Please add IMAGEKIT_PUBLIC_KEY to GitHub Secrets"
+        if [ -z "${BUNNY_ACCESS_KEY}" ]; then
+          echo "ERROR: BUNNY_ACCESS_KEY is not set!"
+          echo "Please add BUNNY_ACCESS_KEY to GitHub Secrets"
           exit 1
         fi
         
-        if [ -z "${IMAGEKIT_URL_ENDPOINT}" ]; then
-          echo "ERROR: IMAGEKIT_URL_ENDPOINT is not set!"
-          echo "Please add IMAGEKIT_URL_ENDPOINT to GitHub Secrets"
+        if [ -z "${BUNNY_PULL_ZONE_URL}" ]; then
+          echo "ERROR: BUNNY_PULL_ZONE_URL is not set!"
+          echo "Please add BUNNY_PULL_ZONE_URL to GitHub Secrets"
           exit 1
         fi
         
-        echo "ImageKit credentials are configured (values hidden for security)"
+        echo "Bunny.net credentials are configured (values hidden for security)"
         
         # Verify video file exists and has content
         if [ ! -f "${VIDEO_PATH}" ]; then
@@ -366,65 +367,68 @@ jobs:
           exit 1
         fi
         
-        # Install imagekit SDK with error handling
-        echo "Installing ImageKit SDK..."
-        npm install imagekit || {
-          echo "ERROR: Failed to install ImageKit SDK"
-          echo "Trying with --force flag..."
-          npm install imagekit --force || exit 1
-        }
+        # Set up Bunny.net storage URL
+        REGION="${BUNNY_REGION:-ny}"
+        if [ "${REGION}" = "default" ] || [ -z "${REGION}" ]; then
+          STORAGE_URL="https://storage.bunnycdn.com/${BUNNY_STORAGE_ZONE_NAME}"
+        else
+          STORAGE_URL="https://${REGION}.storage.bunnycdn.com/${BUNNY_STORAGE_ZONE_NAME}"
+        fi
         
-        # Create and run upload script
-        cat > upload.js << 'EOF'
-        const ImageKit = require('imagekit');
-        const fs = require('fs');
+        # Create the upload path
+        UPLOAD_PATH="tours/videos/${JOB_ID}.mp4"
+        FULL_UPLOAD_URL="${STORAGE_URL}/${UPLOAD_PATH}"
         
-        // Configure ImageKit
-        const imagekit = new ImageKit({
-          publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
-          privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
-          urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT
-        });
+        echo "Storage URL: ${STORAGE_URL}"
+        echo "Upload Path: ${UPLOAD_PATH}"
+        echo "Full Upload URL: ${FULL_UPLOAD_URL}"
         
-        // Upload video
-        const videoPath = process.env.VIDEO_PATH;
-        const jobId = process.env.JOB_ID;
+        # Upload using cURL
+        echo "Uploading video to Bunny.net..."
         
-        console.log(`Uploading ${videoPath} to ImageKit...`);
+        HTTP_RESPONSE=$(curl -w "\nHTTP_STATUS:%{http_code}" \
+          -X PUT \
+          -H "AccessKey: ${BUNNY_ACCESS_KEY}" \
+          -H "Content-Type: application/octet-stream" \
+          -H "accept: application/json" \
+          -T "${VIDEO_PATH}" \
+          "${FULL_UPLOAD_URL}" 2>/dev/null)
         
-        // Read video file
-        const videoBuffer = fs.readFileSync(videoPath);
-        const videoBase64 = videoBuffer.toString('base64');
+        # Extract HTTP status code
+        HTTP_STATUS=$(echo "${HTTP_RESPONSE}" | grep "HTTP_STATUS:" | cut -d: -f2)
+        HTTP_BODY=$(echo "${HTTP_RESPONSE}" | sed '/HTTP_STATUS:/d')
         
-        imagekit.upload({
-          file: videoBase64,
-          fileName: `${jobId}.mp4`,
-          folder: '/tours/videos/',
-          useUniqueFileName: false
-        }).then(response => {
-            const videoUrl = response.url;
-            console.log(`VIDEO_URL=${videoUrl}`);
-            
-            // Verify URL is valid
-            if (!videoUrl || videoUrl === 'undefined') {
-              console.error('ERROR: ImageKit returned invalid URL');
-              console.error('Full result:', JSON.stringify(response, null, 2));
-              process.exit(1);
-            }
-            
-            // Write to GITHUB_ENV
-            fs.appendFileSync(process.env.GITHUB_ENV, `VIDEO_URL=${videoUrl}\n`);
-            
-            console.log(`Successfully uploaded to ImageKit: ${videoUrl}`);
-            console.log(`Video fileId: ${response.fileId}`);
-            console.log(`Video size: ${response.size} bytes`);
-          }).catch(error => {
-            console.error('Upload failed:', error);
-            process.exit(1);
-          });
-        EOF
+        echo "HTTP Status: ${HTTP_STATUS}"
+        echo "Response: ${HTTP_BODY}"
         
-        node upload.js
+        # Check if upload was successful
+        if [ "${HTTP_STATUS}" = "200" ] || [ "${HTTP_STATUS}" = "201" ]; then
+          echo "✓ Successfully uploaded video to Bunny.net!"
+          
+          # Construct the CDN URL
+          VIDEO_URL="${BUNNY_PULL_ZONE_URL}/tours/videos/${JOB_ID}.mp4"
+          echo "VIDEO_URL=${VIDEO_URL}"
+          
+          # Write to GITHUB_ENV for other steps to use
+          echo "VIDEO_URL=${VIDEO_URL}" >> $GITHUB_ENV
+          
+          echo "Video is available at: ${VIDEO_URL}"
+          
+          # Verify the video is accessible
+          echo "Verifying video accessibility..."
+          VERIFY_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${VIDEO_URL}")
+          if [ "${VERIFY_STATUS}" = "200" ]; then
+            echo "✓ Video is accessible at CDN URL"
+          else
+            echo "⚠ Warning: Video uploaded but not yet accessible at CDN (status: ${VERIFY_STATUS})"
+            echo "This may be due to CDN propagation delay"
+          fi
+        else
+          echo "✗ Failed to upload video to Bunny.net"
+          echo "HTTP Status: ${HTTP_STATUS}"
+          echo "Response: ${HTTP_BODY}"
+          exit 1
+        fi
     
     - name: Create result artifact
       run: |
