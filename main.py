@@ -122,7 +122,8 @@ def version():
         'deployment_time': datetime.datetime.now().isoformat(),
         'github_actions_enabled': use_github_actions,
         'github_actions_fixed': has_fixed_github,
-        'imagekit_ready': imagekit_ready,
+        'storage_backend': backend_name if storage_ready else None,
+        'storage_ready': storage_ready,
         'features': {
             'workflow_status_fix': has_fixed_github,
             'job_run_mapping': has_fixed_github

@@ -835,10 +835,62 @@ def upload_images():
             github_job_id = active_jobs[job_id]['github_job_id']
             start_github_actions_polling(job_id, github_job_id)
         else:
-            # Mark as completed even if GitHub Actions didn't run
-            active_jobs[job_id]['status'] = 'completed'
-            active_jobs[job_id]['progress'] = 100
-            active_jobs[job_id]['current_step'] = 'Processing complete'
+            # GitHub Actions not triggered - create video locally
+            logger.info(f"GitHub Actions not triggered for job {job_id}, creating video locally")
+            
+            if saved_files:
+                try:
+                    active_jobs[job_id]['current_step'] = 'Creating video locally...'
+                    active_jobs[job_id]['progress'] = 70
+                    
+                    # Import local video creation
+                    from ffmpeg_ken_burns import create_ken_burns_video
+                    
+                    # Create output path
+                    output_filename = f"virtual_tour_{job_id}.mp4"
+                    output_path = os.path.join(TEMP_DIR, output_filename)
+                    
+                    # Create video locally
+                    created_video = create_ken_burns_video(
+                        saved_files,
+                        output_path,
+                        job_id,
+                        quality='medium'
+                    )
+                    
+                    if created_video and os.path.exists(created_video):
+                        logger.info(f"Local video created successfully: {created_video}")
+                        active_jobs[job_id]['video_path'] = created_video
+                        active_jobs[job_id]['video_available'] = True
+                        active_jobs[job_id]['files_generated']['local_video'] = created_video
+                        
+                        # Upload to storage backend
+                        try:
+                            video_url = upload_video_to_storage(created_video, output_filename, "tours/videos/")
+                            if video_url:
+                                active_jobs[job_id]['video_url'] = video_url
+                                active_jobs[job_id]['files_generated']['video_url'] = video_url
+                                logger.info(f"Video uploaded to storage: {video_url}")
+                        except Exception as e:
+                            logger.error(f"Failed to upload video to storage: {e}")
+                        
+                        active_jobs[job_id]['status'] = 'completed'
+                        active_jobs[job_id]['progress'] = 100
+                        active_jobs[job_id]['current_step'] = 'Video ready!'
+                    else:
+                        raise Exception("Failed to create video locally")
+                        
+                except Exception as e:
+                    logger.error(f"Local video creation failed: {e}")
+                    active_jobs[job_id]['status'] = 'error'
+                    active_jobs[job_id]['progress'] = 100
+                    active_jobs[job_id]['current_step'] = f'Video creation failed: {str(e)}'
+            else:
+                # No files to process
+                active_jobs[job_id]['status'] = 'error'
+                active_jobs[job_id]['progress'] = 100
+                active_jobs[job_id]['current_step'] = 'No images to process'
+            
             active_jobs[job_id]['processing_time'] = f"{processing_time:.2f} seconds"
         
         return jsonify({
