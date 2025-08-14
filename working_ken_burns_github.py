@@ -630,13 +630,11 @@ def upload_images():
                 active_jobs[job_id]['current_step'] = f'Saved {len(saved_files)} images'
             active_jobs[job_id]['progress'] = 10
             
-            # NO FFMPEG FALLBACK - Only use GitHub Actions + Remotion or Cloudinary
-            # FFmpeg creates terrible quality videos and is worse than failure
-            # UNLESS we have a watermark - then we need local processing
+            # Only use GitHub Actions + Remotion for video generation
+            # No local fallback - GitHub Actions must be properly configured
         
         # Check if we should use GitHub Actions for high-quality rendering
-        # If watermark is requested, force local processing since GitHub Actions doesn't support watermarks yet
-        use_github_actions = os.environ.get('USE_GITHUB_ACTIONS', 'false').lower() == 'true' and github_actions and not watermark_id
+        use_github_actions = os.environ.get('USE_GITHUB_ACTIONS', 'false').lower() == 'true' and github_actions
         logger.info(f"GitHub Actions enabled: {use_github_actions} (env: {os.environ.get('USE_GITHUB_ACTIONS')}, integration: {github_actions is not None})")
         
         # Prepare image URLs for GitHub Actions
@@ -762,59 +760,20 @@ def upload_images():
                     elif 'Not Found' in str(error_detail) or '404' in str(error_detail):
                         active_jobs[job_id]['current_step'] = "GitHub Actions failed - check GITHUB_OWNER and GITHUB_REPO"
                     
-                    # Mark that GitHub Actions failed so we can fallback to local generation
+                    # Mark that GitHub Actions failed
                     active_jobs[job_id]['github_actions_failed'] = True
-                    logger.info("GitHub Actions failed, will fallback to local video generation")
+                    logger.error("GitHub Actions failed - no video will be generated")
                     
             except Exception as e:
                 logger.error(f"Error with GitHub Actions: {e}")
                 active_jobs[job_id]['current_step'] = f'GitHub Actions error: {str(e)}'
-                # Mark that GitHub Actions failed so we can fallback to local generation
+                # Mark that GitHub Actions failed
                 active_jobs[job_id]['github_actions_failed'] = True
-                logger.info("GitHub Actions error occurred, will fallback to local video generation")
+                logger.error("GitHub Actions error occurred - no video will be generated")
         
-        # If watermark is requested, use local FFmpeg processing
-        if watermark_id and 'saved_files' in locals() and saved_files:
-            try:
-                logger.info(f"Processing video with watermark {watermark_id} using local FFmpeg")
-                active_jobs[job_id]['current_step'] = 'Adding watermark to video'
-                active_jobs[job_id]['progress'] = 60
-                
-                # Import watermark-enabled video creation
-                from ffmpeg_watermark_integration import create_ken_burns_video_with_watermark
-                
-                # Create output path
-                output_filename = f"virtual_tour_{job_id}.mp4"
-                output_path = os.path.join(TEMP_DIR, output_filename)
-                
-                # Create video with watermark
-                created_video = create_ken_burns_video_with_watermark(
-                    saved_files,
-                    output_path,
-                    duration_per_image,
-                    watermark_id
-                )
-                
-                if created_video and os.path.exists(created_video):
-                    logger.info(f"Video with watermark created successfully: {created_video}")
-                    active_jobs[job_id]['video_path'] = created_video
-                    active_jobs[job_id]['video_available'] = True
-                    active_jobs[job_id]['current_step'] = 'Video with watermark created'
-                    active_jobs[job_id]['progress'] = 80
-                    
-                    # Upload to ImageKit for serving
-                    try:
-                        video_url = upload_video_to_storage(created_video, f"tours/videos/{output_filename}")
-                        if video_url:
-                            active_jobs[job_id]['video_url'] = video_url
-                            logger.info(f"Video uploaded to ImageKit: {video_url}")
-                    except Exception as e:
-                        logger.error(f"Failed to upload video to ImageKit: {e}")
-                        # Video still available locally
-                        
-            except Exception as e:
-                logger.error(f"Error creating video with watermark: {e}")
-                active_jobs[job_id]['current_step'] = f'Watermark processing failed: {str(e)}'
+        # Watermarks are not supported without local processing
+        if watermark_id:
+            logger.warning("Watermark requested but local processing is disabled - watermarks are not supported with GitHub Actions")
         
         # No other fallback - ImageKit is required for non-watermark videos
         
@@ -852,66 +811,19 @@ def upload_images():
             github_job_id = active_jobs[job_id]['github_job_id']
             start_github_actions_polling(job_id, github_job_id)
         else:
-            # GitHub Actions was not successful or not attempted - create video locally
-            # This happens when:
-            # 1. GitHub Actions failed (github_actions_failed flag set)
-            # 2. GitHub Actions not enabled (use_github_actions is False)  
-            # 3. No images to upload (github_image_urls empty)
-            # 4. GitHub Actions was attempted but didn't set job_id (any other failure)
-            logger.info(f"GitHub Actions not triggered for job {job_id}, creating video locally")
+            # GitHub Actions was not triggered successfully
+            logger.error(f"GitHub Actions not triggered for job {job_id}")
+            active_jobs[job_id]['status'] = 'error'
+            active_jobs[job_id]['progress'] = 100
             
-            if saved_files:
-                try:
-                    active_jobs[job_id]['current_step'] = 'Creating video locally...'
-                    active_jobs[job_id]['progress'] = 70
-                    
-                    # Import local video creation
-                    from ffmpeg_ken_burns import create_ken_burns_video
-                    
-                    # Create output path
-                    output_filename = f"virtual_tour_{job_id}.mp4"
-                    output_path = os.path.join(TEMP_DIR, output_filename)
-                    
-                    # Create video locally
-                    created_video = create_ken_burns_video(
-                        saved_files,
-                        output_path,
-                        job_id,
-                        quality='medium'
-                    )
-                    
-                    if created_video and os.path.exists(created_video):
-                        logger.info(f"Local video created successfully: {created_video}")
-                        active_jobs[job_id]['video_path'] = created_video
-                        active_jobs[job_id]['video_available'] = True
-                        active_jobs[job_id]['files_generated']['local_video'] = created_video
-                        
-                        # Upload to storage backend
-                        try:
-                            video_url = upload_video_to_storage(created_video, output_filename, "tours/videos/")
-                            if video_url:
-                                active_jobs[job_id]['video_url'] = video_url
-                                active_jobs[job_id]['files_generated']['video_url'] = video_url
-                                logger.info(f"Video uploaded to storage: {video_url}")
-                        except Exception as e:
-                            logger.error(f"Failed to upload video to storage: {e}")
-                        
-                        active_jobs[job_id]['status'] = 'completed'
-                        active_jobs[job_id]['progress'] = 100
-                        active_jobs[job_id]['current_step'] = 'Video ready!'
-                    else:
-                        raise Exception("Failed to create video locally")
-                        
-                except Exception as e:
-                    logger.error(f"Local video creation failed: {e}")
-                    active_jobs[job_id]['status'] = 'error'
-                    active_jobs[job_id]['progress'] = 100
-                    active_jobs[job_id]['current_step'] = f'Video creation failed: {str(e)}'
+            if active_jobs[job_id].get('github_actions_failed'):
+                active_jobs[job_id]['current_step'] = 'GitHub Actions failed - check configuration'
+            elif not use_github_actions:
+                active_jobs[job_id]['current_step'] = 'GitHub Actions not enabled'
+            elif not github_image_urls:
+                active_jobs[job_id]['current_step'] = 'Failed to upload images to storage'
             else:
-                # No files to process
-                active_jobs[job_id]['status'] = 'error'
-                active_jobs[job_id]['progress'] = 100
-                active_jobs[job_id]['current_step'] = 'No images to process'
+                active_jobs[job_id]['current_step'] = 'Failed to trigger GitHub Actions'
             
             active_jobs[job_id]['processing_time'] = f"{processing_time:.2f} seconds"
         
