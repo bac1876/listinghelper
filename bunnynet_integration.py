@@ -19,7 +19,7 @@ class BunnyNetIntegration:
         self.storage_zone_name = os.environ.get('BUNNY_STORAGE_ZONE_NAME')
         self.access_key = os.environ.get('BUNNY_ACCESS_KEY')
         self.pull_zone_url = os.environ.get('BUNNY_PULL_ZONE_URL')
-        self.region = os.environ.get('BUNNY_REGION', '')  # Empty string for main region
+        self.region = os.environ.get('BUNNY_REGION', 'ny')  # Default to NY region
         
         # Validate required configuration
         missing = []
