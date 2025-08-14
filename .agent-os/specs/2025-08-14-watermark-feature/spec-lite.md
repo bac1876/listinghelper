@@ -1,0 +1,3 @@
+# Spec Summary (Lite)
+
+Add customizable watermark functionality to ListingHelper's video generation system, enabling real estate agents to brand their property tour videos with company logos. Users can upload PNG logos with transparency, select positioning (corners or center), adjust opacity, and have watermarks automatically applied to all generated Ken Burns effect videos through enhanced FFmpeg integration.

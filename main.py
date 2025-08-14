@@ -62,6 +62,11 @@ def log_response_info(response):
 # Register the virtual tour blueprint
 app.register_blueprint(virtual_tour_bp)
 
+# Register watermark blueprint
+from watermark_routes import watermark_bp
+app.register_blueprint(watermark_bp)
+logger.info("Watermark API registered at /api/watermark")
+
 # Register webhook blueprint if using GitHub Actions
 if webhook_bp:
     app.register_blueprint(webhook_bp)

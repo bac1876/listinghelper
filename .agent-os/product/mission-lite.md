@@ -1,0 +1,3 @@
+# Mission Summary
+
+ListingHelper is a web-based virtual tour generator that transforms real estate photos into professional MP4 videos with Ken Burns effects (smooth zoom and pan movements). The platform enables real estate agents to create cinematic property tour videos with professional quality output, enhancing their marketing materials with smooth camera movements and high-resolution 1080p video content.

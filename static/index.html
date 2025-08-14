@@ -830,6 +830,237 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        
+        /* Watermark Styles */
+        .watermark-section {
+            margin-top: 40px;
+            padding: 40px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%);
+            border-radius: 25px;
+            border: 2px solid var(--border);
+            backdrop-filter: blur(10px);
+        }
+        
+        .watermark-section h3 {
+            color: var(--secondary);
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .watermark-upload-zone {
+            border: 3px dashed var(--border);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(15, 15, 30, 0.5);
+        }
+        
+        .watermark-upload-zone:hover {
+            border-color: var(--primary);
+            background: rgba(139, 92, 246, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .watermark-upload-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+        
+        .watermark-upload-zone h4 {
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+        
+        .watermark-upload-zone p {
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+        
+        .watermark-preview {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            background: rgba(26, 26, 46, 0.8);
+            border-radius: 15px;
+            border: 2px solid var(--success);
+        }
+        
+        .watermark-preview-image {
+            position: relative;
+            flex-shrink: 0;
+        }
+        
+        .watermark-preview-image img {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px;
+        }
+        
+        .watermark-remove {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 24px;
+            height: 24px;
+            background: var(--error);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        
+        .watermark-remove:hover {
+            background: #c0392b;
+            transform: scale(1.1);
+        }
+        
+        .watermark-info {
+            flex: 1;
+        }
+        
+        .watermark-name {
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .watermark-size {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+        
+        .watermark-settings {
+            margin-top: 25px;
+            padding: 25px;
+            background: rgba(15, 15, 30, 0.6);
+            border-radius: 15px;
+            border: 1px solid var(--border);
+        }
+        
+        .watermark-preview-container {
+            margin-top: 25px;
+        }
+        
+        .video-preview-frame {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            height: 225px;
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            border-radius: 10px;
+            margin: 0 auto;
+            overflow: hidden;
+            border: 2px solid var(--border);
+        }
+        
+        .watermark-position-preview {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .watermark-demo {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.8);
+            color: #333;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        /* Position classes for watermark demo */
+        .watermark-demo.top-left {
+            top: 15px;
+            left: 15px;
+        }
+        
+        .watermark-demo.top-right {
+            top: 15px;
+            right: 15px;
+        }
+        
+        .watermark-demo.top-center {
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .watermark-demo.center {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .watermark-demo.bottom-left {
+            bottom: 15px;
+            left: 15px;
+        }
+        
+        .watermark-demo.bottom-right {
+            bottom: 15px;
+            right: 15px;
+        }
+        
+        .watermark-demo.bottom-center {
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        /* Range input styling */
+        input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border);
+            outline: none;
+            margin: 10px 0;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s ease;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: var(--primary-light);
+            transform: scale(1.1);
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
     </style>
 </head>
 <body>
@@ -930,6 +1161,81 @@
                             <div class="quality-option" data-quality="premium">
                                 <h5>💎 Premium</h5>
                                 <p>8 sec/image • Best quality</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="watermark-section">
+                        <h3>Watermark (Optional)</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 20px;">Add your logo or brand watermark to the video</p>
+                        
+                        <div class="watermark-controls">
+                            <div class="form-group">
+                                <div class="watermark-upload-zone" id="watermark-upload-zone">
+                                    <div class="watermark-upload-icon">🏷️</div>
+                                    <h4>Upload Watermark</h4>
+                                    <p>PNG, JPG, or GIF • Max 5MB</p>
+                                    <button type="button" class="btn secondary" id="watermark-select-btn">Choose Watermark</button>
+                                    <input type="file" id="watermark-input" accept="image/*" style="display: none;">
+                                </div>
+                                
+                                <div class="watermark-preview" id="watermark-preview" style="display: none;">
+                                    <div class="watermark-preview-image">
+                                        <img id="watermark-preview-img" src="" alt="Watermark preview">
+                                        <button type="button" class="watermark-remove" id="watermark-remove">×</button>
+                                    </div>
+                                    <div class="watermark-info">
+                                        <div class="watermark-name" id="watermark-name"></div>
+                                        <div class="watermark-size" id="watermark-size"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="watermark-settings" id="watermark-settings" style="display: none;">
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <select id="watermark-position">
+                                            <option value="bottom-right">Bottom Right</option>
+                                            <option value="bottom-left">Bottom Left</option>
+                                            <option value="bottom-center">Bottom Center</option>
+                                            <option value="top-right">Top Right</option>
+                                            <option value="top-left">Top Left</option>
+                                            <option value="top-center">Top Center</option>
+                                            <option value="center">Center</option>
+                                        </select>
+                                        <label for="watermark-position">Position</label>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <input type="range" id="watermark-opacity" min="0.1" max="1.0" step="0.1" value="0.7">
+                                        <label for="watermark-opacity">Opacity: <span id="opacity-value">70%</span></label>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <input type="range" id="watermark-scale" min="0.05" max="0.3" step="0.01" value="0.1">
+                                        <label for="watermark-scale">Size: <span id="scale-value">10%</span></label>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <select id="watermark-duration">
+                                            <option value="full">Entire Video</option>
+                                            <option value="start">First 5 Seconds</option>
+                                            <option value="end">Last 5 Seconds</option>
+                                        </select>
+                                        <label for="watermark-duration">Display Duration</label>
+                                    </div>
+                                </div>
+                                
+                                <div class="watermark-preview-container">
+                                    <div class="video-preview-frame">
+                                        <div class="watermark-position-preview" id="watermark-position-preview">
+                                            <div class="watermark-demo" id="watermark-demo">LOGO</div>
+                                        </div>
+                                    </div>
+                                    <p style="font-size: 0.9em; color: var(--text-muted); text-align: center; margin-top: 10px;">
+                                        Preview of watermark position on video
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1499,6 +1805,331 @@
                     .catch(err => console.error('Cancel error:', err));
             }
         }
+        
+        // Watermark functionality
+        const watermarkInput = document.getElementById('watermark-input');
+        const watermarkSelectBtn = document.getElementById('watermark-select-btn');
+        const watermarkUploadZone = document.getElementById('watermark-upload-zone');
+        const watermarkPreview = document.getElementById('watermark-preview');
+        const watermarkSettings = document.getElementById('watermark-settings');
+        const watermarkRemoveBtn = document.getElementById('watermark-remove');
+        const watermarkPositionSelect = document.getElementById('watermark-position');
+        const watermarkOpacitySlider = document.getElementById('watermark-opacity');
+        const watermarkScaleSlider = document.getElementById('watermark-scale');
+        const watermarkDurationSelect = document.getElementById('watermark-duration');
+        const watermarkDemo = document.getElementById('watermark-demo');
+        const opacityValue = document.getElementById('opacity-value');
+        const scaleValue = document.getElementById('scale-value');
+        
+        let selectedWatermarkFile = null;
+        let uploadedWatermarkId = null;
+        
+        // Watermark file selection
+        watermarkSelectBtn.addEventListener('click', () => {
+            watermarkInput.click();
+        });
+        
+        watermarkUploadZone.addEventListener('click', (e) => {
+            if (e.target === watermarkUploadZone) {
+                watermarkInput.click();
+            }
+        });
+        
+        // Handle watermark file selection
+        watermarkInput.addEventListener('change', handleWatermarkFileSelect);
+        
+        function handleWatermarkFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Validate file
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file (PNG, JPG, GIF)');
+                return;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                alert('File too large. Maximum size is 5MB.');
+                return;
+            }
+            
+            selectedWatermarkFile = file;
+            
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('watermark-preview-img').src = e.target.result;
+                document.getElementById('watermark-name').textContent = file.name;
+                document.getElementById('watermark-size').textContent = `${(file.size / 1024).toFixed(1)} KB`;
+                
+                watermarkUploadZone.style.display = 'none';
+                watermarkPreview.style.display = 'flex';
+                watermarkSettings.style.display = 'block';
+                
+                // Update demo preview
+                updateWatermarkPreview();
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // Remove watermark
+        watermarkRemoveBtn.addEventListener('click', () => {
+            selectedWatermarkFile = null;
+            uploadedWatermarkId = null;
+            watermarkInput.value = '';
+            
+            watermarkUploadZone.style.display = 'block';
+            watermarkPreview.style.display = 'none';
+            watermarkSettings.style.display = 'none';
+        });
+        
+        // Watermark settings event listeners
+        watermarkPositionSelect.addEventListener('change', updateWatermarkPreview);
+        watermarkOpacitySlider.addEventListener('input', updateWatermarkPreview);
+        watermarkScaleSlider.addEventListener('input', updateWatermarkPreview);
+        watermarkDurationSelect.addEventListener('change', updateWatermarkPreview);
+        
+        function updateWatermarkPreview() {
+            // Update position
+            const position = watermarkPositionSelect.value;
+            watermarkDemo.className = `watermark-demo ${position}`;
+            
+            // Update opacity
+            const opacity = parseFloat(watermarkOpacitySlider.value);
+            watermarkDemo.style.opacity = opacity;
+            opacityValue.textContent = `${Math.round(opacity * 100)}%`;
+            
+            // Update scale
+            const scale = parseFloat(watermarkScaleSlider.value);
+            const fontSize = Math.max(8, scale * 60); // Base font size scaled
+            watermarkDemo.style.fontSize = `${fontSize}px`;
+            scaleValue.textContent = `${Math.round(scale * 100)}%`;
+            
+            // Update duration indicator
+            const duration = watermarkDurationSelect.value;
+            if (duration === 'start') {
+                watermarkDemo.textContent = 'LOGO (Start)';
+            } else if (duration === 'end') {
+                watermarkDemo.textContent = 'LOGO (End)';
+            } else {
+                watermarkDemo.textContent = 'LOGO';
+            }
+        }
+        
+        async function uploadWatermark() {
+            if (!selectedWatermarkFile) return null;
+            
+            const formData = new FormData();
+            formData.append('watermark', selectedWatermarkFile);
+            formData.append('position', watermarkPositionSelect.value);
+            formData.append('opacity', watermarkOpacitySlider.value);
+            formData.append('scale', watermarkScaleSlider.value);
+            formData.append('margin_x', '20');
+            formData.append('margin_y', '20');
+            formData.append('duration', watermarkDurationSelect.value);
+            
+            try {
+                const response = await fetch('/api/watermark/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Upload failed');
+                }
+                
+                const result = await response.json();
+                uploadedWatermarkId = result.watermark_id;
+                console.log('Watermark uploaded:', result);
+                return result.watermark_id;
+                
+            } catch (error) {
+                console.error('Watermark upload error:', error);
+                alert(`Watermark upload failed: ${error.message}`);
+                return null;
+            }
+        }
+        
+        // Update the generateVirtualTour function to include watermark
+        const originalGenerateVirtualTour = generateVirtualTour;
+        
+        async function generateVirtualTourWithWatermark() {
+            // Upload watermark first if one is selected
+            let watermarkId = null;
+            if (selectedWatermarkFile && !uploadedWatermarkId) {
+                console.log('Uploading watermark...');
+                watermarkId = await uploadWatermark();
+                if (!watermarkId) {
+                    // Failed to upload watermark, but continue without it
+                    console.warn('Continuing without watermark due to upload failure');
+                }
+            } else if (uploadedWatermarkId) {
+                watermarkId = uploadedWatermarkId;
+            }
+            
+            return originalGenerateVirtualTour(watermarkId);
+        }
+        
+        // Replace the original function
+        generateVirtualTour = generateVirtualTourWithWatermark;
+        
+        // Update the original generateVirtualTour function to accept watermarkId parameter
+        const originalFunc = window.generateVirtualTour || originalGenerateVirtualTour;
+        window.originalGenerateVirtualTour = async function(watermarkId = null) {
+            if (selectedFiles.length === 0) {
+                alert('Please select at least one photo');
+                return;
+            }
+            
+            const address = document.getElementById('property-address').value.trim();
+            const agentName = document.getElementById('agent-name').value.trim();
+            const agentPhone = document.getElementById('agent-phone').value.trim();
+            
+            if (!address || !agentName || !agentPhone) {
+                alert('Please fill in required fields: Property Address, Agent Name, and Phone Number');
+                return;
+            }
+            
+            // First test if the API is reachable
+            console.log('Testing API health...');
+            try {
+                const healthResponse = await fetch('/api/virtual-tour/health');
+                console.log('Health check response:', healthResponse.status);
+                if (!healthResponse.ok) {
+                    console.error('API health check failed:', healthResponse.status);
+                    alert('Server is not responding. Please try again in a moment.');
+                    return;
+                }
+                const healthData = await healthResponse.json();
+                console.log('Health check data:', healthData);
+            } catch (error) {
+                console.error('Cannot reach server:', error);
+                alert('Cannot connect to server. Please check your connection and try again.');
+                return;
+            }
+            
+            // Prepare form data
+            const formData = new FormData();
+            console.log(`Uploading ${selectedFiles.length} files:`);
+            selectedFiles.forEach((file, index) => {
+                console.log(`  File ${index + 1}: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB, type: ${file.type})`);
+                formData.append('files', file);
+            });
+            
+            // Add watermark ID if available
+            if (watermarkId) {
+                formData.append('watermark_id', watermarkId);
+                console.log('Including watermark ID:', watermarkId);
+            }
+            
+            // Add property details
+            formData.append('address', address);
+            formData.append('details1', `Call ${agentPhone} to schedule a showing`);
+            formData.append('details2', document.getElementById('property-status').value);
+            formData.append('agent_name', agentName);
+            formData.append('agent_email', document.getElementById('agent-email').value);
+            formData.append('agent_phone', agentPhone);
+            formData.append('brand_name', document.getElementById('brand-name').value || 'Real Estate Professional');
+            
+            // Add optional property details
+            const price = document.getElementById('property-price').value;
+            const beds = document.getElementById('property-beds').value;
+            const baths = document.getElementById('property-baths').value;
+            const sqft = document.getElementById('property-sqft').value;
+            
+            if (price) formData.append('property_price', price);
+            if (beds) formData.append('property_beds', beds);
+            if (baths) formData.append('property_baths', baths);
+            if (sqft) formData.append('property_sqft', sqft);
+            
+            // Add quality settings
+            const qualitySettings = {
+                'fast': { duration: 3, speed: 'fast' },
+                'medium': { duration: 6, speed: 'medium' },
+                'premium': { duration: 8, speed: 'slow' }
+            };
+            
+            const settings = qualitySettings[selectedQuality];
+            formData.append('duration_per_image', settings.duration);
+            formData.append('effect_speed', settings.speed);
+            
+            // Show progress section
+            progressSection.style.display = 'block';
+            resultsSection.style.display = 'none';
+            generateBtn.disabled = true;
+            
+            // Update initial status with file count and watermark info
+            const statusText = watermarkId ? 
+                `Uploading ${selectedFiles.length} images with watermark...` :
+                `Uploading ${selectedFiles.length} images...`;
+            updateStatus(statusText, 'processing');
+            updateProgress(0, 'Uploading photos...');
+            
+            try {
+                console.log('Starting upload...');
+                console.log('Form data prepared, initiating fetch request...');
+                console.log('Target URL:', window.location.origin + '/api/virtual-tour/upload');
+                
+                // Add timeout to prevent infinite waiting
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+                
+                // Upload and start processing
+                const response = await fetch('/api/virtual-tour/upload', {
+                    method: 'POST',
+                    body: formData,
+                    signal: controller.signal
+                }).catch(err => {
+                    console.error('Fetch error:', err);
+                    if (err.name === 'AbortError') {
+                        throw new Error('Upload timeout - server not responding');
+                    }
+                    throw new Error(`Network error: ${err.message}`);
+                });
+                
+                clearTimeout(timeoutId);
+                
+                console.log('Upload response received, status:', response.status);
+                
+                if (!response.ok) {
+                    let errorMsg = `Upload failed: ${response.status} ${response.statusText}`;
+                    try {
+                        const errorText = await response.text();
+                        console.error('Error response body:', errorText);
+                        if (errorText) {
+                            errorMsg += ` - ${errorText}`;
+                        }
+                    } catch (e) {
+                        console.error('Could not read error response:', e);
+                    }
+                    throw new Error(errorMsg);
+                }
+                
+                const data = await response.json();
+                console.log('Upload response data:', data);
+                
+                currentJobId = data.job_id;
+                updateStatus('Upload complete, processing...', 'processing');
+                updateProgress(10, 'Photos uploaded successfully');
+                
+                // Start checking job status
+                startStatusChecking();
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                showError(`Upload failed: ${error.message}`);
+                generateBtn.disabled = false;
+                progressSection.style.display = 'none';
+            }
+        };
+        
+        // Override the generate button event listener
+        generateBtn.removeEventListener('click', generateVirtualTour);
+        generateBtn.addEventListener('click', generateVirtualTourWithWatermark);
+        
+        // Initialize watermark preview
+        updateWatermarkPreview();
     </script>
 </body>
 </html>

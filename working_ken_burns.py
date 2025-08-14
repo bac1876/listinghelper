@@ -161,6 +161,24 @@ def upload_images():
         if quality_preference and quality_preference not in ['deployment', 'medium', 'high', 'premium']:
             quality_preference = None  # Invalid quality, use auto-detection
         
+        # Get watermark settings if provided
+        watermark_id = request.form.get('watermark_id', None)
+        if watermark_id and watermark_id.strip():
+            # Validate watermark exists
+            try:
+                from watermark_config import watermark_manager
+                watermark_config = watermark_manager.get_watermark(watermark_id)
+                if not watermark_config:
+                    logger.warning(f"Watermark not found: {watermark_id}")
+                    watermark_id = None
+                else:
+                    logger.info(f"Using watermark: {watermark_id}")
+            except Exception as e:
+                logger.error(f"Error validating watermark: {e}")
+                watermark_id = None
+        else:
+            watermark_id = None
+        
         # Get property details if provided
         property_details = {
             'address': request.form.get('address', 'Beautiful Property\nYour City, State'),
@@ -269,14 +287,39 @@ def upload_images():
                 logger.info("Creating Ken Burns MP4 video...")
                 update_job_progress(job_id, 'processing', 'creating_video', 30)
                 
-                # Create the professional Ken Burns video
+                # Create the professional Ken Burns video with optional watermark
                 video_path = os.path.join(job_dir, f'virtual_tour_{job_id}.mp4')
-                created_video_path = create_ken_burns_video(
-                    optimized_paths, 
-                    video_path, 
-                    job_id,
-                    quality=quality_preference
-                )
+                
+                # Use watermark-enabled function if watermark is specified
+                if watermark_id:
+                    try:
+                        from ffmpeg_watermark_integration import create_ken_burns_video_with_watermark
+                        logger.info(f"Creating video with watermark: {watermark_id}")
+                        update_job_progress(job_id, 'processing', 'adding_watermark', 35)
+                        created_video_path = create_ken_burns_video_with_watermark(
+                            optimized_paths, 
+                            video_path, 
+                            job_id,
+                            watermark_id=watermark_id,
+                            quality=quality_preference
+                        )
+                    except Exception as watermark_error:
+                        logger.error(f"Error with watermark, falling back to regular video: {watermark_error}")
+                        # Fallback to regular video creation
+                        created_video_path = create_ken_burns_video(
+                            optimized_paths, 
+                            video_path, 
+                            job_id,
+                            quality=quality_preference
+                        )
+                else:
+                    # Regular video creation without watermark
+                    created_video_path = create_ken_burns_video(
+                        optimized_paths, 
+                        video_path, 
+                        job_id,
+                        quality=quality_preference
+                    )
             
             if os.path.exists(created_video_path):
                 active_jobs[job_id]['video_available'] = True

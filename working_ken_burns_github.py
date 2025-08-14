@@ -396,6 +396,24 @@ def upload_images():
         effect_speed = settings.get('effectSpeed', request.form.get('effect_speed', 'medium'))
         transition_duration = float(settings.get('transitionDuration', request.form.get('transition_duration', 1.5)))
         
+        # Get watermark settings if provided
+        watermark_id = request.form.get('watermark_id', None)
+        if watermark_id and watermark_id.strip():
+            # Validate watermark exists
+            try:
+                from watermark_config import watermark_manager
+                watermark_config = watermark_manager.get_watermark(watermark_id)
+                if not watermark_config:
+                    logger.warning(f"Watermark not found: {watermark_id}")
+                    watermark_id = None
+                else:
+                    logger.info(f"Using watermark: {watermark_id}")
+            except Exception as e:
+                logger.error(f"Error validating watermark: {e}")
+                watermark_id = None
+        else:
+            watermark_id = None
+        
         # Process uploaded files - check both 'files' and 'images' fields
         files = []
         if 'files' in request.files:
@@ -506,9 +524,11 @@ def upload_images():
             
             # NO FFMPEG FALLBACK - Only use GitHub Actions + Remotion or Cloudinary
             # FFmpeg creates terrible quality videos and is worse than failure
+            # UNLESS we have a watermark - then we need local processing
         
         # Check if we should use GitHub Actions for high-quality rendering
-        use_github_actions = os.environ.get('USE_GITHUB_ACTIONS', 'false').lower() == 'true' and github_actions
+        # If watermark is requested, force local processing since GitHub Actions doesn't support watermarks yet
+        use_github_actions = os.environ.get('USE_GITHUB_ACTIONS', 'false').lower() == 'true' and github_actions and not watermark_id
         logger.info(f"GitHub Actions enabled: {use_github_actions} (env: {os.environ.get('USE_GITHUB_ACTIONS')}, integration: {github_actions is not None})")
         
         # Prepare image URLs for GitHub Actions
@@ -626,7 +646,51 @@ def upload_images():
                 logger.error(f"Error with GitHub Actions: {e}")
                 active_jobs[job_id]['current_step'] = f'GitHub Actions error: {str(e)}'
         
-        # No fallback - ImageKit is required
+        # If watermark is requested, use local FFmpeg processing
+        if watermark_id and 'saved_files' in locals() and saved_files:
+            try:
+                logger.info(f"Processing video with watermark {watermark_id} using local FFmpeg")
+                active_jobs[job_id]['current_step'] = 'Adding watermark to video'
+                active_jobs[job_id]['progress'] = 60
+                
+                # Import watermark-enabled video creation
+                from ffmpeg_watermark_integration import create_ken_burns_video_with_watermark
+                
+                # Create output path
+                output_filename = f"virtual_tour_{job_id}.mp4"
+                output_path = os.path.join(TEMP_DIR, output_filename)
+                
+                # Create video with watermark
+                created_video = create_ken_burns_video_with_watermark(
+                    saved_files,
+                    output_path,
+                    duration_per_image,
+                    watermark_id
+                )
+                
+                if created_video and os.path.exists(created_video):
+                    logger.info(f"Video with watermark created successfully: {created_video}")
+                    active_jobs[job_id]['video_path'] = created_video
+                    active_jobs[job_id]['video_available'] = True
+                    active_jobs[job_id]['current_step'] = 'Video with watermark created'
+                    active_jobs[job_id]['progress'] = 80
+                    
+                    # Upload to ImageKit for serving
+                    try:
+                        from upload_to_imagekit import upload_video_to_imagekit
+                        video_url = upload_video_to_imagekit(created_video, f"tours/videos/{output_filename}")
+                        if video_url:
+                            active_jobs[job_id]['video_url'] = video_url
+                            logger.info(f"Video uploaded to ImageKit: {video_url}")
+                    except Exception as e:
+                        logger.error(f"Failed to upload video to ImageKit: {e}")
+                        # Video still available locally
+                        
+            except Exception as e:
+                logger.error(f"Error creating video with watermark: {e}")
+                active_jobs[job_id]['current_step'] = f'Watermark processing failed: {str(e)}'
+        
+        # No other fallback - ImageKit is required for non-watermark videos
         
         # Create virtual tour HTML
         try:
