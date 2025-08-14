@@ -643,11 +643,11 @@ def upload_images():
         # If we have uploaded files but no URLs, upload them to Cloudinary first
         if use_github_actions and 'saved_files' in locals() and saved_files and not image_urls:
             try:
-                active_jobs[job_id]['current_step'] = 'Uploading images to ImageKit for GitHub Actions'
+                active_jobs[job_id]['current_step'] = 'Uploading images to storage for GitHub Actions'
                 active_jobs[job_id]['progress'] = 40
                 
-                # Upload files to ImageKit
-                logger.info(f"Uploading {len(saved_files)} files to ImageKit...")
+                # Upload files to storage backend
+                logger.info(f"Uploading {len(saved_files)} files to storage backend...")
                 for i, file in enumerate(saved_files):
                     logger.info(f"  Will upload file {i+1}: {os.path.basename(file)}")
                 
@@ -666,6 +666,10 @@ def upload_images():
                 
                 github_image_urls = upload_files_to_storage(saved_files, "tours/images/")
                 
+                logger.info(f"Upload result: got {len(github_image_urls) if github_image_urls else 0} URLs back")
+                if not github_image_urls:
+                    logger.error("No URLs returned from upload_files_to_storage - upload completely failed")
+                
                 if github_image_urls:
                     logger.info(f"Successfully uploaded {len(github_image_urls)} images")
                     for i, url in enumerate(github_image_urls):
@@ -673,13 +677,13 @@ def upload_images():
                     active_jobs[job_id]['current_step'] = f'Uploaded {len(github_image_urls)} images to cloud'
                     active_jobs[job_id]['progress'] = 50
                 else:
-                    error_msg = "Failed to upload images to ImageKit - check IMAGEKIT credentials"
+                    error_msg = f"Failed to upload images to {backend_name} - check storage credentials"
                     logger.error(error_msg)
                     active_jobs[job_id]['current_step'] = error_msg
-                    # Continue anyway - local video was created
+                    github_image_urls = []
                     
             except Exception as e:
-                error_msg = f"Error uploading to ImageKit: {str(e)}"
+                error_msg = f"Error uploading to storage: {str(e)}"
                 logger.error(error_msg)
                 active_jobs[job_id]['current_step'] = error_msg
                 github_image_urls = []
