@@ -15,9 +15,12 @@ import requests
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Using ImageKit instead of Cloudinary (no 100MB limit!)
-from imagekit_integration import get_imagekit
-from upload_to_imagekit import upload_files_to_imagekit, upload_video_to_imagekit, get_video_url_imagekit
+# Using storage backend (Bunny.net or ImageKit)
+from upload_to_storage import upload_files_to_storage, upload_video_to_storage, get_video_url_storage
+# Compatibility aliases
+upload_files_to_imagekit = upload_files_to_storage
+upload_video_to_imagekit = upload_video_to_storage
+get_video_url_imagekit = get_video_url_storage
 from github_actions_integration import GitHubActionsIntegration
 from PIL import Image
 import io
@@ -93,8 +96,7 @@ def trigger_ffmpeg_fallback(job_id):
                 
                 # Try to upload to ImageKit
                 try:
-                    from upload_to_imagekit import upload_video_to_imagekit
-                    video_url = upload_video_to_imagekit(created_video, f"tours/videos/{output_filename}")
+                    video_url = upload_video_to_storage(created_video, f"tours/videos/{output_filename}")
                     if video_url:
                         job['video_url'] = video_url
                         job['files_generated']['video_url'] = video_url
@@ -368,12 +370,13 @@ def env_check():
             env_vars[var] = "NOT_SET"
     
     # Test ImageKit initialization
-    from imagekit_integration import test_imagekit_initialization
-    imagekit_status = test_imagekit_initialization()
+    from storage_adapter import test_storage_initialization
+    storage_status, backend = test_storage_initialization()
     
     return jsonify({
         'environment_variables': env_vars,
-        'imagekit_initialized': imagekit_status,
+        'storage_initialized': storage_status,
+        'storage_backend': backend,
         'railway_deployment': os.environ.get('RAILWAY_ENVIRONMENT', 'NOT_RAILWAY'),
         'python_path': os.environ.get('PYTHONPATH', 'NOT_SET')
     })
@@ -776,8 +779,7 @@ def upload_images():
                     
                     # Upload to ImageKit for serving
                     try:
-                        from upload_to_imagekit import upload_video_to_imagekit
-                        video_url = upload_video_to_imagekit(created_video, f"tours/videos/{output_filename}")
+                        video_url = upload_video_to_storage(created_video, f"tours/videos/{output_filename}")
                         if video_url:
                             active_jobs[job_id]['video_url'] = video_url
                             logger.info(f"Video uploaded to ImageKit: {video_url}")

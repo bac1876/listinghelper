@@ -7,14 +7,29 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Initialize and test ImageKit after loading env vars
-from imagekit_integration import test_imagekit_initialization
-imagekit_ready = test_imagekit_initialization()
-if not imagekit_ready:
+# Initialize storage backend (Bunny.net or ImageKit)
+from storage_adapter import test_storage_initialization
+storage_ready, backend_name = test_storage_initialization()
+
+if storage_ready:
     print("=" * 60)
-    print("WARNING: ImageKit not configured!")
-    print("Using Cloudinary as fallback (100MB limit, 25 credits only)")
-    print("To use ImageKit, ensure these env vars are set in Railway:")
+    print(f"[OK] Storage backend initialized: {backend_name.upper()}")
+    if backend_name == 'bunnynet':
+        print("  Using Bunny.net - No video transformation limits!")
+    elif backend_name == 'imagekit':
+        print("  Using ImageKit - Watch for transformation limits")
+    print("=" * 60)
+else:
+    print("=" * 60)
+    print("ERROR: No storage backend configured!")
+    print("Please configure either Bunny.net or ImageKit:")
+    print("")
+    print("For Bunny.net (recommended):")
+    print("  - BUNNY_STORAGE_ZONE_NAME")
+    print("  - BUNNY_ACCESS_KEY") 
+    print("  - BUNNY_PULL_ZONE_URL")
+    print("")
+    print("For ImageKit (fallback):")
     print("  - IMAGEKIT_PRIVATE_KEY")
     print("  - IMAGEKIT_PUBLIC_KEY")
     print("  - IMAGEKIT_URL_ENDPOINT")
