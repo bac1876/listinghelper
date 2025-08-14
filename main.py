@@ -75,7 +75,12 @@ if webhook_bp:
 # Root route to serve the CSS3 Ken Burns frontend
 @app.route('/')
 def index():
-    return send_from_directory('static', 'index.html')
+    response = send_from_directory('static', 'index.html')
+    # Disable caching to ensure latest version is served
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 # Health check route at root level
 @app.route('/health')
