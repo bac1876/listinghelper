@@ -653,18 +653,20 @@ def upload_images():
                 for i, file in enumerate(saved_files):
                     logger.info(f"  Will upload file {i+1}: {os.path.basename(file)}")
                 
-                # Use ImageKit for image uploads (required)
-                imagekit_instance = get_imagekit()
-                if not imagekit_instance:
-                    logger.error("ImageKit not configured! Cannot upload images.")
-                    logger.error("Please set IMAGEKIT_PRIVATE_KEY, IMAGEKIT_PUBLIC_KEY, and IMAGEKIT_URL_ENDPOINT")
+                # Use storage backend for image uploads
+                from storage_adapter import get_storage
+                try:
+                    storage_instance = get_storage()
+                    backend_name = storage_instance.get_backend_name()
+                    logger.info(f"Using {backend_name} for image uploads")
+                except Exception as e:
+                    logger.error(f"Storage backend not configured! {e}")
                     active_jobs[job_id]['status'] = 'error'
-                    active_jobs[job_id]['current_step'] = 'ImageKit not configured - cannot proceed'
-                    active_jobs[job_id]['error'] = 'ImageKit configuration missing'
-                    raise ValueError("ImageKit not configured. Please set environment variables.")
+                    active_jobs[job_id]['current_step'] = 'Storage backend not configured - cannot proceed'
+                    active_jobs[job_id]['error'] = 'Storage configuration missing'
+                    raise ValueError("Storage backend not configured. Please set Bunny.net or ImageKit environment variables.")
                 
-                logger.info("Using ImageKit for image uploads (no size limits!)")
-                github_image_urls = upload_files_to_imagekit(saved_files, "/tours/images/")
+                github_image_urls = upload_files_to_storage(saved_files, "tours/images/")
                 
                 if github_image_urls:
                     logger.info(f"Successfully uploaded {len(github_image_urls)} images")
