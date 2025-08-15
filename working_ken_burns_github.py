@@ -725,6 +725,34 @@ def upload_images():
                 property_details_string = ' | '.join(details_parts) if details_parts else details1
                 
                 logger.info(f"Triggering GitHub Actions for job {job_id} with {len(github_image_urls)} images")
+                
+                # Prepare watermark configuration if available
+                watermark_config = None
+                if watermark_id:
+                    from watermark_config import watermark_manager
+                    wm = watermark_manager.get_watermark(watermark_id)
+                    if wm:
+                        # Get the watermark URL from storage
+                        try:
+                            from storage_adapter import get_storage
+                            storage = get_storage()
+                            # Upload watermark to storage if it's a local file
+                            if wm.filepath and os.path.exists(wm.filepath):
+                                with open(wm.filepath, 'rb') as f:
+                                    watermark_filename = f"watermark_{watermark_id}.png"
+                                    result = storage.upload_file(wm.filepath, watermark_filename, "watermarks/")
+                                    if result.get('success'):
+                                        watermark_url = result.get('url')
+                                        watermark_config = {
+                                            'url': watermark_url,
+                                            'position': wm.position,
+                                            'opacity': wm.opacity,
+                                            'scale': wm.scale
+                                        }
+                                        logger.info(f"Watermark uploaded for GitHub Actions: {watermark_url}")
+                        except Exception as e:
+                            logger.error(f"Failed to upload watermark: {e}")
+                
                 github_result = github_actions.trigger_video_render(
                         images=github_image_urls,
                         property_details={
@@ -741,7 +769,8 @@ def upload_images():
                             'durationPerImage': duration_per_image,
                             'effectSpeed': effect_speed,
                             'transitionDuration': transition_duration
-                        }
+                        },
+                        watermark=watermark_config
                 )
                 
                 logger.info(f"GitHub Actions trigger result: {github_result}")
@@ -775,9 +804,6 @@ def upload_images():
                 active_jobs[job_id]['github_actions_failed'] = True
                 logger.error("GitHub Actions error occurred - no video will be generated")
         
-        # Watermarks are not supported without local processing
-        if watermark_id:
-            logger.warning("Watermark requested but local processing is disabled - watermarks are not supported with GitHub Actions")
         
         # No other fallback - ImageKit is required for non-watermark videos
         

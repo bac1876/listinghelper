@@ -16,6 +16,11 @@ on:
         required: false
         type: string
         default: '{"durationPerImage":8,"effectSpeed":"medium","transitionDuration":1.5}'
+      watermark:
+        description: 'JSON object with watermark configuration'
+        required: false
+        type: string
+        default: ''
       jobId:
         description: 'Unique job identifier'
         required: true
@@ -198,6 +203,7 @@ jobs:
         REMOTION_IMAGES: ${{ inputs.images }}
         REMOTION_PROPERTY_DETAILS: ${{ inputs.propertyDetails }}
         REMOTION_SETTINGS: ${{ inputs.settings }}
+        REMOTION_WATERMARK: ${{ inputs.watermark }}
         JOB_ID: ${{ inputs.jobId }}
       run: |
         echo "Starting FULL Remotion render..."
@@ -239,6 +245,21 @@ jobs:
             const propertyDetails = JSON.parse(process.env.REMOTION_PROPERTY_DETAILS);
             const settings = JSON.parse(process.env.REMOTION_SETTINGS);
             const props = { images, propertyDetails, settings };
+            
+            // Add watermark if provided
+            const watermarkStr = process.env.REMOTION_WATERMARK || '';
+            if (watermarkStr && watermarkStr !== '') {
+              try {
+                const watermark = JSON.parse(watermarkStr);
+                if (watermark && watermark.url) {
+                  props.watermark = watermark;
+                  console.log('Watermark configuration added to props');
+                }
+              } catch (e) {
+                console.log('No watermark or invalid watermark JSON');
+              }
+            }
+            
             require('fs').writeFileSync('props.json', JSON.stringify(props, null, 2));
             console.log('Props saved to props.json');
           } catch (e) {

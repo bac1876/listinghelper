@@ -35,7 +35,8 @@ export const RemotionRoot: React.FC = () => {
           const numImages = images.length > 0 ? images.length : 4; // Default to 4 if no images
           const fps = 30;
           const imageFrames = settings.durationPerImage * fps;
-          const totalFrames = numImages * imageFrames;
+          const finalSlideFrames = 5 * fps; // 5 seconds for final slide
+          const totalFrames = (numImages * imageFrames) + finalSlideFrames;
           
           return {
             durationInFrames: totalFrames,

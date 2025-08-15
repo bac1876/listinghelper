@@ -61,7 +61,9 @@ class GitHubActionsIntegration:
             logger.error(f"Error validating GitHub token: {e}")
             return False
     
-    def trigger_video_render(self, images: List[str], property_details: Dict[str, Any], settings: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def trigger_video_render(self, images: List[str], property_details: Dict[str, Any], 
+                           settings: Optional[Dict[str, Any]] = None, 
+                           watermark: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Trigger GitHub Actions workflow to render video with Remotion
         
@@ -69,6 +71,7 @@ class GitHubActionsIntegration:
             images: List of image URLs
             property_details: Property information dict
             settings: Optional render settings
+            watermark: Optional watermark configuration
             
         Returns:
             Dict with job_id and status
@@ -104,6 +107,10 @@ class GitHubActionsIntegration:
                     "jobId": job_id
                 }
             }
+            
+            # Add watermark if provided
+            if watermark:
+                workflow_inputs["inputs"]["watermark"] = json.dumps(watermark)
             
             # Trigger workflow
             dispatch_url = f"{self.base_url}/actions/workflows/{self.workflow_file}/dispatches"
