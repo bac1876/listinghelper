@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Initialize storage backend (Bunny.net or ImageKit)
+# Initialize storage backend (Bunny.net only)
 from storage_adapter import test_storage_initialization
 storage_ready, backend_name = test_storage_initialization()
 
@@ -16,23 +16,21 @@ if storage_ready:
     print(f"[OK] Storage backend initialized: {backend_name.upper()}")
     if backend_name == 'bunnynet':
         print("  Using Bunny.net - No video transformation limits!")
-    elif backend_name == 'imagekit':
-        print("  Using ImageKit - Watch for transformation limits")
+    else:
+        print(f"  Unknown backend: {backend_name}")
     print("=" * 60)
 else:
     print("=" * 60)
     print("ERROR: No storage backend configured!")
-    print("Please configure either Bunny.net or ImageKit:")
+    print("Please configure Bunny.net storage:")
     print("")
-    print("For Bunny.net (recommended):")
+    print("Required environment variables:")
     print("  - BUNNY_STORAGE_ZONE_NAME")
     print("  - BUNNY_ACCESS_KEY") 
     print("  - BUNNY_PULL_ZONE_URL")
+    print("  - BUNNY_REGION (optional, defaults to 'ny')")
     print("")
-    print("For ImageKit (fallback):")
-    print("  - IMAGEKIT_PRIVATE_KEY")
-    print("  - IMAGEKIT_PUBLIC_KEY")
-    print("  - IMAGEKIT_URL_ENDPOINT")
+    print("ImageKit has been removed due to transformation limit issues.")
     print("=" * 60)
 
 # Import the blueprint - use GitHub Actions version if configured

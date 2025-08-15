@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Tour Generator - AI-Powered Real Estate Videos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --color-1: #3b82f6;
+            --color-2: #06b6d4;
+            --color-3: #0ea5e9;
+            --color-4: #6366f1;
+            --color-5: #8b5cf6;
+        }
+        
+        /* Animated gradient background */
+        @keyframes gradient-shift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes rainbow {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            33% { transform: translateY(-20px) rotate(1deg); }
+            66% { transform: translateY(20px) rotate(-1deg); }
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.5); }
+            50% { box-shadow: 0 0 40px rgba(168, 85, 247, 0.8), 0 0 60px rgba(236, 72, 153, 0.4); }
+        }
+        
+        @keyframes slide-in {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes spin-around {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes shimmer-slide {
+            to { transform: translateX(100%); }
+        }
+        
+        .animate-rainbow {
+            background-size: 200%;
+            animation: rainbow 3s linear infinite;
+        }
+        
+        .animate-gradient {
+            background-size: 200% 200%;
+            animation: gradient-shift 15s ease infinite;
+        }
+        
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        .animate-pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        
+        .animate-slide-in {
+            animation: slide-in 0.6s ease-out forwards;
+        }
+        
+        /* Glass morphism effect */
+        .glass {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .glass-light {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Shimmer button effect */
+        .shimmer-button {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .shimmer-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.3),
+                transparent
+            );
+            animation: shimmer-slide 3s infinite;
+        }
+        
+        /* Rainbow button */
+        .rainbow-button {
+            background: linear-gradient(90deg, var(--color-1), var(--color-5), var(--color-3), var(--color-4), var(--color-2));
+            background-size: 200%;
+            animation: rainbow 3s linear infinite;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .rainbow-button::before {
+            content: '';
+            position: absolute;
+            bottom: -20%;
+            left: 50%;
+            width: 60%;
+            height: 20%;
+            transform: translateX(-50%);
+            background: linear-gradient(90deg, var(--color-1), var(--color-5), var(--color-3), var(--color-4), var(--color-2));
+            filter: blur(12px);
+            opacity: 0.7;
+            animation: rainbow 3s linear infinite;
+        }
+        
+        /* Meteors effect */
+        .meteor {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+            box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.5);
+            animation: meteor-fall linear infinite;
+        }
+        
+        @keyframes meteor-fall {
+            to {
+                transform: translateX(300px) translateY(300px);
+                opacity: 0;
+            }
+        }
+        
+        /* Border beam effect */
+        .border-beam {
+            position: relative;
+        }
+        
+        .border-beam::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: inherit;
+            padding: 2px;
+            background: linear-gradient(90deg, transparent, var(--color-1), transparent);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            animation: border-beam 3s linear infinite;
+        }
+        
+        @keyframes border-beam {
+            0%, 100% { transform: translateX(-100%); }
+            50% { transform: translateX(100%); }
+        }
+        
+        /* Particle effect */
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            opacity: 0;
+            animation: particle-float 10s infinite;
+        }
+        
+        @keyframes particle-float {
+            0% {
+                opacity: 0;
+                transform: translateY(100vh) scale(0);
+            }
+            10% {
+                opacity: 1;
+                transform: translateY(80vh) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-100vh) scale(0);
+            }
+        }
+        
+        /* Animated grid pattern */
+        .grid-pattern {
+            background-image: 
+                linear-gradient(rgba(168, 85, 247, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(168, 85, 247, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: grid-move 20s linear infinite;
+        }
+        
+        @keyframes grid-move {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+        
+        /* Ripple effect */
+        @keyframes ripple {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+        
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(168, 85, 247, 0.5);
+            animation: ripple 1.5s ease-out;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, var(--color-1), var(--color-2));
+            border-radius: 5px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, var(--color-2), var(--color-1));
+        }
+    </style>
+</head>
+<body class="font-['Inter'] bg-gray-950 text-white min-h-screen overflow-x-hidden">
+    <!-- Animated Background -->
+    <div class="fixed inset-0 -z-10">
+        <!-- Gradient background -->
+        <div class="absolute inset-0 animate-gradient bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-900"></div>
+        
+        <!-- Grid pattern overlay -->
+        <div class="absolute inset-0 grid-pattern opacity-20"></div>
+        
+        <!-- Floating particles -->
+        <div class="absolute inset-0">
+            <div class="particle w-2 h-2 bg-purple-400 rounded-full" style="left: 10%; animation-delay: 0s;"></div>
+            <div class="particle w-3 h-3 bg-pink-400 rounded-full" style="left: 30%; animation-delay: 2s;"></div>
+            <div class="particle w-2 h-2 bg-cyan-400 rounded-full" style="left: 50%; animation-delay: 4s;"></div>
+            <div class="particle w-4 h-4 bg-green-400 rounded-full" style="left: 70%; animation-delay: 6s;"></div>
+            <div class="particle w-2 h-2 bg-yellow-400 rounded-full" style="left: 90%; animation-delay: 8s;"></div>
+        </div>
+        
+        <!-- Meteors -->
+        <div class="absolute inset-0 overflow-hidden">
+            <div class="meteor" style="top: 10%; left: 10%; animation-duration: 3s; animation-delay: 0s;"></div>
+            <div class="meteor" style="top: 30%; left: 60%; animation-duration: 3s; animation-delay: 1s;"></div>
+            <div class="meteor" style="top: 50%; left: 30%; animation-duration: 3s; animation-delay: 2s;"></div>
+        </div>
+    </div>
+    
+    <!-- Header -->
+    <header class="relative z-10 pt-12 pb-20">
+        <div class="container mx-auto px-6 text-center">
+            <!-- Logo with animation -->
+            <div class="inline-block mb-8 animate-slide-in">
+                <div class="flex items-center justify-center space-x-3">
+                    <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl animate-pulse-glow"></div>
+                    <h1 class="text-5xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent animate-rainbow">
+                        Virtual Tour Generator
+                    </h1>
+                </div>
+            </div>
+            
+            <!-- Subtitle -->
+            <p class="text-xl text-gray-300 max-w-2xl mx-auto mb-8 animate-slide-in" style="animation-delay: 0.2s;">
+                Transform your real estate photos into stunning cinematic tours with AI-powered Ken Burns effects
+            </p>
+            
+            <!-- Version badge -->
+            <div class="inline-flex items-center px-4 py-2 glass rounded-full border border-purple-500/30 animate-slide-in" style="animation-delay: 0.4s;">
+                <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse mr-2"></span>
+                <span class="text-sm font-medium">v2.0 • Magic UI Enhanced</span>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="relative z-10 container mx-auto px-6 pb-20">
+        <!-- Upload Section -->
+        <div class="glass rounded-3xl p-8 mb-8 border-beam animate-slide-in" style="animation-delay: 0.6s;">
+            <h2 class="text-2xl font-bold mb-6 flex items-center">
+                <span class="w-1 h-8 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full mr-3"></span>
+                Upload Property Photos
+            </h2>
+            
+            <!-- Drop Zone -->
+            <div id="drop-zone" class="relative group cursor-pointer">
+                <div class="glass-light rounded-2xl p-16 text-center transition-all duration-300 hover:scale-[1.02] hover:bg-white/20 border-2 border-dashed border-purple-500/50 hover:border-purple-400">
+                    <div class="text-6xl mb-4 animate-float">📸</div>
+                    <h3 class="text-2xl font-bold mb-2 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                        Drop Your Photos Here
+                    </h3>
+                    <p class="text-gray-400 mb-6">or click to browse from your computer</p>
+                    
+                    <!-- Shimmer Button -->
+                    <button class="shimmer-button px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full font-semibold transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/50">
+                        Select Photos
+                    </button>
+                    
+                    <input type="file" id="file-input" multiple accept="image/*" class="hidden">
+                </div>
+            </div>
+            
+            <!-- File List (Hidden by default) -->
+            <div id="file-list" class="hidden mt-8">
+                <h3 class="text-xl font-semibold mb-4">Selected Photos</h3>
+                <div id="file-items" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+            </div>
+        </div>
+        
+        <!-- Property Details Form -->
+        <div id="property-form" class="hidden glass rounded-3xl p-8 mb-8 animate-slide-in">
+            <h2 class="text-2xl font-bold mb-6 flex items-center">
+                <span class="w-1 h-8 bg-gradient-to-b from-cyan-500 to-green-500 rounded-full mr-3"></span>
+                Property Information
+            </h2>
+            
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Property Address -->
+                <div class="space-y-2">
+                    <label class="text-sm text-gray-400">Property Address *</label>
+                    <textarea id="property-address" rows="2" class="w-full px-4 py-3 bg-white/10 rounded-xl border border-white/20 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all" placeholder="Enter property address"></textarea>
+                </div>
+                
+                <!-- Price -->
+                <div class="space-y-2">
+                    <label class="text-sm text-gray-400">Listing Price</label>
+                    <input type="text" id="property-price" class="w-full px-4 py-3 bg-white/10 rounded-xl border border-white/20 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all" placeholder="$0">
+                </div>
+                
+                <!-- Beds -->
+                <div class="space-y-2">
+                    <label class="text-sm text-gray-400">Bedrooms</label>
+                    <input type="text" id="property-beds" class="w-full px-4 py-3 bg-white/10 rounded-xl border border-white/20 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all" placeholder="0">
+                </div>
+                
+                <!-- Baths -->
+                <div class="space-y-2">
+                    <label class="text-sm text-gray-400">Bathrooms</label>
+                    <input type="text" id="property-baths" class="w-full px-4 py-3 bg-white/10 rounded-xl border border-white/20 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all" placeholder="0">
+                </div>
+                
+                <!-- Square Footage -->
+                <div class="space-y-2">
+                    <label class="text-sm text-gray-400">Square Footage</label>
+                    <input type="text" id="property-sqft" class="w-full px-4 py-3 bg-white/10 rounded-xl border border-white/20 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all" placeholder="0 sq ft">
+                </div>
+                
+                <!-- Status -->
+                <div class="space-y-2">
+                    <label class="text-sm text-gray-400">Status</label>
+                    <select id="property-status" class="w-full px-4 py-3 bg-white/10 rounded-xl border border-white/20 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all">
+                        <option value="Just Listed">Just Listed</option>
+                        <option value="Open House">Open House</option>
+                        <option value="Price Reduced">Price Reduced</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Coming Soon">Coming Soon</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Agent Information -->
+            <h3 class="text-xl font-semibold mt-8 mb-4">Agent Information</h3>
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="space-y-2">
+                    <label class="text-sm text-gray-400">Agent Name *</label>
+                    <input type="text" id="agent-name" class="w-full px-4 py-3 bg-white/10 rounded-xl border border-white/20 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all" placeholder="John Doe">
+                </div>
+                
+                <div class="space-y-2">
+                    <label class="text-sm text-gray-400">Phone Number *</label>
+                    <input type="tel" id="agent-phone" class="w-full px-4 py-3 bg-white/10 rounded-xl border border-white/20 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all" placeholder="(555) 123-4567">
+                </div>
+                
+                <div class="space-y-2">
+                    <label class="text-sm text-gray-400">Email</label>
+                    <input type="email" id="agent-email" class="w-full px-4 py-3 bg-white/10 rounded-xl border border-white/20 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all" placeholder="agent@realestate.com">
+                </div>
+                
+                <div class="space-y-2">
+                    <label class="text-sm text-gray-400">Brokerage</label>
+                    <input type="text" id="brand-name" class="w-full px-4 py-3 bg-white/10 rounded-xl border border-white/20 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all" placeholder="Real Estate Co.">
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quality Selection -->
+        <div id="quality-section" class="hidden glass rounded-3xl p-8 mb-8 animate-slide-in">
+            <h2 class="text-2xl font-bold mb-6 flex items-center">
+                <span class="w-1 h-8 bg-gradient-to-b from-yellow-500 to-orange-500 rounded-full mr-3"></span>
+                Video Quality
+            </h2>
+            
+            <div class="grid md:grid-cols-3 gap-4">
+                <div class="quality-option cursor-pointer glass rounded-xl p-6 text-center transition-all hover:scale-105 hover:bg-white/20 border-2 border-transparent" data-quality="fast">
+                    <div class="text-3xl mb-2">⚡</div>
+                    <h4 class="font-bold mb-1">Fast</h4>
+                    <p class="text-sm text-gray-400">3 sec/image • Quick preview</p>
+                </div>
+                
+                <div class="quality-option cursor-pointer glass rounded-xl p-6 text-center transition-all hover:scale-105 hover:bg-white/20 border-2 border-purple-500 selected" data-quality="medium">
+                    <div class="text-3xl mb-2">🎬</div>
+                    <h4 class="font-bold mb-1">Standard</h4>
+                    <p class="text-sm text-gray-400">6 sec/image • Recommended</p>
+                </div>
+                
+                <div class="quality-option cursor-pointer glass rounded-xl p-6 text-center transition-all hover:scale-105 hover:bg-white/20 border-2 border-transparent" data-quality="premium">
+                    <div class="text-3xl mb-2">💎</div>
+                    <h4 class="font-bold mb-1">Premium</h4>
+                    <p class="text-sm text-gray-400">8 sec/image • Best quality</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Watermark Section -->
+        <div id="watermark-section" class="hidden glass rounded-3xl p-8 mb-8 animate-slide-in">
+            <h2 class="text-2xl font-bold mb-6 flex items-center">
+                <span class="w-1 h-8 bg-gradient-to-b from-blue-500 to-indigo-500 rounded-full mr-3"></span>
+                Watermark (Optional)
+            </h2>
+            
+            <div id="watermark-upload-zone" class="glass-light rounded-xl p-8 text-center cursor-pointer transition-all hover:bg-white/20">
+                <div class="text-4xl mb-2">🏷️</div>
+                <h4 class="font-semibold mb-2">Upload Watermark</h4>
+                <p class="text-sm text-gray-400 mb-4">PNG, JPG, or GIF • Max 5MB</p>
+                <button class="px-6 py-2 bg-white/20 rounded-full font-medium hover:bg-white/30 transition-all">
+                    Choose File
+                </button>
+                <input type="file" id="watermark-input" accept="image/*" class="hidden">
+            </div>
+            
+            <div id="watermark-preview" class="hidden mt-4">
+                <!-- Watermark preview will be inserted here -->
+            </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div id="action-buttons" class="hidden flex flex-wrap gap-4 justify-center">
+            <!-- Rainbow Button for Generate -->
+            <button id="generate-btn" class="rainbow-button px-10 py-4 rounded-full font-bold text-lg transition-all hover:scale-105 hover:shadow-2xl">
+                🎬 Generate Virtual Tour
+            </button>
+            
+            <!-- Glass button for Clear -->
+            <button id="clear-btn" class="px-8 py-4 glass rounded-full font-semibold transition-all hover:scale-105 hover:bg-white/20">
+                Clear All
+            </button>
+        </div>
+        
+        <!-- Progress Section -->
+        <div id="progress-section" class="hidden glass rounded-3xl p-8 text-center animate-slide-in">
+            <div class="text-5xl mb-4 animate-pulse">⚙️</div>
+            <h3 id="status-message" class="text-2xl font-bold mb-2">Processing...</h3>
+            <p id="sub-status" class="text-gray-400 mb-6">Creating your virtual tour</p>
+            
+            <!-- Progress bar with shimmer effect -->
+            <div class="w-full h-3 bg-white/10 rounded-full overflow-hidden">
+                <div id="progress-fill" class="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-500 relative" style="width: 0%">
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+                </div>
+            </div>
+            <div id="progress-text" class="mt-2 text-sm text-gray-400">0%</div>
+        </div>
+        
+        <!-- Results Section -->
+        <div id="results-section" class="hidden glass rounded-3xl p-8 text-center animate-slide-in">
+            <div id="results-icon" class="text-5xl mb-4">✅</div>
+            <h3 id="results-title" class="text-2xl font-bold mb-2">Success!</h3>
+            <p id="results-message" class="text-gray-400 mb-6"></p>
+            
+            <div id="video-preview" class="mb-6"></div>
+            
+            <div id="download-buttons" class="flex flex-wrap gap-4 justify-center"></div>
+            
+            <button id="new-video-btn" class="mt-6 px-8 py-3 glass rounded-full font-semibold transition-all hover:scale-105 hover:bg-white/20">
+                Create Another Video
+            </button>
+        </div>
+    </main>
+    
+    <script>
+        // Global variables
+        let selectedFiles = [];
+        let currentJobId = null;
+        let statusCheckInterval = null;
+        let selectedQuality = 'medium';
+        let selectedWatermarkFile = null;
+        let uploadedWatermarkId = null;
+        
+        // DOM elements
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const fileList = document.getElementById('file-list');
+        const fileItems = document.getElementById('file-items');
+        const propertyForm = document.getElementById('property-form');
+        const qualitySection = document.getElementById('quality-section');
+        const watermarkSection = document.getElementById('watermark-section');
+        const actionButtons = document.getElementById('action-buttons');
+        const generateBtn = document.getElementById('generate-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const progressSection = document.getElementById('progress-section');
+        const resultsSection = document.getElementById('results-section');
+        const newVideoBtn = document.getElementById('new-video-btn');
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            addRippleEffect();
+        });
+        
+        // Setup event listeners
+        function setupEventListeners() {
+            // File upload
+            dropZone.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+            
+            // Drag and drop
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.querySelector('div').classList.add('scale-105', 'bg-white/30');
+            });
+            
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.querySelector('div').classList.remove('scale-105', 'bg-white/30');
+            });
+            
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.querySelector('div').classList.remove('scale-105', 'bg-white/30');
+                handleFiles(e.dataTransfer.files);
+            });
+            
+            // Quality selection
+            document.querySelectorAll('.quality-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    document.querySelectorAll('.quality-option').forEach(opt => {
+                        opt.classList.remove('selected', 'border-purple-500');
+                        opt.classList.add('border-transparent');
+                    });
+                    option.classList.add('selected', 'border-purple-500');
+                    option.classList.remove('border-transparent');
+                    selectedQuality = option.dataset.quality;
+                });
+            });
+            
+            // Watermark
+            const watermarkZone = document.getElementById('watermark-upload-zone');
+            const watermarkInput = document.getElementById('watermark-input');
+            watermarkZone.addEventListener('click', () => watermarkInput.click());
+            watermarkInput.addEventListener('change', handleWatermarkSelect);
+            
+            // Buttons
+            generateBtn.addEventListener('click', generateVirtualTour);
+            clearBtn.addEventListener('click', clearFiles);
+            newVideoBtn.addEventListener('click', resetForm);
+        }
+        
+        // Add ripple effect to buttons
+        function addRippleEffect() {
+            document.querySelectorAll('button').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    const ripple = document.createElement('span');
+                    const rect = this.getBoundingClientRect();
+                    const size = Math.max(rect.width, rect.height);
+                    const x = e.clientX - rect.left - size / 2;
+                    const y = e.clientY - rect.top - size / 2;
+                    
+                    ripple.style.width = ripple.style.height = size + 'px';
+                    ripple.style.left = x + 'px';
+                    ripple.style.top = y + 'px';
+                    ripple.classList.add('ripple');
+                    
+                    this.style.position = 'relative';
+                    this.style.overflow = 'hidden';
+                    this.appendChild(ripple);
+                    
+                    setTimeout(() => ripple.remove(), 600);
+                });
+            });
+        }
+        
+        // Handle file selection
+        function handleFiles(files) {
+            const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+            selectedFiles = [...selectedFiles, ...imageFiles].slice(0, 15);
+            updateFileList();
+            
+            if (selectedFiles.length > 0) {
+                fileList.classList.remove('hidden');
+                propertyForm.classList.remove('hidden');
+                qualitySection.classList.remove('hidden');
+                watermarkSection.classList.remove('hidden');
+                actionButtons.classList.remove('hidden');
+            }
+        }
+        
+        // Update file list display
+        function updateFileList() {
+            if (selectedFiles.length === 0) {
+                fileList.classList.add('hidden');
+                propertyForm.classList.add('hidden');
+                qualitySection.classList.add('hidden');
+                watermarkSection.classList.add('hidden');
+                actionButtons.classList.add('hidden');
+                return;
+            }
+            
+            fileItems.innerHTML = selectedFiles.map((file, index) => {
+                const url = URL.createObjectURL(file);
+                return `
+                    <div class="relative group glass rounded-lg overflow-hidden">
+                        <img src="${url}" alt="${file.name}" class="w-full h-32 object-cover">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="removeFile(${index})" class="absolute top-2 right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 transition-colors">
+                                ×
+                            </button>
+                            <div class="absolute bottom-2 left-2 right-2">
+                                <p class="text-xs truncate">${file.name}</p>
+                                <p class="text-xs opacity-70">${(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Remove file
+        window.removeFile = function(index) {
+            selectedFiles.splice(index, 1);
+            updateFileList();
+        }
+        
+        // Clear all files
+        function clearFiles() {
+            selectedFiles = [];
+            fileInput.value = '';
+            updateFileList();
+        }
+        
+        // Handle watermark selection
+        function handleWatermarkSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                return;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File too large. Maximum size is 5MB.');
+                return;
+            }
+            
+            selectedWatermarkFile = file;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const preview = document.getElementById('watermark-preview');
+                preview.innerHTML = `
+                    <div class="flex items-center gap-4 p-4 glass-light rounded-lg">
+                        <img src="${e.target.result}" alt="Watermark" class="w-16 h-16 object-contain">
+                        <div class="flex-1">
+                            <p class="font-medium">${file.name}</p>
+                            <p class="text-sm text-gray-400">${(file.size / 1024).toFixed(1)} KB</p>
+                        </div>
+                        <button onclick="removeWatermark()" class="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-colors">
+                            Remove
+                        </button>
+                    </div>
+                `;
+                preview.classList.remove('hidden');
+                document.getElementById('watermark-upload-zone').classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // Remove watermark
+        window.removeWatermark = function() {
+            selectedWatermarkFile = null;
+            uploadedWatermarkId = null;
+            document.getElementById('watermark-input').value = '';
+            document.getElementById('watermark-preview').classList.add('hidden');
+            document.getElementById('watermark-upload-zone').classList.remove('hidden');
+        }
+        
+        // Generate virtual tour
+        async function generateVirtualTour() {
+            if (selectedFiles.length === 0) {
+                alert('Please select at least one photo');
+                return;
+            }
+            
+            const address = document.getElementById('property-address').value.trim();
+            const agentName = document.getElementById('agent-name').value.trim();
+            const agentPhone = document.getElementById('agent-phone').value.trim();
+            
+            if (!address || !agentName || !agentPhone) {
+                alert('Please fill in required fields: Property Address, Agent Name, and Phone Number');
+                return;
+            }
+            
+            // Upload watermark if selected
+            if (selectedWatermarkFile && !uploadedWatermarkId) {
+                uploadedWatermarkId = await uploadWatermark();
+            }
+            
+            // Prepare form data
+            const formData = new FormData();
+            selectedFiles.forEach(file => formData.append('files', file));
+            
+            formData.append('address', address);
+            formData.append('agent_name', agentName);
+            formData.append('agent_phone', agentPhone);
+            formData.append('details1', document.getElementById('property-price').value || '');
+            formData.append('details2', document.getElementById('property-status').value);
+            formData.append('agent_email', document.getElementById('agent-email').value || '');
+            formData.append('brand_name', document.getElementById('brand-name').value || '');
+            
+            if (uploadedWatermarkId) {
+                formData.append('watermark_id', uploadedWatermarkId);
+            }
+            
+            // Quality settings
+            const qualitySettings = {
+                'fast': { duration: 3, speed: 'fast' },
+                'medium': { duration: 6, speed: 'medium' },
+                'premium': { duration: 8, speed: 'slow' }
+            };
+            
+            const settings = qualitySettings[selectedQuality];
+            formData.append('duration_per_image', settings.duration);
+            formData.append('effect_speed', settings.speed);
+            
+            // Show progress
+            progressSection.classList.remove('hidden');
+            actionButtons.classList.add('hidden');
+            updateProgress(0, 'Uploading photos...');
+            
+            try {
+                const response = await fetch('/api/virtual-tour/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Upload failed');
+                }
+                
+                const data = await response.json();
+                currentJobId = data.job_id;
+                
+                updateProgress(10, 'Processing...');
+                startStatusChecking();
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Upload failed. Please try again.');
+            }
+        }
+        
+        // Upload watermark
+        async function uploadWatermark() {
+            const formData = new FormData();
+            formData.append('watermark', selectedWatermarkFile);
+            formData.append('position', 'bottom-right');
+            formData.append('opacity', '0.7');
+            formData.append('scale', '0.15');
+            
+            try {
+                const response = await fetch('/api/watermark/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Watermark upload failed');
+                }
+                
+                const result = await response.json();
+                return result.watermark_id;
+                
+            } catch (error) {
+                console.error('Watermark upload error:', error);
+                return null;
+            }
+        }
+        
+        // Start status checking
+        function startStatusChecking() {
+            statusCheckInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/virtual-tour/job/${currentJobId}/status`);
+                    const data = await response.json();
+                    
+                    updateProgress(data.progress || 0, data.current_step || 'Processing...');
+                    
+                    if (data.status === 'completed') {
+                        clearInterval(statusCheckInterval);
+                        showSuccess(data);
+                    } else if (data.status === 'failed') {
+                        clearInterval(statusCheckInterval);
+                        showError(data.error || 'Processing failed');
+                    }
+                } catch (error) {
+                    console.error('Status check error:', error);
+                }
+            }, 2000);
+        }
+        
+        // Update progress
+        function updateProgress(percent, message) {
+            document.getElementById('progress-fill').style.width = percent + '%';
+            document.getElementById('progress-text').textContent = percent + '%';
+            document.getElementById('status-message').textContent = message;
+            
+            if (percent < 30) {
+                document.getElementById('sub-status').textContent = 'Preparing your images...';
+            } else if (percent < 60) {
+                document.getElementById('sub-status').textContent = 'Applying Ken Burns effects...';
+            } else if (percent < 90) {
+                document.getElementById('sub-status').textContent = 'Rendering HD video...';
+            } else {
+                document.getElementById('sub-status').textContent = 'Finalizing...';
+            }
+        }
+        
+        // Show success
+        function showSuccess(data) {
+            progressSection.classList.add('hidden');
+            resultsSection.classList.remove('hidden');
+            
+            document.getElementById('results-icon').textContent = '✅';
+            document.getElementById('results-title').textContent = 'Your Virtual Tour is Ready!';
+            document.getElementById('results-message').textContent = `Created stunning video with ${selectedFiles.length} photos`;
+            
+            if (data.video_url) {
+                document.getElementById('video-preview').innerHTML = `
+                    <video controls class="w-full max-w-3xl mx-auto rounded-xl overflow-hidden shadow-2xl">
+                        <source src="${data.video_url}" type="video/mp4">
+                    </video>
+                `;
+            }
+            
+            const downloadButtons = document.getElementById('download-buttons');
+            downloadButtons.innerHTML = `
+                <a href="${data.video_url || `/api/virtual-tour/download/${currentJobId}/video`}" 
+                   class="rainbow-button px-6 py-3 rounded-full font-semibold" download>
+                    🎬 Download Video
+                </a>
+            `;
+        }
+        
+        // Show error
+        function showError(message) {
+            progressSection.classList.add('hidden');
+            resultsSection.classList.remove('hidden');
+            
+            document.getElementById('results-icon').textContent = '❌';
+            document.getElementById('results-title').textContent = 'Error';
+            document.getElementById('results-message').textContent = message;
+            document.getElementById('video-preview').innerHTML = '';
+            document.getElementById('download-buttons').innerHTML = '';
+        }
+        
+        // Reset form
+        function resetForm() {
+            clearFiles();
+            removeWatermark();
+            resultsSection.classList.add('hidden');
+            document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], textarea').forEach(input => {
+                input.value = '';
+            });
+        }
+    </script>
+</body>
+</html>

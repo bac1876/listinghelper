@@ -891,46 +891,50 @@ def download_video(job_id):
         
         job = active_jobs[job_id]
         
-        # Check if video is on ImageKit (GitHub Actions workflow)
-        if job.get('imagekit_video') and job.get('files_generated', {}).get('imagekit_url'):
-            imagekit_url = job['files_generated']['imagekit_url']
-            # Redirect to ImageKit URL for download
-            return redirect(imagekit_url)
+        # Check if video is on Bunny.net (GitHub Actions workflow)
+        if job.get('bunnynet_video') and job.get('files_generated', {}).get('bunnynet_url'):
+            bunnynet_url = job['files_generated']['bunnynet_url']
+            # Redirect to Bunny.net URL for download
+            return redirect(bunnynet_url)
         
         # Fallback: If we have a GitHub job ID but webhook hasn't updated yet
         if job.get('github_job_id'):
             github_job_id = job['github_job_id']
-            # Use storage adapter for video URL
+            # Use storage adapter for video URL (Bunny.net)
             try:
                 from storage_adapter import get_storage
                 storage = get_storage()
                 video_url = storage.get_video_url(f"{github_job_id}.mp4", "tours/videos/")
+                logger.info(f"Got video URL from storage adapter: {video_url}")
             except Exception as e:
                 logger.error(f"Failed to get video URL from storage: {e}")
-                # Fallback to ImageKit if storage adapter fails
-                imagekit_endpoint = os.environ.get('IMAGEKIT_URL_ENDPOINT', 'https://ik.imagekit.io/brianosris/')
-                if not imagekit_endpoint.endswith('/'):
-                    imagekit_endpoint += '/'
-                video_url = f"{imagekit_endpoint}tours/videos/{github_job_id}.mp4"
+                # Fallback to Bunny.net direct URL if storage adapter fails
+                bunny_url = os.environ.get('BUNNY_PULL_ZONE_URL', '')
+                if not bunny_url:
+                    logger.error("BUNNY_PULL_ZONE_URL not configured")
+                    return jsonify({'error': 'Video storage not configured'}), 500
+                if not bunny_url.endswith('/'):
+                    bunny_url += '/'
+                video_url = f"{bunny_url}tours/videos/{github_job_id}.mp4"
             
-            # Check if video exists on ImageKit
+            # Check if video exists on Bunny.net
             try:
                 import requests
                 response = requests.head(video_url, timeout=5)
                 if response.status_code == 200:
-                    logger.info(f"Video found on ImageKit for job {job_id}")
+                    logger.info(f"Video found on Bunny.net for job {job_id}")
                     # Update job status  
-                    job['imagekit_video'] = True
+                    job['bunnynet_video'] = True
                     job['video_available'] = True
                     if 'files_generated' not in job:
                         job['files_generated'] = {}
-                    job['files_generated']['cloudinary_url'] = video_url
+                    job['files_generated']['bunnynet_url'] = video_url
                     # Redirect to the video
                     return redirect(video_url)
                 else:
-                    logger.info(f"Cloudinary URL not found (status {response.status_code}), will serve from Railway storage")
+                    logger.info(f"Bunny.net URL not found (status {response.status_code}), will serve from local storage")
             except Exception as e:
-                logger.info(f"Cloudinary check failed ({e}), will serve from Railway storage")
+                logger.info(f"Bunny.net check failed ({e}), will serve from local storage")
         
         if not job.get('video_available'):
             return jsonify({'error': 'Video not available'}), 404
@@ -983,56 +987,52 @@ def download_file(job_id, file_type):
             
             # For video files from GitHub Actions
             if file_type in ['video', 'virtual_tour']:
-                # First priority: Check for stored cloudinary URL
-                if job.get('files_generated', {}).get('cloudinary_url'):
-                    cloudinary_url = job['files_generated']['cloudinary_url']
-                    # Add attachment flag to force download
-                    if 'cloudinary.com' in cloudinary_url and '/upload/' in cloudinary_url:
-                        cloudinary_url = cloudinary_url.replace('/upload/', '/upload/fl_attachment/')
-                    logger.info(f"Using stored Cloudinary URL for job {job_id}: {cloudinary_url}")
-                    return redirect(cloudinary_url)
+                # First priority: Check for stored Bunny.net URL
+                if job.get('files_generated', {}).get('bunnynet_url'):
+                    bunnynet_url = job['files_generated']['bunnynet_url']
+                    logger.info(f"Using stored Bunny.net URL for job {job_id}: {bunnynet_url}")
+                    return redirect(bunnynet_url)
                 
-                # Second priority: If we have a GitHub job ID, check if Cloudinary URL exists
+                # Second priority: If we have a GitHub job ID, check if Bunny.net URL exists
                 elif job.get('github_job_id'):
                     github_job_id = job['github_job_id']
-                    # Use storage adapter for video URL with download parameter
+                    # Use storage adapter for video URL
                     try:
                         from storage_adapter import get_storage
                         storage = get_storage()
                         video_url = storage.get_video_url(f"{github_job_id}.mp4", "tours/videos/")
-                        # Add download parameter if using ImageKit
-                        if 'imagekit' in video_url:
-                            video_url += '?dl=1'
                     except Exception as e:
                         logger.error(f"Failed to get video URL from storage: {e}")
-                        # Fallback to ImageKit
-                        imagekit_endpoint = os.environ.get('IMAGEKIT_URL_ENDPOINT', 'https://ik.imagekit.io/brianosris/')
-                        if not imagekit_endpoint.endswith('/'):
-                            imagekit_endpoint += '/'
-                        video_url = f"{imagekit_endpoint}tours/videos/{github_job_id}.mp4?dl=1"
+                        # Fallback to Bunny.net direct URL
+                        bunny_url = os.environ.get('BUNNY_PULL_ZONE_URL', '')
+                        if not bunny_url:
+                            logger.error("BUNNY_PULL_ZONE_URL not configured")
+                            return jsonify({'error': 'Video storage not configured'}), 500
+                        if not bunny_url.endswith('/'):
+                            bunny_url += '/'
+                        video_url = f"{bunny_url}tours/videos/{github_job_id}.mp4"
                     
-                    # Check if the ImageKit URL actually exists before redirecting
+                    # Check if the Bunny.net URL actually exists before redirecting
                     try:
                         import requests
-                        check_url = video_url.replace('/fl_attachment/', '/')  # Check without attachment flag
-                        response = requests.head(check_url, timeout=5)
+                        response = requests.head(video_url, timeout=5)
                         if response.status_code == 200:
-                            logger.info(f"Cloudinary URL exists, redirecting for job {job_id}: {video_url}")
+                            logger.info(f"Bunny.net URL exists, redirecting for job {job_id}: {video_url}")
                             
                             # Update job data for future requests
-                            job['cloudinary_video'] = True
+                            job['bunnynet_video'] = True
                             job['video_available'] = True
                             if 'files_generated' not in job:
                                 job['files_generated'] = {}
-                            job['files_generated']['cloudinary_url'] = video_url
+                            job['files_generated']['bunnynet_url'] = video_url
                             
                             return redirect(video_url)
                         else:
-                            logger.info(f"Cloudinary URL not found (status {response.status_code}), will serve from Railway storage")
+                            logger.info(f"Bunny.net URL not found (status {response.status_code}), will serve from local storage")
                     except Exception as e:
-                        logger.info(f"Cloudinary check failed ({e}), will serve from Railway storage")
+                        logger.info(f"Bunny.net check failed ({e}), will serve from local storage")
                     
-                    # If we get here, Cloudinary doesn't have the video, so continue to serve from Railway
+                    # If we get here, Bunny.net doesn't have the video, so continue to serve from local
                 
                 elif job.get('status') == 'processing':
                     # For download requests, return error

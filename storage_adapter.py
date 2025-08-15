@@ -26,25 +26,13 @@ class StorageAdapter:
                     self.backend_name = 'bunnynet'
                     logger.info("✓ Using Bunny.net for storage")
                 else:
-                    logger.warning("Bunny.net initialization failed, trying ImageKit...")
+                    logger.error("Bunny.net initialization failed")
             except Exception as e:
                 logger.warning(f"Could not initialize Bunny.net: {e}")
         
-        # Fall back to ImageKit if Bunny.net not available
+        # Only use Bunny.net - ImageKit has been removed due to transformation limits
         if self.backend is None:
-            try:
-                from imagekit_integration import get_imagekit, test_imagekit_initialization
-                if test_imagekit_initialization():
-                    self.backend = get_imagekit()
-                    self.backend_name = 'imagekit'
-                    logger.info("✓ Using ImageKit for storage")
-                else:
-                    logger.error("ImageKit initialization also failed")
-            except Exception as e:
-                logger.error(f"Could not initialize ImageKit: {e}")
-        
-        if self.backend is None:
-            raise RuntimeError("No storage backend available! Please configure either Bunny.net or ImageKit.")
+            raise RuntimeError("No storage backend available! Please configure Bunny.net with BUNNY_ACCESS_KEY, BUNNY_STORAGE_ZONE_NAME, and BUNNY_PULL_ZONE_URL.")
     
     def upload_file(self, file_path: str, file_name: str, folder: str = "tours/") -> Dict[str, Any]:
         """Upload a file using the configured backend"""
