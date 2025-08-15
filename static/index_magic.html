@@ -275,43 +275,25 @@
         <!-- Header -->
         <header class="pt-16 pb-12 text-center fade-in">
             <h1 class="text-5xl md:text-7xl font-bold mb-6">
-                <span class="gradient-text">Join Our Product</span><br/>
-                <span class="gradient-text">Launch Waitlist</span>
+                <span class="gradient-text">Virtual Tour</span><br/>
+                <span class="gradient-text">Generator</span>
             </h1>
             <p class="text-xl text-gray-400 max-w-3xl mx-auto px-6">
-                Be part of something truly extraordinary. Join thousands of others already gaining early access to our revolutionary new product.
+                Transform your real estate photos into stunning cinematic tours with professional video effects and smooth transitions.
             </p>
         </header>
         
         <!-- Main Content -->
         <main class="flex-1 container mx-auto px-6 max-w-6xl">
-            <!-- Email signup section -->
+            <!-- Get Started section -->
             <div class="text-center mb-12 fade-in" style="animation-delay: 0.2s;">
-                <div class="max-w-md mx-auto">
-                    <div class="flex gap-3">
-                        <input type="email" 
-                               placeholder="Enter your email" 
-                               class="input-field flex-1"
-                               id="email-input">
-                        <button class="primary-button whitespace-nowrap" id="notify-btn">
-                            Get Notified
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Waitlist counter -->
-                <div class="mt-8 flex items-center justify-center gap-4">
-                    <div class="flex -space-x-3">
-                        <div class="avatar-circle" style="background: #8B5CF6;">JD</div>
-                        <div class="avatar-circle" style="background: #3B82F6;">AS</div>
-                        <div class="avatar-circle" style="background: #EC4899;">MK</div>
-                    </div>
-                    <span class="text-gray-400 font-medium">100+ people on the waitlist</span>
-                </div>
+                <button class="primary-button text-lg px-8 py-4" id="get-started-btn">
+                    Get Started
+                </button>
             </div>
             
-            <!-- Upload Section (Initially Hidden) -->
-            <div id="upload-section" class="hidden">
+            <!-- Upload Section -->
+            <div id="upload-section">
                 <div class="card mb-8 fade-in">
                     <h2 class="text-2xl font-bold mb-6 gradient-text">Upload Your Photos</h2>
                     
@@ -466,11 +448,9 @@
         let currentJobId = null;
         let statusCheckInterval = null;
         let selectedQuality = 'medium';
-        let isWaitlistMode = true;
+        let isWaitlistMode = false;
         
         // DOM elements
-        const emailInput = document.getElementById('email-input');
-        const notifyBtn = document.getElementById('notify-btn');
         const uploadSection = document.getElementById('upload-section');
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
@@ -492,11 +472,13 @@
         
         // Setup event listeners
         function setupEventListeners() {
-            // Email signup
-            notifyBtn.addEventListener('click', handleEmailSignup);
-            emailInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') handleEmailSignup();
-            });
+            // Get started button
+            const getStartedBtn = document.getElementById('get-started-btn');
+            if (getStartedBtn) {
+                getStartedBtn.addEventListener('click', () => {
+                    document.getElementById('upload-section').scrollIntoView({ behavior: 'smooth' });
+                });
+            }
             
             // File upload
             dropZone.addEventListener('click', () => fileInput.click());
@@ -533,23 +515,6 @@
             generateBtn.addEventListener('click', generateVirtualTour);
             clearBtn.addEventListener('click', clearFiles);
             newVideoBtn.addEventListener('click', resetForm);
-        }
-        
-        // Handle email signup
-        function handleEmailSignup() {
-            const email = emailInput.value.trim();
-            if (!email || !email.includes('@')) {
-                alert('Please enter a valid email address');
-                return;
-            }
-            
-            // Switch to upload mode
-            isWaitlistMode = false;
-            uploadSection.classList.remove('hidden');
-            emailInput.parentElement.parentElement.classList.add('hidden');
-            
-            // Store email for later use
-            localStorage.setItem('userEmail', email);
         }
         
         // Handle file selection
