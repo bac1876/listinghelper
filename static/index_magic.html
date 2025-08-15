@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virtual Tour Generator - AI-Powered Real Estate Videos</title>
+    <title>Virtual Tour Generator - Professional Real Estate Videos</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -14,46 +14,107 @@
             box-sizing: border-box;
         }
         
-        :root {
-            --color-1: #3b82f6;
-            --color-2: #06b6d4;
-            --color-3: #0ea5e9;
-            --color-4: #6366f1;
-            --color-5: #8b5cf6;
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%);
+            min-height: 100vh;
+            color: #E2E8F0;
+            position: relative;
+            overflow-x: hidden;
         }
         
-        /* Animated gradient background */
-        @keyframes gradient-shift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+        /* Background gradient overlay */
+        .bg-overlay {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at top, rgba(79, 70, 229, 0.15) 0%, transparent 50%),
+                        radial-gradient(ellipse at bottom right, rgba(124, 58, 237, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 1;
         }
         
-        @keyframes rainbow {
-            0% { background-position: 0% 50%; }
-            100% { background-position: 200% 50%; }
+        /* Glass morphism effect */
+        .glass {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
         
-        @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            33% { transform: translateY(-20px) rotate(1deg); }
-            66% { transform: translateY(20px) rotate(-1deg); }
+        .glass-light {
+            background: rgba(79, 70, 229, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(79, 70, 229, 0.1);
         }
         
-        @keyframes shimmer {
-            0% { background-position: -1000px 0; }
-            100% { background-position: 1000px 0; }
+        /* Gradient text */
+        .gradient-text {
+            background: linear-gradient(135deg, #60A5FA 0%, #A78BFA 50%, #F472B6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         
-        @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.5); }
-            50% { box-shadow: 0 0 40px rgba(168, 85, 247, 0.8), 0 0 60px rgba(236, 72, 153, 0.4); }
+        /* Button styles */
+        .primary-button {
+            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+            color: white;
+            font-weight: 600;
+            padding: 12px 32px;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
         
-        @keyframes slide-in {
+        .primary-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px rgba(79, 70, 229, 0.4);
+        }
+        
+        .primary-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .primary-button:hover::before {
+            left: 100%;
+        }
+        
+        /* Input styles */
+        .input-field {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(79, 70, 229, 0.2);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: #E2E8F0;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: rgba(79, 70, 229, 0.5);
+            background: rgba(30, 41, 59, 0.7);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+        
+        .input-field::placeholder {
+            color: #64748B;
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
             from {
                 opacity: 0;
-                transform: translateY(30px);
+                transform: translateY(20px);
             }
             to {
                 opacity: 1;
@@ -61,487 +122,362 @@
             }
         }
         
-        @keyframes spin-around {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+        .fade-in {
+            animation: fadeIn 0.6s ease forwards;
         }
         
-        @keyframes shimmer-slide {
-            to { transform: translateX(100%); }
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
         }
         
-        .animate-rainbow {
-            background-size: 200%;
-            animation: rainbow 3s linear infinite;
+        .animate-pulse {
+            animation: pulse 2s infinite;
         }
         
-        .animate-gradient {
-            background-size: 200% 200%;
-            animation: gradient-shift 15s ease infinite;
+        /* Upload zone */
+        .upload-zone {
+            background: rgba(79, 70, 229, 0.05);
+            border: 2px dashed rgba(79, 70, 229, 0.3);
+            border-radius: 20px;
+            padding: 60px 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
         }
         
-        .animate-float {
-            animation: float 6s ease-in-out infinite;
+        .upload-zone:hover {
+            background: rgba(79, 70, 229, 0.1);
+            border-color: rgba(79, 70, 229, 0.5);
+            transform: scale(1.02);
         }
         
-        .animate-pulse-glow {
-            animation: pulse-glow 2s ease-in-out infinite;
+        .upload-zone.dragover {
+            background: rgba(79, 70, 229, 0.15);
+            border-color: rgba(79, 70, 229, 0.7);
+            transform: scale(1.03);
         }
         
-        .animate-slide-in {
-            animation: slide-in 0.6s ease-out forwards;
+        /* Progress bar */
+        .progress-bar {
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 100px;
+            height: 8px;
+            overflow: hidden;
+            position: relative;
         }
         
-        /* Glass morphism effect */
-        .glass {
-            background: rgba(17, 24, 39, 0.7);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .glass-light {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        /* Shimmer button effect */
-        .shimmer-button {
+        .progress-fill {
+            background: linear-gradient(90deg, #4F46E5, #7C3AED, #EC4899);
+            height: 100%;
+            border-radius: 100px;
+            transition: width 0.5s ease;
             position: relative;
             overflow: hidden;
-            transition: all 0.3s ease;
         }
         
-        .shimmer-button::before {
+        .progress-fill::after {
             content: '';
             position: absolute;
             top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(
-                90deg,
-                transparent,
-                rgba(255, 255, 255, 0.3),
-                transparent
-            );
-            animation: shimmer-slide 3s infinite;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 1.5s infinite;
         }
         
-        /* Rainbow button */
-        .rainbow-button {
-            background: linear-gradient(90deg, var(--color-1), var(--color-5), var(--color-3), var(--color-4), var(--color-2));
-            background-size: 200%;
-            animation: rainbow 3s linear infinite;
-            position: relative;
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%);
+            }
+            100% {
+                transform: translateX(100%);
+            }
+        }
+        
+        /* Avatar circles */
+        .avatar-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+            color: white;
+            margin-left: -10px;
+            border: 2px solid #1E293B;
+        }
+        
+        .avatar-circle:first-child {
+            margin-left: 0;
+        }
+        
+        /* Card styles */
+        .card {
+            background: rgba(30, 41, 59, 0.3);
+            border: 1px solid rgba(79, 70, 229, 0.1);
+            border-radius: 20px;
+            padding: 32px;
             transition: all 0.3s ease;
         }
         
-        .rainbow-button::before {
-            content: '';
-            position: absolute;
-            bottom: -20%;
-            left: 50%;
-            width: 60%;
-            height: 20%;
-            transform: translateX(-50%);
-            background: linear-gradient(90deg, var(--color-1), var(--color-5), var(--color-3), var(--color-4), var(--color-2));
-            filter: blur(12px);
-            opacity: 0.7;
-            animation: rainbow 3s linear infinite;
+        .card:hover {
+            background: rgba(30, 41, 59, 0.4);
+            border-color: rgba(79, 70, 229, 0.2);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
         }
         
-        /* Meteors effect */
-        .meteor {
-            position: absolute;
-            width: 2px;
-            height: 2px;
-            background: white;
-            box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.5);
-            animation: meteor-fall linear infinite;
+        /* Quality option */
+        .quality-option {
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
         
-        @keyframes meteor-fall {
-            to {
-                transform: translateX(300px) translateY(300px);
-                opacity: 0;
-            }
+        .quality-option.selected {
+            background: rgba(79, 70, 229, 0.1);
+            border-color: rgba(79, 70, 229, 0.5);
         }
         
-        /* Border beam effect */
-        .border-beam {
-            position: relative;
+        /* Social links */
+        .social-link {
+            width: 40px;
+            height: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+            color: #94A3B8;
         }
         
-        .border-beam::before {
-            content: '';
-            position: absolute;
-            inset: -2px;
-            border-radius: inherit;
-            padding: 2px;
-            background: linear-gradient(90deg, transparent, var(--color-1), transparent);
-            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            -webkit-mask-composite: xor;
-            mask-composite: exclude;
-            animation: border-beam 3s linear infinite;
-        }
-        
-        @keyframes border-beam {
-            0%, 100% { transform: translateX(-100%); }
-            50% { transform: translateX(100%); }
-        }
-        
-        /* Particle effect */
-        .particle {
-            position: absolute;
-            pointer-events: none;
-            opacity: 0;
-            animation: particle-float 10s infinite;
-        }
-        
-        @keyframes particle-float {
-            0% {
-                opacity: 0;
-                transform: translateY(100vh) scale(0);
-            }
-            10% {
-                opacity: 1;
-                transform: translateY(80vh) scale(1);
-            }
-            100% {
-                opacity: 0;
-                transform: translateY(-100vh) scale(0);
-            }
-        }
-        
-        /* Animated grid pattern */
-        .grid-pattern {
-            background-image: 
-                linear-gradient(rgba(168, 85, 247, 0.1) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(168, 85, 247, 0.1) 1px, transparent 1px);
-            background-size: 50px 50px;
-            animation: grid-move 20s linear infinite;
-        }
-        
-        @keyframes grid-move {
-            0% { transform: translate(0, 0); }
-            100% { transform: translate(50px, 50px); }
-        }
-        
-        /* Ripple effect */
-        @keyframes ripple {
-            0% {
-                transform: scale(0);
-                opacity: 1;
-            }
-            100% {
-                transform: scale(4);
-                opacity: 0;
-            }
-        }
-        
-        .ripple {
-            position: absolute;
-            border-radius: 50%;
-            background: rgba(168, 85, 247, 0.5);
-            animation: ripple 1.5s ease-out;
-        }
-        
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 10px;
-            height: 10px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.1);
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: linear-gradient(180deg, var(--color-1), var(--color-2));
-            border-radius: 5px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(180deg, var(--color-2), var(--color-1));
+        .social-link:hover {
+            background: rgba(79, 70, 229, 0.2);
+            color: #E2E8F0;
+            transform: translateY(-2px);
         }
     </style>
 </head>
-<body class="font-['Inter'] bg-gray-950 text-white min-h-screen overflow-x-hidden">
-    <!-- Animated Background -->
-    <div class="fixed inset-0 -z-10">
-        <!-- Gradient background -->
-        <div class="absolute inset-0 animate-gradient bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-900"></div>
+<body>
+    <!-- Background overlay -->
+    <div class="bg-overlay"></div>
+    
+    <!-- Main container -->
+    <div class="relative z-10 min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="pt-16 pb-12 text-center fade-in">
+            <h1 class="text-5xl md:text-7xl font-bold mb-6">
+                <span class="gradient-text">Join Our Product</span><br/>
+                <span class="gradient-text">Launch Waitlist</span>
+            </h1>
+            <p class="text-xl text-gray-400 max-w-3xl mx-auto px-6">
+                Be part of something truly extraordinary. Join thousands of others already gaining early access to our revolutionary new product.
+            </p>
+        </header>
         
-        <!-- Grid pattern overlay -->
-        <div class="absolute inset-0 grid-pattern opacity-20"></div>
+        <!-- Main Content -->
+        <main class="flex-1 container mx-auto px-6 max-w-6xl">
+            <!-- Email signup section -->
+            <div class="text-center mb-12 fade-in" style="animation-delay: 0.2s;">
+                <div class="max-w-md mx-auto">
+                    <div class="flex gap-3">
+                        <input type="email" 
+                               placeholder="Enter your email" 
+                               class="input-field flex-1"
+                               id="email-input">
+                        <button class="primary-button whitespace-nowrap" id="notify-btn">
+                            Get Notified
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Waitlist counter -->
+                <div class="mt-8 flex items-center justify-center gap-4">
+                    <div class="flex -space-x-3">
+                        <div class="avatar-circle" style="background: #8B5CF6;">JD</div>
+                        <div class="avatar-circle" style="background: #3B82F6;">AS</div>
+                        <div class="avatar-circle" style="background: #EC4899;">MK</div>
+                    </div>
+                    <span class="text-gray-400 font-medium">100+ people on the waitlist</span>
+                </div>
+            </div>
+            
+            <!-- Upload Section (Initially Hidden) -->
+            <div id="upload-section" class="hidden">
+                <div class="card mb-8 fade-in">
+                    <h2 class="text-2xl font-bold mb-6 gradient-text">Upload Your Photos</h2>
+                    
+                    <div id="drop-zone" class="upload-zone">
+                        <svg class="w-16 h-16 mx-auto mb-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        <h3 class="text-xl font-semibold mb-2">Drop your photos here</h3>
+                        <p class="text-gray-500 mb-4">or click to browse</p>
+                        <button class="primary-button">Select Photos</button>
+                        <input type="file" id="file-input" multiple accept="image/*" class="hidden">
+                    </div>
+                    
+                    <div id="file-list" class="hidden mt-6">
+                        <h3 class="text-lg font-semibold mb-4">Selected Photos</h3>
+                        <div id="file-items" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+                    </div>
+                </div>
+                
+                <!-- Property Details -->
+                <div id="property-form" class="hidden card mb-8 fade-in">
+                    <h2 class="text-2xl font-bold mb-6 gradient-text">Property Information</h2>
+                    
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Property Address *</label>
+                            <textarea id="property-address" rows="2" class="input-field" placeholder="Enter property address"></textarea>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Listing Price</label>
+                            <input type="text" id="property-price" class="input-field" placeholder="$0">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Agent Name *</label>
+                            <input type="text" id="agent-name" class="input-field" placeholder="John Doe">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Phone Number *</label>
+                            <input type="tel" id="agent-phone" class="input-field" placeholder="(555) 123-4567">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Email</label>
+                            <input type="email" id="agent-email" class="input-field" placeholder="agent@realestate.com">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Brokerage</label>
+                            <input type="text" id="brand-name" class="input-field" placeholder="Real Estate Co.">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quality Selection -->
+                <div id="quality-section" class="hidden card mb-8 fade-in">
+                    <h2 class="text-2xl font-bold mb-6 gradient-text">Video Quality</h2>
+                    
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div class="quality-option glass-light rounded-xl p-6 text-center border border-transparent" data-quality="fast">
+                            <div class="text-3xl mb-2">⚡</div>
+                            <h4 class="font-bold mb-1">Fast</h4>
+                            <p class="text-sm text-gray-400">3 sec/image</p>
+                        </div>
+                        
+                        <div class="quality-option glass-light rounded-xl p-6 text-center border selected" data-quality="medium">
+                            <div class="text-3xl mb-2">🎬</div>
+                            <h4 class="font-bold mb-1">Standard</h4>
+                            <p class="text-sm text-gray-400">6 sec/image</p>
+                        </div>
+                        
+                        <div class="quality-option glass-light rounded-xl p-6 text-center border border-transparent" data-quality="premium">
+                            <div class="text-3xl mb-2">💎</div>
+                            <h4 class="font-bold mb-1">Premium</h4>
+                            <p class="text-sm text-gray-400">8 sec/image</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div id="action-buttons" class="hidden text-center mb-8">
+                    <button id="generate-btn" class="primary-button text-lg px-8 py-4 mr-4">
+                        Generate Virtual Tour
+                    </button>
+                    <button id="clear-btn" class="px-8 py-4 glass rounded-xl font-semibold hover:bg-white/10 transition-all">
+                        Clear All
+                    </button>
+                </div>
+                
+                <!-- Progress Section -->
+                <div id="progress-section" class="hidden card text-center fade-in">
+                    <div class="text-5xl mb-4 animate-pulse">⚙️</div>
+                    <h3 id="status-message" class="text-2xl font-bold mb-2">Processing...</h3>
+                    <p id="sub-status" class="text-gray-400 mb-6">Creating your virtual tour</p>
+                    
+                    <div class="progress-bar">
+                        <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <div id="progress-text" class="mt-2 text-sm text-gray-400">0%</div>
+                </div>
+                
+                <!-- Results Section -->
+                <div id="results-section" class="hidden card text-center fade-in">
+                    <div id="results-icon" class="text-5xl mb-4">✅</div>
+                    <h3 id="results-title" class="text-2xl font-bold mb-2">Success!</h3>
+                    <p id="results-message" class="text-gray-400 mb-6"></p>
+                    
+                    <div id="video-preview" class="mb-6"></div>
+                    
+                    <div id="download-buttons" class="flex flex-wrap gap-4 justify-center"></div>
+                    
+                    <button id="new-video-btn" class="mt-6 px-8 py-3 glass rounded-xl font-semibold hover:bg-white/10 transition-all">
+                        Create Another Video
+                    </button>
+                </div>
+            </div>
+        </main>
         
-        <!-- Floating particles -->
-        <div class="absolute inset-0">
-            <div class="particle w-2 h-2 bg-purple-400 rounded-full" style="left: 10%; animation-delay: 0s;"></div>
-            <div class="particle w-3 h-3 bg-pink-400 rounded-full" style="left: 30%; animation-delay: 2s;"></div>
-            <div class="particle w-2 h-2 bg-cyan-400 rounded-full" style="left: 50%; animation-delay: 4s;"></div>
-            <div class="particle w-4 h-4 bg-green-400 rounded-full" style="left: 70%; animation-delay: 6s;"></div>
-            <div class="particle w-2 h-2 bg-yellow-400 rounded-full" style="left: 90%; animation-delay: 8s;"></div>
-        </div>
-        
-        <!-- Meteors -->
-        <div class="absolute inset-0 overflow-hidden">
-            <div class="meteor" style="top: 10%; left: 10%; animation-duration: 3s; animation-delay: 0s;"></div>
-            <div class="meteor" style="top: 30%; left: 60%; animation-duration: 3s; animation-delay: 1s;"></div>
-            <div class="meteor" style="top: 50%; left: 30%; animation-duration: 3s; animation-delay: 2s;"></div>
-        </div>
+        <!-- Footer -->
+        <footer class="text-center py-12">
+            <div class="flex justify-center gap-4 mb-6">
+                <a href="#" class="social-link">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+                    </svg>
+                </a>
+                <a href="#" class="social-link">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zM5.838 12a6.162 6.162 0 1112.324 0 6.162 6.162 0 01-12.324 0zM12 16a4 4 0 110-8 4 4 0 010 8zm4.965-10.405a1.44 1.44 0 112.881.001 1.44 1.44 0 01-2.881-.001z"/>
+                    </svg>
+                </a>
+                <a href="#" class="social-link">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84"/>
+                    </svg>
+                </a>
+                <a href="#" class="social-link">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                    </svg>
+                </a>
+            </div>
+            <p class="text-gray-500 text-sm">© 2024 Virtual Tour Generator. All rights reserved.</p>
+        </footer>
     </div>
     
-    <!-- Header -->
-    <header class="relative z-10 pt-12 pb-20">
-        <div class="container mx-auto px-6 text-center">
-            <!-- Logo with animation -->
-            <div class="inline-block mb-8 animate-slide-in">
-                <div class="flex items-center justify-center space-x-3">
-                    <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl animate-pulse-glow"></div>
-                    <h1 class="text-5xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent animate-rainbow">
-                        Virtual Tour Generator
-                    </h1>
-                </div>
-            </div>
-            
-            <!-- Subtitle -->
-            <p class="text-xl text-gray-300 max-w-2xl mx-auto mb-8 animate-slide-in" style="animation-delay: 0.2s;">
-                Transform your real estate photos into stunning cinematic tours with AI-powered Ken Burns effects
-            </p>
-            
-            <!-- Version badge -->
-            <div class="inline-flex items-center px-4 py-2 glass rounded-full border border-purple-500/30 animate-slide-in" style="animation-delay: 0.4s;">
-                <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse mr-2"></span>
-                <span class="text-sm font-medium">v2.0 • Magic UI Enhanced</span>
-            </div>
-        </div>
-    </header>
-    
-    <!-- Main Content -->
-    <main class="relative z-10 container mx-auto px-6 pb-20">
-        <!-- Upload Section -->
-        <div class="glass rounded-3xl p-8 mb-8 border-beam animate-slide-in" style="animation-delay: 0.6s;">
-            <h2 class="text-2xl font-bold mb-6 flex items-center">
-                <span class="w-1 h-8 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full mr-3"></span>
-                Upload Property Photos
-            </h2>
-            
-            <!-- Drop Zone -->
-            <div id="drop-zone" class="relative group cursor-pointer">
-                <div class="glass-light rounded-2xl p-16 text-center transition-all duration-300 hover:scale-[1.02] hover:bg-white/20 border-2 border-dashed border-purple-500/50 hover:border-purple-400">
-                    <div class="text-6xl mb-4 animate-float">📸</div>
-                    <h3 class="text-2xl font-bold mb-2 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                        Drop Your Photos Here
-                    </h3>
-                    <p class="text-gray-400 mb-6">or click to browse from your computer</p>
-                    
-                    <!-- Shimmer Button -->
-                    <button class="shimmer-button px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full font-semibold transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/50">
-                        Select Photos
-                    </button>
-                    
-                    <input type="file" id="file-input" multiple accept="image/*" class="hidden">
-                </div>
-            </div>
-            
-            <!-- File List (Hidden by default) -->
-            <div id="file-list" class="hidden mt-8">
-                <h3 class="text-xl font-semibold mb-4">Selected Photos</h3>
-                <div id="file-items" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
-            </div>
-        </div>
-        
-        <!-- Property Details Form -->
-        <div id="property-form" class="hidden glass rounded-3xl p-8 mb-8 animate-slide-in">
-            <h2 class="text-2xl font-bold mb-6 flex items-center">
-                <span class="w-1 h-8 bg-gradient-to-b from-cyan-500 to-green-500 rounded-full mr-3"></span>
-                Property Information
-            </h2>
-            
-            <div class="grid md:grid-cols-2 gap-6">
-                <!-- Property Address -->
-                <div class="space-y-2">
-                    <label class="text-sm text-gray-400">Property Address *</label>
-                    <textarea id="property-address" rows="2" class="w-full px-4 py-3 bg-white/10 rounded-xl border border-white/20 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all" placeholder="Enter property address"></textarea>
-                </div>
-                
-                <!-- Price -->
-                <div class="space-y-2">
-                    <label class="text-sm text-gray-400">Listing Price</label>
-                    <input type="text" id="property-price" class="w-full px-4 py-3 bg-white/10 rounded-xl border border-white/20 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all" placeholder="$0">
-                </div>
-                
-                <!-- Beds -->
-                <div class="space-y-2">
-                    <label class="text-sm text-gray-400">Bedrooms</label>
-                    <input type="text" id="property-beds" class="w-full px-4 py-3 bg-white/10 rounded-xl border border-white/20 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all" placeholder="0">
-                </div>
-                
-                <!-- Baths -->
-                <div class="space-y-2">
-                    <label class="text-sm text-gray-400">Bathrooms</label>
-                    <input type="text" id="property-baths" class="w-full px-4 py-3 bg-white/10 rounded-xl border border-white/20 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all" placeholder="0">
-                </div>
-                
-                <!-- Square Footage -->
-                <div class="space-y-2">
-                    <label class="text-sm text-gray-400">Square Footage</label>
-                    <input type="text" id="property-sqft" class="w-full px-4 py-3 bg-white/10 rounded-xl border border-white/20 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all" placeholder="0 sq ft">
-                </div>
-                
-                <!-- Status -->
-                <div class="space-y-2">
-                    <label class="text-sm text-gray-400">Status</label>
-                    <select id="property-status" class="w-full px-4 py-3 bg-white/10 rounded-xl border border-white/20 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all">
-                        <option value="Just Listed">Just Listed</option>
-                        <option value="Open House">Open House</option>
-                        <option value="Price Reduced">Price Reduced</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Coming Soon">Coming Soon</option>
-                    </select>
-                </div>
-            </div>
-            
-            <!-- Agent Information -->
-            <h3 class="text-xl font-semibold mt-8 mb-4">Agent Information</h3>
-            <div class="grid md:grid-cols-2 gap-6">
-                <div class="space-y-2">
-                    <label class="text-sm text-gray-400">Agent Name *</label>
-                    <input type="text" id="agent-name" class="w-full px-4 py-3 bg-white/10 rounded-xl border border-white/20 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all" placeholder="John Doe">
-                </div>
-                
-                <div class="space-y-2">
-                    <label class="text-sm text-gray-400">Phone Number *</label>
-                    <input type="tel" id="agent-phone" class="w-full px-4 py-3 bg-white/10 rounded-xl border border-white/20 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all" placeholder="(555) 123-4567">
-                </div>
-                
-                <div class="space-y-2">
-                    <label class="text-sm text-gray-400">Email</label>
-                    <input type="email" id="agent-email" class="w-full px-4 py-3 bg-white/10 rounded-xl border border-white/20 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all" placeholder="agent@realestate.com">
-                </div>
-                
-                <div class="space-y-2">
-                    <label class="text-sm text-gray-400">Brokerage</label>
-                    <input type="text" id="brand-name" class="w-full px-4 py-3 bg-white/10 rounded-xl border border-white/20 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all" placeholder="Real Estate Co.">
-                </div>
-            </div>
-        </div>
-        
-        <!-- Quality Selection -->
-        <div id="quality-section" class="hidden glass rounded-3xl p-8 mb-8 animate-slide-in">
-            <h2 class="text-2xl font-bold mb-6 flex items-center">
-                <span class="w-1 h-8 bg-gradient-to-b from-yellow-500 to-orange-500 rounded-full mr-3"></span>
-                Video Quality
-            </h2>
-            
-            <div class="grid md:grid-cols-3 gap-4">
-                <div class="quality-option cursor-pointer glass rounded-xl p-6 text-center transition-all hover:scale-105 hover:bg-white/20 border-2 border-transparent" data-quality="fast">
-                    <div class="text-3xl mb-2">⚡</div>
-                    <h4 class="font-bold mb-1">Fast</h4>
-                    <p class="text-sm text-gray-400">3 sec/image • Quick preview</p>
-                </div>
-                
-                <div class="quality-option cursor-pointer glass rounded-xl p-6 text-center transition-all hover:scale-105 hover:bg-white/20 border-2 border-purple-500 selected" data-quality="medium">
-                    <div class="text-3xl mb-2">🎬</div>
-                    <h4 class="font-bold mb-1">Standard</h4>
-                    <p class="text-sm text-gray-400">6 sec/image • Recommended</p>
-                </div>
-                
-                <div class="quality-option cursor-pointer glass rounded-xl p-6 text-center transition-all hover:scale-105 hover:bg-white/20 border-2 border-transparent" data-quality="premium">
-                    <div class="text-3xl mb-2">💎</div>
-                    <h4 class="font-bold mb-1">Premium</h4>
-                    <p class="text-sm text-gray-400">8 sec/image • Best quality</p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Watermark Section -->
-        <div id="watermark-section" class="hidden glass rounded-3xl p-8 mb-8 animate-slide-in">
-            <h2 class="text-2xl font-bold mb-6 flex items-center">
-                <span class="w-1 h-8 bg-gradient-to-b from-blue-500 to-indigo-500 rounded-full mr-3"></span>
-                Watermark (Optional)
-            </h2>
-            
-            <div id="watermark-upload-zone" class="glass-light rounded-xl p-8 text-center cursor-pointer transition-all hover:bg-white/20">
-                <div class="text-4xl mb-2">🏷️</div>
-                <h4 class="font-semibold mb-2">Upload Watermark</h4>
-                <p class="text-sm text-gray-400 mb-4">PNG, JPG, or GIF • Max 5MB</p>
-                <button class="px-6 py-2 bg-white/20 rounded-full font-medium hover:bg-white/30 transition-all">
-                    Choose File
-                </button>
-                <input type="file" id="watermark-input" accept="image/*" class="hidden">
-            </div>
-            
-            <div id="watermark-preview" class="hidden mt-4">
-                <!-- Watermark preview will be inserted here -->
-            </div>
-        </div>
-        
-        <!-- Action Buttons -->
-        <div id="action-buttons" class="hidden flex flex-wrap gap-4 justify-center">
-            <!-- Rainbow Button for Generate -->
-            <button id="generate-btn" class="rainbow-button px-10 py-4 rounded-full font-bold text-lg transition-all hover:scale-105 hover:shadow-2xl">
-                🎬 Generate Virtual Tour
-            </button>
-            
-            <!-- Glass button for Clear -->
-            <button id="clear-btn" class="px-8 py-4 glass rounded-full font-semibold transition-all hover:scale-105 hover:bg-white/20">
-                Clear All
-            </button>
-        </div>
-        
-        <!-- Progress Section -->
-        <div id="progress-section" class="hidden glass rounded-3xl p-8 text-center animate-slide-in">
-            <div class="text-5xl mb-4 animate-pulse">⚙️</div>
-            <h3 id="status-message" class="text-2xl font-bold mb-2">Processing...</h3>
-            <p id="sub-status" class="text-gray-400 mb-6">Creating your virtual tour</p>
-            
-            <!-- Progress bar with shimmer effect -->
-            <div class="w-full h-3 bg-white/10 rounded-full overflow-hidden">
-                <div id="progress-fill" class="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-500 relative" style="width: 0%">
-                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
-                </div>
-            </div>
-            <div id="progress-text" class="mt-2 text-sm text-gray-400">0%</div>
-        </div>
-        
-        <!-- Results Section -->
-        <div id="results-section" class="hidden glass rounded-3xl p-8 text-center animate-slide-in">
-            <div id="results-icon" class="text-5xl mb-4">✅</div>
-            <h3 id="results-title" class="text-2xl font-bold mb-2">Success!</h3>
-            <p id="results-message" class="text-gray-400 mb-6"></p>
-            
-            <div id="video-preview" class="mb-6"></div>
-            
-            <div id="download-buttons" class="flex flex-wrap gap-4 justify-center"></div>
-            
-            <button id="new-video-btn" class="mt-6 px-8 py-3 glass rounded-full font-semibold transition-all hover:scale-105 hover:bg-white/20">
-                Create Another Video
-            </button>
-        </div>
-    </main>
-    
     <script>
-        // Global variables
+        // State management
         let selectedFiles = [];
         let currentJobId = null;
         let statusCheckInterval = null;
         let selectedQuality = 'medium';
-        let selectedWatermarkFile = null;
-        let uploadedWatermarkId = null;
+        let isWaitlistMode = true;
         
         // DOM elements
+        const emailInput = document.getElementById('email-input');
+        const notifyBtn = document.getElementById('notify-btn');
+        const uploadSection = document.getElementById('upload-section');
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
         const fileList = document.getElementById('file-list');
         const fileItems = document.getElementById('file-items');
         const propertyForm = document.getElementById('property-form');
         const qualitySection = document.getElementById('quality-section');
-        const watermarkSection = document.getElementById('watermark-section');
         const actionButtons = document.getElementById('action-buttons');
         const generateBtn = document.getElementById('generate-btn');
         const clearBtn = document.getElementById('clear-btn');
@@ -552,11 +488,16 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             setupEventListeners();
-            addRippleEffect();
         });
         
         // Setup event listeners
         function setupEventListeners() {
+            // Email signup
+            notifyBtn.addEventListener('click', handleEmailSignup);
+            emailInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleEmailSignup();
+            });
+            
             // File upload
             dropZone.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
@@ -564,16 +505,16 @@
             // Drag and drop
             dropZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
-                dropZone.querySelector('div').classList.add('scale-105', 'bg-white/30');
+                dropZone.classList.add('dragover');
             });
             
             dropZone.addEventListener('dragleave', () => {
-                dropZone.querySelector('div').classList.remove('scale-105', 'bg-white/30');
+                dropZone.classList.remove('dragover');
             });
             
             dropZone.addEventListener('drop', (e) => {
                 e.preventDefault();
-                dropZone.querySelector('div').classList.remove('scale-105', 'bg-white/30');
+                dropZone.classList.remove('dragover');
                 handleFiles(e.dataTransfer.files);
             });
             
@@ -581,20 +522,12 @@
             document.querySelectorAll('.quality-option').forEach(option => {
                 option.addEventListener('click', () => {
                     document.querySelectorAll('.quality-option').forEach(opt => {
-                        opt.classList.remove('selected', 'border-purple-500');
-                        opt.classList.add('border-transparent');
+                        opt.classList.remove('selected');
                     });
-                    option.classList.add('selected', 'border-purple-500');
-                    option.classList.remove('border-transparent');
+                    option.classList.add('selected');
                     selectedQuality = option.dataset.quality;
                 });
             });
-            
-            // Watermark
-            const watermarkZone = document.getElementById('watermark-upload-zone');
-            const watermarkInput = document.getElementById('watermark-input');
-            watermarkZone.addEventListener('click', () => watermarkInput.click());
-            watermarkInput.addEventListener('change', handleWatermarkSelect);
             
             // Buttons
             generateBtn.addEventListener('click', generateVirtualTour);
@@ -602,28 +535,21 @@
             newVideoBtn.addEventListener('click', resetForm);
         }
         
-        // Add ripple effect to buttons
-        function addRippleEffect() {
-            document.querySelectorAll('button').forEach(button => {
-                button.addEventListener('click', function(e) {
-                    const ripple = document.createElement('span');
-                    const rect = this.getBoundingClientRect();
-                    const size = Math.max(rect.width, rect.height);
-                    const x = e.clientX - rect.left - size / 2;
-                    const y = e.clientY - rect.top - size / 2;
-                    
-                    ripple.style.width = ripple.style.height = size + 'px';
-                    ripple.style.left = x + 'px';
-                    ripple.style.top = y + 'px';
-                    ripple.classList.add('ripple');
-                    
-                    this.style.position = 'relative';
-                    this.style.overflow = 'hidden';
-                    this.appendChild(ripple);
-                    
-                    setTimeout(() => ripple.remove(), 600);
-                });
-            });
+        // Handle email signup
+        function handleEmailSignup() {
+            const email = emailInput.value.trim();
+            if (!email || !email.includes('@')) {
+                alert('Please enter a valid email address');
+                return;
+            }
+            
+            // Switch to upload mode
+            isWaitlistMode = false;
+            uploadSection.classList.remove('hidden');
+            emailInput.parentElement.parentElement.classList.add('hidden');
+            
+            // Store email for later use
+            localStorage.setItem('userEmail', email);
         }
         
         // Handle file selection
@@ -636,7 +562,6 @@
                 fileList.classList.remove('hidden');
                 propertyForm.classList.remove('hidden');
                 qualitySection.classList.remove('hidden');
-                watermarkSection.classList.remove('hidden');
                 actionButtons.classList.remove('hidden');
             }
         }
@@ -647,7 +572,6 @@
                 fileList.classList.add('hidden');
                 propertyForm.classList.add('hidden');
                 qualitySection.classList.add('hidden');
-                watermarkSection.classList.add('hidden');
                 actionButtons.classList.add('hidden');
                 return;
             }
@@ -655,15 +579,14 @@
             fileItems.innerHTML = selectedFiles.map((file, index) => {
                 const url = URL.createObjectURL(file);
                 return `
-                    <div class="relative group glass rounded-lg overflow-hidden">
-                        <img src="${url}" alt="${file.name}" class="w-full h-32 object-cover">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div class="relative group">
+                        <img src="${url}" alt="${file.name}" class="w-full h-32 object-cover rounded-lg">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
                             <button onclick="removeFile(${index})" class="absolute top-2 right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 transition-colors">
                                 ×
                             </button>
                             <div class="absolute bottom-2 left-2 right-2">
-                                <p class="text-xs truncate">${file.name}</p>
-                                <p class="text-xs opacity-70">${(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                                <p class="text-xs text-white truncate">${file.name}</p>
                             </div>
                         </div>
                     </div>
@@ -684,53 +607,6 @@
             updateFileList();
         }
         
-        // Handle watermark selection
-        function handleWatermarkSelect(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            if (!file.type.startsWith('image/')) {
-                alert('Please select an image file');
-                return;
-            }
-            
-            if (file.size > 5 * 1024 * 1024) {
-                alert('File too large. Maximum size is 5MB.');
-                return;
-            }
-            
-            selectedWatermarkFile = file;
-            
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const preview = document.getElementById('watermark-preview');
-                preview.innerHTML = `
-                    <div class="flex items-center gap-4 p-4 glass-light rounded-lg">
-                        <img src="${e.target.result}" alt="Watermark" class="w-16 h-16 object-contain">
-                        <div class="flex-1">
-                            <p class="font-medium">${file.name}</p>
-                            <p class="text-sm text-gray-400">${(file.size / 1024).toFixed(1)} KB</p>
-                        </div>
-                        <button onclick="removeWatermark()" class="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-colors">
-                            Remove
-                        </button>
-                    </div>
-                `;
-                preview.classList.remove('hidden');
-                document.getElementById('watermark-upload-zone').classList.add('hidden');
-            };
-            reader.readAsDataURL(file);
-        }
-        
-        // Remove watermark
-        window.removeWatermark = function() {
-            selectedWatermarkFile = null;
-            uploadedWatermarkId = null;
-            document.getElementById('watermark-input').value = '';
-            document.getElementById('watermark-preview').classList.add('hidden');
-            document.getElementById('watermark-upload-zone').classList.remove('hidden');
-        }
-        
         // Generate virtual tour
         async function generateVirtualTour() {
             if (selectedFiles.length === 0) {
@@ -747,11 +623,6 @@
                 return;
             }
             
-            // Upload watermark if selected
-            if (selectedWatermarkFile && !uploadedWatermarkId) {
-                uploadedWatermarkId = await uploadWatermark();
-            }
-            
             // Prepare form data
             const formData = new FormData();
             selectedFiles.forEach(file => formData.append('files', file));
@@ -760,13 +631,8 @@
             formData.append('agent_name', agentName);
             formData.append('agent_phone', agentPhone);
             formData.append('details1', document.getElementById('property-price').value || '');
-            formData.append('details2', document.getElementById('property-status').value);
             formData.append('agent_email', document.getElementById('agent-email').value || '');
             formData.append('brand_name', document.getElementById('brand-name').value || '');
-            
-            if (uploadedWatermarkId) {
-                formData.append('watermark_id', uploadedWatermarkId);
-            }
             
             // Quality settings
             const qualitySettings = {
@@ -806,33 +672,6 @@
             }
         }
         
-        // Upload watermark
-        async function uploadWatermark() {
-            const formData = new FormData();
-            formData.append('watermark', selectedWatermarkFile);
-            formData.append('position', 'bottom-right');
-            formData.append('opacity', '0.7');
-            formData.append('scale', '0.15');
-            
-            try {
-                const response = await fetch('/api/watermark/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Watermark upload failed');
-                }
-                
-                const result = await response.json();
-                return result.watermark_id;
-                
-            } catch (error) {
-                console.error('Watermark upload error:', error);
-                return null;
-            }
-        }
-        
         // Start status checking
         function startStatusChecking() {
             statusCheckInterval = setInterval(async () => {
@@ -864,9 +703,9 @@
             if (percent < 30) {
                 document.getElementById('sub-status').textContent = 'Preparing your images...';
             } else if (percent < 60) {
-                document.getElementById('sub-status').textContent = 'Applying Ken Burns effects...';
+                document.getElementById('sub-status').textContent = 'Applying cinematic effects...';
             } else if (percent < 90) {
-                document.getElementById('sub-status').textContent = 'Rendering HD video...';
+                document.getElementById('sub-status').textContent = 'Rendering video...';
             } else {
                 document.getElementById('sub-status').textContent = 'Finalizing...';
             }
@@ -892,8 +731,8 @@
             const downloadButtons = document.getElementById('download-buttons');
             downloadButtons.innerHTML = `
                 <a href="${data.video_url || `/api/virtual-tour/download/${currentJobId}/video`}" 
-                   class="rainbow-button px-6 py-3 rounded-full font-semibold" download>
-                    🎬 Download Video
+                   class="primary-button" download>
+                    Download Video
                 </a>
             `;
         }
@@ -913,7 +752,6 @@
         // Reset form
         function resetForm() {
             clearFiles();
-            removeWatermark();
             resultsSection.classList.add('hidden');
             document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], textarea').forEach(input => {
                 input.value = '';
