@@ -241,19 +241,18 @@ jobs:
             const props = { images, propertyDetails, settings };
             require('fs').writeFileSync('props.json', JSON.stringify(props, null, 2));
             console.log('Props saved to props.json');
-            console.log(JSON.stringify(props));
           } catch (e) {
             console.error('ERROR generating props:', e.message);
             process.exit(1);
           }
-        " > props_output.json || exit 1
+        " || exit 1
         
         echo "Props JSON:"
         cat props.json || echo "ERROR: props.json not created"
         
         # Show the exact command that will be run
         echo "=== EXACT REMOTION COMMAND ==="
-        echo "npx remotion render RealEstateTour out/${{ inputs.jobId }}.mp4 --props='$(cat props_output.json)'"
+        echo "npx remotion render RealEstateTour out/${{ inputs.jobId }}.mp4 --props=props.json"
         echo "=== END COMMAND ==="
         
         # Check if any image URLs contain problematic characters
@@ -272,7 +271,7 @@ jobs:
         
         # Try with reduced concurrency to avoid memory issues
         npx remotion render RealEstateTour out/${{ inputs.jobId }}.mp4 \
-          --props="$(cat props_output.json)" \
+          --props=props.json \
           --concurrency=4 \
           --timeout=300000 \
           2>&1 | tee render.log || {
