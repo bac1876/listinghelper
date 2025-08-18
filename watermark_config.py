@@ -33,7 +33,7 @@ except Exception as e:
     os.makedirs(WATERMARK_STORAGE_DIR, exist_ok=True)
 
 # Supported watermark formats
-SUPPORTED_FORMATS = {'.png', '.jpg', '.jpeg', '.gif', '.webp'}
+SUPPORTED_FORMATS = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'}
 
 # Maximum watermark file size (5MB)
 MAX_WATERMARK_SIZE = 5 * 1024 * 1024
