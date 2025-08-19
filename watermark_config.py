@@ -33,7 +33,8 @@ except Exception as e:
     os.makedirs(WATERMARK_STORAGE_DIR, exist_ok=True)
 
 # Supported watermark formats
-SUPPORTED_FORMATS = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'}
+# Note: SVG removed as FFmpeg doesn't support it directly
+SUPPORTED_FORMATS = {'.png', '.jpg', '.jpeg', '.gif', '.webp'}
 
 # Maximum watermark file size (5MB)
 MAX_WATERMARK_SIZE = 5 * 1024 * 1024
@@ -132,20 +133,24 @@ class WatermarkConfig:
             return ""
         
         # Calculate watermark size based on scale
+        # Use -1 for height to maintain aspect ratio
         watermark_width = int(video_width * self.scale)
-        watermark_height = int(video_height * self.scale)
+        watermark_height = -1  # Let ffmpeg calculate this to maintain aspect ratio
+        
+        # For position calculation, estimate the height
+        estimated_height = int(video_height * self.scale)
         
         # Calculate position coordinates
         x, y = self._calculate_position_coordinates(
             video_width, video_height, 
-            watermark_width, watermark_height
+            watermark_width, estimated_height
         )
         
         # Build filter components
         filter_parts = []
         
-        # Scale the watermark
-        filter_parts.append(f"scale={watermark_width}:{watermark_height}")
+        # Scale the watermark (maintaining aspect ratio)
+        filter_parts.append(f"scale={watermark_width}:-1")
         
         # Set transparency if needed
         if self.opacity < 1.0:
