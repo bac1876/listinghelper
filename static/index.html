@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1165,81 +1165,6 @@
                         </div>
                     </div>
                     
-                    <div class="watermark-section">
-                        <h3>Watermark (Optional)</h3>
-                        <p style="color: var(--text-secondary); margin-bottom: 20px;">Add your logo or brand watermark to the video</p>
-                        
-                        <div class="watermark-controls">
-                            <div class="form-group">
-                                <div class="watermark-upload-zone" id="watermark-upload-zone">
-                                    <div class="watermark-upload-icon">🏷️</div>
-                                    <h4>Upload Watermark</h4>
-                                    <p>PNG, JPG, or GIF • Max 5MB</p>
-                                    <button type="button" class="btn secondary" id="watermark-select-btn">Choose Watermark</button>
-                                    <input type="file" id="watermark-input" accept="image/*" style="display: none;">
-                                </div>
-                                
-                                <div class="watermark-preview" id="watermark-preview" style="display: none;">
-                                    <div class="watermark-preview-image">
-                                        <img id="watermark-preview-img" src="" alt="Watermark preview">
-                                        <button type="button" class="watermark-remove" id="watermark-remove">×</button>
-                                    </div>
-                                    <div class="watermark-info">
-                                        <div class="watermark-name" id="watermark-name"></div>
-                                        <div class="watermark-size" id="watermark-size"></div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="watermark-settings" id="watermark-settings" style="display: none;">
-                                <div class="form-grid">
-                                    <div class="form-group">
-                                        <select id="watermark-position">
-                                            <option value="bottom-right">Bottom Right</option>
-                                            <option value="bottom-left">Bottom Left</option>
-                                            <option value="bottom-center">Bottom Center</option>
-                                            <option value="top-right">Top Right</option>
-                                            <option value="top-left">Top Left</option>
-                                            <option value="top-center">Top Center</option>
-                                            <option value="center">Center</option>
-                                        </select>
-                                        <label for="watermark-position">Position</label>
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <input type="range" id="watermark-opacity" min="0.1" max="1.0" step="0.1" value="0.7">
-                                        <label for="watermark-opacity">Opacity: <span id="opacity-value">70%</span></label>
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <input type="range" id="watermark-scale" min="0.05" max="0.3" step="0.01" value="0.1">
-                                        <label for="watermark-scale">Size: <span id="scale-value">10%</span></label>
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <select id="watermark-duration">
-                                            <option value="full">Entire Video</option>
-                                            <option value="start">First 5 Seconds</option>
-                                            <option value="end">Last 5 Seconds</option>
-                                        </select>
-                                        <label for="watermark-duration">Display Duration</label>
-                                    </div>
-                                </div>
-                                
-                                <div class="watermark-preview-container">
-                                    <div class="video-preview-frame">
-                                        <div class="watermark-position-preview" id="watermark-position-preview">
-                                            <div class="watermark-demo" id="watermark-demo">LOGO</div>
-                                        </div>
-                                    </div>
-                                    <p style="font-size: 0.9em; color: var(--text-muted); text-align: center; margin-top: 10px;">
-                                        Preview of watermark position on video
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
                     <div class="action-buttons">
                         <button class="btn generate" id="generate-btn">
                             🎬 Generate Virtual Tour
@@ -1458,7 +1383,7 @@
             document.getElementById('brand-name').value = '';
         }
         
-        async function generateVirtualTour(watermarkId = null) {
+        async function generateVirtualTour() {
             if (selectedFiles.length === 0) {
                 alert('Please select at least one photo');
                 return;
@@ -1498,12 +1423,6 @@
                 console.log(`  File ${index + 1}: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB, type: ${file.type})`);
                 formData.append('files', file);
             });
-            
-            // Attach watermark if requested
-            if (watermarkId) {
-                formData.append('watermark_id', watermarkId);
-                console.log('Including watermark ID:', watermarkId);
-            }
             
             // Add property details
             formData.append('address', address);
@@ -1831,179 +1750,8 @@
             }
         }
         
-        // Watermark functionality
-        const watermarkInput = document.getElementById('watermark-input');
-        const watermarkSelectBtn = document.getElementById('watermark-select-btn');
-        const watermarkUploadZone = document.getElementById('watermark-upload-zone');
-        const watermarkPreview = document.getElementById('watermark-preview');
-        const watermarkSettings = document.getElementById('watermark-settings');
-        const watermarkRemoveBtn = document.getElementById('watermark-remove');
-        const watermarkPositionSelect = document.getElementById('watermark-position');
-        const watermarkOpacitySlider = document.getElementById('watermark-opacity');
-        const watermarkScaleSlider = document.getElementById('watermark-scale');
-        const watermarkDurationSelect = document.getElementById('watermark-duration');
-        const watermarkDemo = document.getElementById('watermark-demo');
-        const opacityValue = document.getElementById('opacity-value');
-        const scaleValue = document.getElementById('scale-value');
         
-        let selectedWatermarkFile = null;
-        let uploadedWatermarkId = null;
-        
-        // Watermark file selection
-        watermarkSelectBtn.addEventListener('click', () => {
-            watermarkInput.click();
-        });
-        
-        watermarkUploadZone.addEventListener('click', (e) => {
-            if (e.target === watermarkUploadZone) {
-                watermarkInput.click();
-            }
-        });
-        
-        // Handle watermark file selection
-        watermarkInput.addEventListener('change', handleWatermarkFileSelect);
-        
-        function handleWatermarkFileSelect(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            // Validate file
-            if (!file.type.startsWith('image/')) {
-                alert('Please select an image file (PNG, JPG, GIF)');
-                return;
-            }
-            
-            if (file.size > 5 * 1024 * 1024) { // 5MB limit
-                alert('File too large. Maximum size is 5MB.');
-                return;
-            }
-            
-            selectedWatermarkFile = file;
-            
-            // Show preview
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                document.getElementById('watermark-preview-img').src = e.target.result;
-                document.getElementById('watermark-name').textContent = file.name;
-                document.getElementById('watermark-size').textContent = `${(file.size / 1024).toFixed(1)} KB`;
-                
-                watermarkUploadZone.style.display = 'none';
-                watermarkPreview.style.display = 'flex';
-                watermarkSettings.style.display = 'block';
-                
-                // Update demo preview
-                updateWatermarkPreview();
-            };
-            reader.readAsDataURL(file);
-        }
-        
-        // Remove watermark
-        watermarkRemoveBtn.addEventListener('click', () => {
-            selectedWatermarkFile = null;
-            uploadedWatermarkId = null;
-            watermarkInput.value = '';
-            
-            watermarkUploadZone.style.display = 'block';
-            watermarkPreview.style.display = 'none';
-            watermarkSettings.style.display = 'none';
-        });
-        
-        // Watermark settings event listeners
-        watermarkPositionSelect.addEventListener('change', updateWatermarkPreview);
-        watermarkOpacitySlider.addEventListener('input', updateWatermarkPreview);
-        watermarkScaleSlider.addEventListener('input', updateWatermarkPreview);
-        watermarkDurationSelect.addEventListener('change', updateWatermarkPreview);
-        
-        function updateWatermarkPreview() {
-            // Update position
-            const position = watermarkPositionSelect.value;
-            watermarkDemo.className = `watermark-demo ${position}`;
-            
-            // Update opacity
-            const opacity = parseFloat(watermarkOpacitySlider.value);
-            watermarkDemo.style.opacity = opacity;
-            opacityValue.textContent = `${Math.round(opacity * 100)}%`;
-            
-            // Update scale
-            const scale = parseFloat(watermarkScaleSlider.value);
-            const fontSize = Math.max(8, scale * 60); // Base font size scaled
-            watermarkDemo.style.fontSize = `${fontSize}px`;
-            scaleValue.textContent = `${Math.round(scale * 100)}%`;
-            
-            // Update duration indicator
-            const duration = watermarkDurationSelect.value;
-            if (duration === 'start') {
-                watermarkDemo.textContent = 'LOGO (Start)';
-            } else if (duration === 'end') {
-                watermarkDemo.textContent = 'LOGO (End)';
-            } else {
-                watermarkDemo.textContent = 'LOGO';
-            }
-        }
-        
-        async function uploadWatermark() {
-            if (!selectedWatermarkFile) return null;
-            
-            const formData = new FormData();
-            formData.append('watermark', selectedWatermarkFile);
-            formData.append('position', watermarkPositionSelect.value);
-            formData.append('opacity', watermarkOpacitySlider.value);
-            formData.append('scale', watermarkScaleSlider.value);
-            formData.append('margin_x', '20');
-            formData.append('margin_y', '20');
-            formData.append('duration', watermarkDurationSelect.value);
-            
-            try {
-                const response = await fetch('/api/watermark/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Upload failed');
-                }
-                
-                const result = await response.json();
-                uploadedWatermarkId = result.watermark_id;
-                console.log('Watermark uploaded:', result);
-                return result.watermark_id;
-                
-            } catch (error) {
-                console.error('Watermark upload error:', error);
-                alert(`Watermark upload failed: ${error.message}`);
-                return null;
-            }
-        }
-        
-        // Update the generateVirtualTour function to include watermark
-        const originalGenerateVirtualTour = generateVirtualTour;
-        
-        async function generateVirtualTourWithWatermark() {
-            // Upload watermark first if one is selected
-            let watermarkId = null;
-            if (selectedWatermarkFile && !uploadedWatermarkId) {
-                console.log('Uploading watermark...');
-                watermarkId = await uploadWatermark();
-                if (!watermarkId) {
-                    // Failed to upload watermark, but continue without it
-                    console.warn('Continuing without watermark due to upload failure');
-                }
-            } else if (uploadedWatermarkId) {
-                watermarkId = uploadedWatermarkId;
-            }
-            
-            return originalGenerateVirtualTour(watermarkId);
-        }
-        
-        // Replace the original function
-        generateVirtualTour = generateVirtualTourWithWatermark;
-        
-        // Base generateVirtualTour now handles optional watermarkId input
-        window.originalGenerateVirtualTour = generateVirtualTour;
-
-        // Initialize watermark preview
-        updateWatermarkPreview();
     </script>
 </body>
 </html>
+

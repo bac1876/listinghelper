@@ -150,60 +150,12 @@ jobs:
           echo "No images provided to test"
         fi
     
-    - name: Test Minimal Remotion Render
-      working-directory: ./remotion-tours
-      run: |
-        echo "Testing if Remotion can render at all..."
-        
-        # Log system information
-        echo "Node version: $(node --version)"
-        echo "NPM version: $(npm --version)"
-        echo "Available memory: $(free -h 2>/dev/null | grep Mem || echo 'N/A')"
-        
-        # Create a minimal test with a data URI instead of external URL
-        echo "Creating minimal props for test..."
-        cat > test_props.json << 'EOF'
-        {
-          "images": [],
-          "propertyDetails": {
-            "address": "Test Property",
-            "city": "Test City"
-          },
-          "settings": {
-            "durationPerImage": 1,
-            "effectSpeed": "fast",
-            "transitionDuration": 0.5
-          }
-        }
-        EOF
-        
-        echo "Running minimal test render (using default images)..."
-        npx remotion render RealEstateTour test_minimal.mp4 \
-          --props="$(cat test_props.json)" \
-          --frames=0-30 \
-          --concurrency=2 \
-          2>&1 | tee test_render.log || {
-            echo "WARNING: Minimal test render failed!"
-            echo "Full test render log:"
-            cat test_render.log
-            echo "Continuing anyway to attempt main render..."
-        }
-        
-        if [ -f "test_minimal.mp4" ]; then
-          TEST_SIZE=$(stat -c%s "test_minimal.mp4" 2>/dev/null || stat -f%z "test_minimal.mp4" 2>/dev/null || echo "0")
-          echo "✓ Minimal test render succeeded! Size: $TEST_SIZE bytes"
-          rm -f test_minimal.mp4
-        else
-          echo "✗ Minimal test render did not produce output - checking for errors"
-        fi
-    
     - name: Render video with Remotion
       working-directory: ./remotion-tours
       env:
         REMOTION_IMAGES: ${{ inputs.images }}
         REMOTION_PROPERTY_DETAILS: ${{ inputs.propertyDetails }}
         REMOTION_SETTINGS: ${{ inputs.settings }}
-        REMOTION_WATERMARK: ${{ inputs.watermark }}
         JOB_ID: ${{ inputs.jobId }}
       run: |
         echo "Starting FULL Remotion render..."
@@ -245,20 +197,6 @@ jobs:
             const propertyDetails = JSON.parse(process.env.REMOTION_PROPERTY_DETAILS);
             const settings = JSON.parse(process.env.REMOTION_SETTINGS);
             const props = { images, propertyDetails, settings };
-            
-            // Add watermark if provided
-            const watermarkStr = process.env.REMOTION_WATERMARK || '';
-            if (watermarkStr && watermarkStr !== '') {
-              try {
-                const watermark = JSON.parse(watermarkStr);
-                if (watermark && watermark.url) {
-                  props.watermark = watermark;
-                  console.log('Watermark configuration added to props');
-                }
-              } catch (e) {
-                console.log('No watermark or invalid watermark JSON');
-              }
-            }
             
             require('fs').writeFileSync('props.json', JSON.stringify(props, null, 2));
             console.log('Props saved to props.json');

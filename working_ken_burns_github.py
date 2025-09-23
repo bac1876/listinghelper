@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, send_file, redirect
+﻿from flask import Blueprint, request, jsonify, send_file, redirect
 import os
 import tempfile
 import subprocess
@@ -6,7 +6,6 @@ import time
 from datetime import datetime, timedelta
 import uuid
 import base64
-import mimetypes
 import shutil
 import threading
 import logging
@@ -676,27 +675,8 @@ def upload_images():
                 logger.info(f"Triggering GitHub Actions for job {job_id} with {len(github_image_urls)} images")
                 
                 # Prepare watermark configuration if available
-                watermark_config = None
-                if watermark_id:
-                    from watermark_config import watermark_manager
-                    wm = watermark_manager.get_watermark(watermark_id)
-                    if wm and wm.filepath and os.path.exists(wm.filepath):
-                        try:
-                            mime_type, _ = mimetypes.guess_type(wm.filepath)
-                            mime_type = mime_type or 'image/png'
-                            with open(wm.filepath, 'rb') as f:
-                                encoded = base64.b64encode(f.read()).decode('utf-8')
-                            watermark_url = f"data:{mime_type};base64,{encoded}"
-                            watermark_config = {
-                                'url': watermark_url,
-                                'position': wm.position,
-                                'opacity': wm.opacity,
-                                'scale': wm.scale
-                            }
-                            logger.info(f"Embedded watermark for GitHub Actions (mime={mime_type}, size={len(encoded)} bytes)")
-                        except Exception as e:
-                            logger.error(f"Failed to embed watermark: {e}")
-                
+                watermark_config = None  # Watermark embedding disabled
+
                 github_result = github_actions.trigger_video_render(
                         images=github_image_urls,
                         property_details={
@@ -1232,3 +1212,4 @@ def generate_virtual_tour_html(job_id, job_data):
         processing_time=job_data.get('processing_time', 'N/A'),
         github_info=github_info
     )
+
