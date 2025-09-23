@@ -24,6 +24,8 @@ get_video_url_imagekit = get_video_url_storage
 from github_actions_integration import GitHubActionsIntegration
 from PIL import Image
 import io
+from storage_adapter import test_storage_initialization
+
 
 virtual_tour_bp = Blueprint('virtual_tour', __name__, url_prefix='/api/virtual-tour')
 
@@ -40,95 +42,12 @@ if not os.path.exists(TEMP_DIR):
 # In-memory job tracking with detailed status
 active_jobs = {}
 
-def trigger_ffmpeg_fallback(job_id):
-    """Trigger local FFmpeg processing as a fallback when GitHub Actions fails"""
-    try:
-        if job_id not in active_jobs:
-            logger.error(f"Job {job_id} not found for FFmpeg fallback")
-            return
-        
-        job = active_jobs[job_id]
-        
-        # Update status
-        job['status'] = 'processing'
-        job['current_step'] = 'Falling back to local video generation...'
-        job['progress'] = 50
-        
-        # Get saved files from job
-        saved_files = job.get('saved_files', [])
-        if not saved_files:
-            logger.error(f"No saved files found for job {job_id}")
-            job['status'] = 'error'
-            job['current_step'] = 'No images available for fallback processing'
-            return
-        
-        # Import FFmpeg Ken Burns function
-        from ffmpeg_ken_burns import create_ken_burns_video
-        
-        # Create output path
-        output_filename = f"virtual_tour_{job_id}.mp4"
-        output_path = os.path.join(TEMP_DIR, output_filename)
-        
-        logger.info(f"Starting FFmpeg fallback for job {job_id} with {len(saved_files)} images")
-        
-        # Get duration setting
-        duration_per_image = job.get('duration_per_image', 6)
-        
-        # Create video with FFmpeg
-        try:
-            job['current_step'] = 'Generating video with local processor...'
-            job['progress'] = 60
-            
-            created_video = create_ken_burns_video(
-                saved_files,
-                output_path,
-                job_id,
-                quality='medium'  # Use medium quality for faster processing
-            )
-            
-            if created_video and os.path.exists(created_video):
-                logger.info(f"FFmpeg fallback successful: {created_video}")
-                job['video_path'] = created_video
-                job['video_available'] = True
-                job['status'] = 'completed'
-                job['current_step'] = 'Video generated successfully (fallback mode)'
-                job['progress'] = 90
-                
-                # Try to upload to ImageKit
-                try:
-                    video_url = upload_video_to_storage(created_video, f"tours/videos/{output_filename}")
-                    if video_url:
-                        job['video_url'] = video_url
-                        job['files_generated']['video_url'] = video_url
-                        logger.info(f"Fallback video uploaded to ImageKit: {video_url}")
-                except Exception as e:
-                    logger.error(f"Failed to upload fallback video to ImageKit: {e}")
-                    # Video still available locally
-                
-                job['progress'] = 100
-                job['current_step'] = 'Video ready (generated locally)'
-            else:
-                raise Exception("FFmpeg failed to create video")
-                
-        except Exception as e:
-            logger.error(f"FFmpeg fallback failed: {e}")
-            job['status'] = 'error'
-            job['current_step'] = f'Video generation failed completely: {str(e)}'
-            job['progress'] = 100
-            
-    except Exception as e:
-        logger.error(f"Error in FFmpeg fallback: {e}")
-        if job_id in active_jobs:
-            active_jobs[job_id]['status'] = 'error'
-            active_jobs[job_id]['current_step'] = f'Fallback failed: {str(e)}'
-            active_jobs[job_id]['progress'] = 100
-
 def start_github_actions_polling(job_id, github_job_id):
     """Start a background thread to poll GitHub Actions and then ImageKit for the completed video"""
     def poll_for_video():
         logger.info(f"Starting GitHub Actions polling for job {job_id}, GitHub job ID: {github_job_id}")
         
-        max_attempts = 45  # Poll for up to 7.5 minutes (45 * 10 seconds) - reduced for faster fallback
+        max_attempts = 45  # Poll for up to 7.5 minutes (45 * 10 seconds) - reduced for faster failure reporting
         attempt = 0
         github_actions_complete = False
         video_url = None
@@ -171,10 +90,7 @@ def start_github_actions_polling(job_id, github_job_id):
                             active_jobs[job_id]['current_step'] = f'Remotion failed: {error_details or "Unknown error"}'
                             active_jobs[job_id]['progress'] = 100
                             active_jobs[job_id]['error_details'] = error_details
-                            
-                            # Trigger FFmpeg fallback
-                            logger.info(f"Attempting FFmpeg fallback for job {job_id}")
-                            trigger_ffmpeg_fallback(job_id)
+                            active_jobs[job_id]['github_actions_failed'] = True
                             return
                     except Exception as e:
                         logger.warning(f"Error checking GitHub Actions status: {e}")
@@ -217,16 +133,14 @@ def start_github_actions_polling(job_id, github_job_id):
             # Wait before next attempt
             time.sleep(10)
         
-        # Timeout - video generation took too long, trigger fallback
+        # Timeout - video generation took too long
         logger.error(f"Video polling timeout for job {job_id} after {max_attempts} attempts")
-        active_jobs[job_id]['status'] = 'processing'
-        active_jobs[job_id]['current_step'] = 'Remotion timeout - switching to local processing...'
-        active_jobs[job_id]['progress'] = 50
-        
-        # Trigger FFmpeg fallback
-        logger.info(f"Triggering FFmpeg fallback due to timeout for job {job_id}")
-        trigger_ffmpeg_fallback(job_id)
-    
+        active_jobs[job_id]['status'] = 'error'
+        active_jobs[job_id]['current_step'] = 'Remotion timeout - no video generated'
+        active_jobs[job_id]['progress'] = 100
+        active_jobs[job_id]['github_actions_failed'] = True
+        return
+
     # Start polling in background thread
     polling_thread = threading.Thread(target=poll_for_video, daemon=True)
     polling_thread.start()
@@ -466,6 +380,31 @@ def upload_images():
             'files_generated': {}
         }
         
+        storage_ok, storage_backend = test_storage_initialization()
+        if not storage_ok:
+            error_message = (
+                'Storage backend not configured. Configure Bunny.net credentials '
+                '(BUNNY_STORAGE_ZONE_NAME, BUNNY_ACCESS_KEY, BUNNY_PULL_ZONE_URL).'
+            )
+            active_jobs[job_id]['status'] = 'error'
+            active_jobs[job_id]['current_step'] = error_message
+            active_jobs[job_id]['error'] = error_message
+            return jsonify({'error': error_message, 'job_id': job_id}), 503
+
+        if os.environ.get('USE_GITHUB_ACTIONS', 'false').lower() != 'true':
+            error_message = 'GitHub Actions workflow disabled. Set USE_GITHUB_ACTIONS=true to enable rendering.'
+            active_jobs[job_id]['status'] = 'error'
+            active_jobs[job_id]['current_step'] = error_message
+            active_jobs[job_id]['error'] = error_message
+            return jsonify({'error': error_message, 'job_id': job_id}), 503
+
+        if github_actions is None or not getattr(github_actions, 'is_valid', True):
+            error_message = 'GitHub Actions credentials missing or invalid. Check GITHUB_TOKEN, GITHUB_OWNER, and GITHUB_REPO.'
+            active_jobs[job_id]['status'] = 'error'
+            active_jobs[job_id]['current_step'] = error_message
+            active_jobs[job_id]['error'] = error_message
+            return jsonify({'error': error_message, 'job_id': job_id}), 503
+
         # Parse request data
         if request.is_json:
             data = request.get_json()
@@ -695,8 +634,17 @@ def upload_images():
         if not use_github_actions:
             logger.info("GitHub Actions not enabled (USE_GITHUB_ACTIONS != 'true' or watermark requested)")
         elif not github_image_urls:
-            logger.warning("GitHub Actions enabled but no images uploaded to storage - will use local generation")
+            logger.error("GitHub Actions enabled but no images uploaded to storage; aborting job")
         
+        if use_github_actions and not github_image_urls:
+            error_msg = 'Failed to upload images to storage for GitHub Actions. Verify Bunny.net credentials.'
+            active_jobs[job_id]['status'] = 'error'
+            active_jobs[job_id]['current_step'] = error_msg
+            active_jobs[job_id]['error'] = error_msg
+            active_jobs[job_id]['progress'] = 100
+            active_jobs[job_id]['github_actions_failed'] = True
+            return jsonify({'error': error_msg, 'job_id': job_id}), 502
+
         if use_github_actions and github_image_urls:
             github_actions_attempted = True
             try:

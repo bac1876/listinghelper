@@ -20,18 +20,23 @@ if storage_ready:
         print(f"  Unknown backend: {backend_name}")
     print("=" * 60)
 else:
+    error_message = (
+        'Storage backend not configured. Configure Bunny.net credentials '
+        '(BUNNY_STORAGE_ZONE_NAME, BUNNY_ACCESS_KEY, BUNNY_PULL_ZONE_URL, optional BUNNY_REGION).'
+    )
     print("=" * 60)
     print("ERROR: No storage backend configured!")
     print("Please configure Bunny.net storage:")
     print("")
     print("Required environment variables:")
     print("  - BUNNY_STORAGE_ZONE_NAME")
-    print("  - BUNNY_ACCESS_KEY") 
+    print("  - BUNNY_ACCESS_KEY")
     print("  - BUNNY_PULL_ZONE_URL")
     print("  - BUNNY_REGION (optional, defaults to 'ny')")
     print("")
     print("ImageKit has been removed due to transformation limit issues.")
     print("=" * 60)
+    raise RuntimeError(error_message)
 
 # Import the blueprint - use GitHub Actions version if configured
 use_github_actions = os.environ.get('USE_GITHUB_ACTIONS', 'false').lower() == 'true'
@@ -64,8 +69,9 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # Add request logging middleware
 @app.before_request
 def log_request_info():
-    logger.info(f"Request: {request.method} {request.path}")
-    logger.info(f"Headers: {dict(request.headers)}")
+    logger.info("Request: %s %s", request.method, request.path)
+    if request.content_length:
+        logger.debug("Payload bytes: %s", request.content_length)
     
 @app.after_request
 def log_response_info(response):

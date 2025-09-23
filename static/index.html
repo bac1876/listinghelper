@@ -1458,7 +1458,7 @@
             document.getElementById('brand-name').value = '';
         }
         
-        async function generateVirtualTour() {
+        async function generateVirtualTour(watermarkId = null) {
             if (selectedFiles.length === 0) {
                 alert('Please select at least one photo');
                 return;
@@ -1498,6 +1498,12 @@
                 console.log(`  File ${index + 1}: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB, type: ${file.type})`);
                 formData.append('files', file);
             });
+            
+            // Attach watermark if requested
+            if (watermarkId) {
+                formData.append('watermark_id', watermarkId);
+                console.log('Including watermark ID:', watermarkId);
+            }
             
             // Add property details
             formData.append('address', address);
@@ -1993,160 +1999,9 @@
         // Replace the original function
         generateVirtualTour = generateVirtualTourWithWatermark;
         
-        // Update the original generateVirtualTour function to accept watermarkId parameter
-        const originalFunc = window.generateVirtualTour || originalGenerateVirtualTour;
-        window.originalGenerateVirtualTour = async function(watermarkId = null) {
-            if (selectedFiles.length === 0) {
-                alert('Please select at least one photo');
-                return;
-            }
-            
-            const address = document.getElementById('property-address').value.trim();
-            const agentName = document.getElementById('agent-name').value.trim();
-            const agentPhone = document.getElementById('agent-phone').value.trim();
-            
-            if (!address || !agentName || !agentPhone) {
-                alert('Please fill in required fields: Property Address, Agent Name, and Phone Number');
-                return;
-            }
-            
-            // First test if the API is reachable
-            console.log('Testing API health...');
-            try {
-                const healthResponse = await fetch('/api/virtual-tour/health');
-                console.log('Health check response:', healthResponse.status);
-                if (!healthResponse.ok) {
-                    console.error('API health check failed:', healthResponse.status);
-                    alert('Server is not responding. Please try again in a moment.');
-                    return;
-                }
-                const healthData = await healthResponse.json();
-                console.log('Health check data:', healthData);
-            } catch (error) {
-                console.error('Cannot reach server:', error);
-                alert('Cannot connect to server. Please check your connection and try again.');
-                return;
-            }
-            
-            // Prepare form data
-            const formData = new FormData();
-            console.log(`Uploading ${selectedFiles.length} files:`);
-            selectedFiles.forEach((file, index) => {
-                console.log(`  File ${index + 1}: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB, type: ${file.type})`);
-                formData.append('files', file);
-            });
-            
-            // Add watermark ID if available
-            if (watermarkId) {
-                formData.append('watermark_id', watermarkId);
-                console.log('Including watermark ID:', watermarkId);
-            }
-            
-            // Add property details
-            formData.append('address', address);
-            formData.append('details1', `Call ${agentPhone} to schedule a showing`);
-            formData.append('details2', document.getElementById('property-status').value);
-            formData.append('agent_name', agentName);
-            formData.append('agent_email', document.getElementById('agent-email').value);
-            formData.append('agent_phone', agentPhone);
-            formData.append('brand_name', document.getElementById('brand-name').value || 'Real Estate Professional');
-            
-            // Add optional property details
-            const price = document.getElementById('property-price').value;
-            const beds = document.getElementById('property-beds').value;
-            const baths = document.getElementById('property-baths').value;
-            const sqft = document.getElementById('property-sqft').value;
-            
-            if (price) formData.append('property_price', price);
-            if (beds) formData.append('property_beds', beds);
-            if (baths) formData.append('property_baths', baths);
-            if (sqft) formData.append('property_sqft', sqft);
-            
-            // Add quality settings
-            const qualitySettings = {
-                'fast': { duration: 3, speed: 'fast' },
-                'medium': { duration: 6, speed: 'medium' },
-                'premium': { duration: 8, speed: 'slow' }
-            };
-            
-            const settings = qualitySettings[selectedQuality];
-            formData.append('duration_per_image', settings.duration);
-            formData.append('effect_speed', settings.speed);
-            
-            // Show progress section
-            progressSection.style.display = 'block';
-            resultsSection.style.display = 'none';
-            generateBtn.disabled = true;
-            
-            // Update initial status with file count and watermark info
-            const statusText = watermarkId ? 
-                `Uploading ${selectedFiles.length} images with watermark...` :
-                `Uploading ${selectedFiles.length} images...`;
-            updateStatus(statusText, 'processing');
-            updateProgress(0, 'Uploading photos...');
-            
-            try {
-                console.log('Starting upload...');
-                console.log('Form data prepared, initiating fetch request...');
-                console.log('Target URL:', window.location.origin + '/api/virtual-tour/upload');
-                
-                // Add timeout to prevent infinite waiting
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
-                
-                // Upload and start processing
-                const response = await fetch('/api/virtual-tour/upload', {
-                    method: 'POST',
-                    body: formData,
-                    signal: controller.signal
-                }).catch(err => {
-                    console.error('Fetch error:', err);
-                    if (err.name === 'AbortError') {
-                        throw new Error('Upload timeout - server not responding');
-                    }
-                    throw new Error(`Network error: ${err.message}`);
-                });
-                
-                clearTimeout(timeoutId);
-                
-                console.log('Upload response received, status:', response.status);
-                
-                if (!response.ok) {
-                    let errorMsg = `Upload failed: ${response.status} ${response.statusText}`;
-                    try {
-                        const errorText = await response.text();
-                        console.error('Error response body:', errorText);
-                        if (errorText) {
-                            errorMsg += ` - ${errorText}`;
-                        }
-                    } catch (e) {
-                        console.error('Could not read error response:', e);
-                    }
-                    throw new Error(errorMsg);
-                }
-                
-                const data = await response.json();
-                console.log('Upload response data:', data);
-                
-                currentJobId = data.job_id;
-                updateStatus('Upload complete, processing...', 'processing');
-                updateProgress(10, 'Photos uploaded successfully');
-                
-                // Start checking job status
-                startStatusChecking();
-                
-            } catch (error) {
-                console.error('Upload error:', error);
-                showError(`Upload failed: ${error.message}`);
-                generateBtn.disabled = false;
-                progressSection.style.display = 'none';
-            }
-        };
-        
-        // Override the generate button event listener
-        generateBtn.removeEventListener('click', generateVirtualTour);
-        generateBtn.addEventListener('click', generateVirtualTourWithWatermark);
-        
+        // Base generateVirtualTour now handles optional watermarkId input
+        window.originalGenerateVirtualTour = generateVirtualTour;
+
         // Initialize watermark preview
         updateWatermarkPreview();
     </script>
