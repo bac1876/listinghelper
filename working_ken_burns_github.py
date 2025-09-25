@@ -11,6 +11,7 @@ import threading
 import logging
 import requests
 import json
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 # Using storage backend (Bunny.net)
 from upload_to_storage import upload_files_to_storage, upload_video_to_storage, get_video_url_storage
+from ai_script_generator import generate_room_scripts as ai_generate_room_scripts
 from github_actions_integration import GitHubActionsIntegration
 from PIL import Image
 import io
@@ -67,25 +69,6 @@ def format_room_label(room_value: str, other_label: str = "") -> str:
         return other_label.strip() or 'Other'
     return ROOM_LABELS.get(room_value, room_value)
 
-
-def generate_room_scripts(assignments, property_details):
-    scripts = []
-    if not assignments:
-        return scripts
-
-    address = property_details.get('address', '')
-    for idx, item in enumerate(assignments, start=1):
-        room_label = format_room_label(item.get('room'), item.get('other_label'))
-        narrative = (
-            f"Scene {idx}: Highlight the {room_label.lower()}"
-            f"{' at ' + address if address else ''}."
-        )
-        description_hint = property_details.get('details1') or property_details.get('details2')
-        if description_hint:
-            narrative += f" Mention {description_hint}."
-        scripts.append(narrative)
-
-    return scripts
 
 def start_github_actions_polling(job_id, github_job_id):
     """Start a background thread to poll GitHub Actions and then ImageKit for the completed video"""
@@ -643,9 +626,10 @@ def upload_images():
             active_jobs[job_id]['saved_files'] = saved_files  # Store for potential fallback
             active_jobs[job_id]['files_generated']['image_count'] = len(saved_files)
             active_jobs[job_id]['files_generated']['room_assignments'] = active_jobs[job_id]['room_assignments']
-            active_jobs[job_id]['files_generated']['room_scripts'] = generate_room_scripts(
+            active_jobs[job_id]['files_generated']['room_scripts'] = ai_generate_room_scripts(
                 active_jobs[job_id]['room_assignments'],
-                normalized_property_details
+                normalized_property_details,
+                Path(job_dir)
             )
             if original_total_size > 0:
                 total_compression = (1 - compressed_total_size / original_total_size) * 100

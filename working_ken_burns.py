@@ -10,6 +10,7 @@ import shutil
 import threading
 import logging
 import json
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -23,6 +24,8 @@ try:
 except ImportError as e:
     logger.warning(f"Creatomate integration not available: {e}")
     CREATOMATE_AVAILABLE = False
+
+from ai_script_generator import generate_room_scripts as ai_generate_room_scripts
 
 virtual_tour_bp = Blueprint('virtual_tour', __name__, url_prefix='/api/virtual-tour')
 
@@ -62,25 +65,6 @@ def format_room_label(room_value: str, other_label: str = "") -> str:
         return other_label.strip() or 'Other'
     return ROOM_LABELS.get(room_value, room_value)
 
-
-def generate_room_scripts(assignments, property_details):
-    scripts = []
-    if not assignments:
-        return scripts
-
-    address = property_details.get('address', '').split('\n')[0]
-    for idx, item in enumerate(assignments, start=1):
-        room_label = format_room_label(item.get('room'), item.get('other_label'))
-        description_hint = property_details.get('details1', '')
-        narrative = (
-            f"Scene {idx}: Highlight the {room_label.lower()}"
-            f"{' at ' + address if address else ''}."
-        )
-        if description_hint:
-            narrative += f" Emphasize {description_hint}."
-        scripts.append(narrative)
-
-    return scripts
 
 def cleanup_old_files():
     """Clean up files older than 24 hours"""
@@ -298,9 +282,10 @@ def upload_images():
         active_jobs[job_id]['images_processed'] = len(saved_paths)
         active_jobs[job_id]['files_generated']['image_count'] = len(saved_paths)
         active_jobs[job_id]['files_generated']['room_assignments'] = active_jobs[job_id]['room_assignments']
-        active_jobs[job_id]['files_generated']['room_scripts'] = generate_room_scripts(
+        active_jobs[job_id]['files_generated']['room_scripts'] = ai_generate_room_scripts(
             active_jobs[job_id]['room_assignments'],
-            property_details
+            property_details,
+            Path(job_dir)
         )
         
         # Optimize images
