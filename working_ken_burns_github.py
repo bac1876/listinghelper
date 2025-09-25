@@ -10,17 +10,14 @@ import shutil
 import threading
 import logging
 import requests
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Using storage backend (Bunny.net or ImageKit)
+# Using storage backend (Bunny.net)
 from upload_to_storage import upload_files_to_storage, upload_video_to_storage, get_video_url_storage
-# Compatibility aliases
-upload_files_to_imagekit = upload_files_to_storage
-upload_video_to_imagekit = upload_video_to_storage
-get_video_url_imagekit = get_video_url_storage
 from github_actions_integration import GitHubActionsIntegration
 from PIL import Image
 import io
@@ -41,6 +38,54 @@ if not os.path.exists(TEMP_DIR):
 
 # In-memory job tracking with detailed status
 active_jobs = {}
+
+ROOM_LABELS = {
+    'front': 'Front',
+    'primary_bedroom': 'Primary Bedroom',
+    'bedroom_1': 'Bedroom 1',
+    'bedroom_2': 'Bedroom 2',
+    'bedroom_3': 'Bedroom 3',
+    'bedroom_4': 'Bedroom 4',
+    'bedroom_5': 'Bedroom 5',
+    'primary_bath': 'Primary Bath',
+    'bath_1': 'Bath 1',
+    'bath_2': 'Bath 2',
+    'bath_3': 'Bath 3',
+    'kitchen': 'Kitchen',
+    'living_room': 'Living Room',
+    'dining_room': 'Dining Room',
+    'garage': 'Garage',
+    'back_yard': 'Back Yard',
+    'other': 'Other'
+}
+
+
+def format_room_label(room_value: str, other_label: str = "") -> str:
+    if not room_value:
+        return 'Unassigned'
+    if room_value == 'other':
+        return other_label.strip() or 'Other'
+    return ROOM_LABELS.get(room_value, room_value)
+
+
+def generate_room_scripts(assignments, property_details):
+    scripts = []
+    if not assignments:
+        return scripts
+
+    address = property_details.get('address', '')
+    for idx, item in enumerate(assignments, start=1):
+        room_label = format_room_label(item.get('room'), item.get('other_label'))
+        narrative = (
+            f"Scene {idx}: Highlight the {room_label.lower()}"
+            f"{' at ' + address if address else ''}."
+        )
+        description_hint = property_details.get('details1') or property_details.get('details2')
+        if description_hint:
+            narrative += f" Mention {description_hint}."
+        scripts.append(narrative)
+
+    return scripts
 
 def start_github_actions_polling(job_id, github_job_id):
     """Start a background thread to poll GitHub Actions and then ImageKit for the completed video"""
@@ -377,7 +422,8 @@ def upload_images():
             'video_available': False,
             'virtual_tour_available': False,
             'images_processed': 0,
-            'files_generated': {}
+            'files_generated': {},
+            'room_assignments': []
         }
         
         storage_ok, storage_backend = test_storage_initialization()
@@ -431,11 +477,21 @@ def upload_images():
         
         details1 = property_details.get('details1', request.form.get('details1', 'Call for viewing'))
         details2 = property_details.get('details2', request.form.get('details2', 'Just Listed'))
-        
+
         agent_name = property_details.get('agent_name', request.form.get('agent_name', 'Your Agent'))
         agent_email = property_details.get('agent_email', request.form.get('agent_email', 'agent@realestate.com'))
         agent_phone = property_details.get('agent_phone', request.form.get('agent_phone', '(555) 123-4567'))
         brand_name = property_details.get('brand_name', request.form.get('brand_name', 'Premium Real Estate'))
+
+        normalized_property_details = {
+            'address': full_address,
+            'details1': details1,
+            'details2': details2,
+            'agent_name': agent_name,
+            'agent_email': agent_email,
+            'agent_phone': agent_phone,
+            'brand_name': brand_name
+        }
         
         # Get settings
         duration_per_image = int(settings.get('durationPerImage', request.form.get('duration_per_image', 8)))
@@ -470,6 +526,16 @@ def upload_images():
             logger.info(f"Received {len(files)} files in 'images' field for job {job_id}")
         
         if files:
+            room_assignment_payload = []
+            raw_assignments = request.form.get('room_assignments')
+            if raw_assignments:
+                try:
+                    parsed_assignments = json.loads(raw_assignments)
+                    if isinstance(parsed_assignments, list):
+                        room_assignment_payload = parsed_assignments
+                except json.JSONDecodeError:
+                    logger.warning('Invalid room_assignments payload; ignoring')
+
             # Log each file for debugging
             valid_files = []
             for i, file in enumerate(files):
@@ -545,6 +611,20 @@ def upload_images():
                             
                             compressed_total_size += compressed_size
                             saved_files.append(filepath)
+
+                            assignment_info = room_assignment_payload[actual_index] if actual_index < len(room_assignment_payload) else {}
+                            room_value = (assignment_info.get('room') or '').strip()
+                            other_label = (assignment_info.get('other_label') or '').strip()
+                            display_name = assignment_info.get('filename') or file.filename
+                            active_jobs[job_id]['room_assignments'].append({
+                                'file_id': assignment_info.get('file_id'),
+                                'filename': file.filename,
+                                'display_name': display_name,
+                                'saved_filename': filename,
+                                'room': room_value,
+                                'other_label': other_label,
+                                'room_label': format_room_label(room_value, other_label)
+                            })
                             
                             compression_ratio = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0
                             logger.info(f"Saved compressed file: {filename} (Original: {original_size/1024:.1f}KB, Compressed: {compressed_size/1024:.1f}KB, Saved: {compression_ratio:.1f}%)")
@@ -561,6 +641,12 @@ def upload_images():
             # Update job progress with compression info
             active_jobs[job_id]['images_processed'] = len(saved_files)
             active_jobs[job_id]['saved_files'] = saved_files  # Store for potential fallback
+            active_jobs[job_id]['files_generated']['image_count'] = len(saved_files)
+            active_jobs[job_id]['files_generated']['room_assignments'] = active_jobs[job_id]['room_assignments']
+            active_jobs[job_id]['files_generated']['room_scripts'] = generate_room_scripts(
+                active_jobs[job_id]['room_assignments'],
+                normalized_property_details
+            )
             if original_total_size > 0:
                 total_compression = (1 - compressed_total_size / original_total_size) * 100
                 active_jobs[job_id]['current_step'] = f'Compressed {len(saved_files)} images (saved {total_compression:.0f}% space)'
@@ -1212,4 +1298,3 @@ def generate_virtual_tour_html(job_id, job_data):
         processing_time=job_data.get('processing_time', 'N/A'),
         github_info=github_info
     )
-

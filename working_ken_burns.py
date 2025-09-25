@@ -9,6 +9,7 @@ import base64
 import shutil
 import threading
 import logging
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -32,6 +33,54 @@ if not os.path.exists(STORAGE_DIR):
 
 # In-memory job tracking with detailed status
 active_jobs = {}
+
+ROOM_LABELS = {
+    'front': 'Front',
+    'primary_bedroom': 'Primary Bedroom',
+    'bedroom_1': 'Bedroom 1',
+    'bedroom_2': 'Bedroom 2',
+    'bedroom_3': 'Bedroom 3',
+    'bedroom_4': 'Bedroom 4',
+    'bedroom_5': 'Bedroom 5',
+    'primary_bath': 'Primary Bath',
+    'bath_1': 'Bath 1',
+    'bath_2': 'Bath 2',
+    'bath_3': 'Bath 3',
+    'kitchen': 'Kitchen',
+    'living_room': 'Living Room',
+    'dining_room': 'Dining Room',
+    'garage': 'Garage',
+    'back_yard': 'Back Yard',
+    'other': 'Other'
+}
+
+
+def format_room_label(room_value: str, other_label: str = "") -> str:
+    if not room_value:
+        return 'Unassigned'
+    if room_value == 'other':
+        return other_label.strip() or 'Other'
+    return ROOM_LABELS.get(room_value, room_value)
+
+
+def generate_room_scripts(assignments, property_details):
+    scripts = []
+    if not assignments:
+        return scripts
+
+    address = property_details.get('address', '').split('\n')[0]
+    for idx, item in enumerate(assignments, start=1):
+        room_label = format_room_label(item.get('room'), item.get('other_label'))
+        description_hint = property_details.get('details1', '')
+        narrative = (
+            f"Scene {idx}: Highlight the {room_label.lower()}"
+            f"{' at ' + address if address else ''}."
+        )
+        if description_hint:
+            narrative += f" Emphasize {description_hint}."
+        scripts.append(narrative)
+
+    return scripts
 
 def cleanup_old_files():
     """Clean up files older than 24 hours"""
@@ -145,7 +194,8 @@ def upload_images():
             'virtual_tour_available': False,
             'cloudinary_video': False,
             'images_processed': 0,
-            'files_generated': {}
+            'files_generated': {},
+            'room_assignments': []
         }
         
         def update_job_progress(job_id, status, step, progress):
@@ -202,6 +252,16 @@ def upload_images():
             active_jobs[job_id]['status'] = 'failed'
             active_jobs[job_id]['error'] = 'No files selected'
             return jsonify({'error': 'No files selected'}), 400
+
+        room_assignment_payload = []
+        raw_assignments = request.form.get('room_assignments')
+        if raw_assignments:
+            try:
+                parsed = json.loads(raw_assignments)
+                if isinstance(parsed, list):
+                    room_assignment_payload = parsed
+            except json.JSONDecodeError:
+                logger.warning('Invalid room_assignments payload; ignoring')
         
         # Create job directory
         job_dir = os.path.join(STORAGE_DIR, f'job_{job_id}')
@@ -220,8 +280,28 @@ def upload_images():
                 file.save(filepath)
                 saved_paths.append(filepath)
                 logger.info(f"Saved: {filename}")
-        
+
+                assignment_info = room_assignment_payload[i] if i < len(room_assignment_payload) else {}
+                room_value = (assignment_info.get('room') or '').strip()
+                other_label = (assignment_info.get('other_label') or '').strip()
+                display_name = assignment_info.get('filename') or file.filename
+                active_jobs[job_id]['room_assignments'].append({
+                    'file_id': assignment_info.get('file_id'),
+                    'filename': file.filename,
+                    'display_name': display_name,
+                    'saved_filename': filename,
+                    'room': room_value,
+                    'other_label': other_label,
+                    'room_label': format_room_label(room_value, other_label)
+                })
+
         active_jobs[job_id]['images_processed'] = len(saved_paths)
+        active_jobs[job_id]['files_generated']['image_count'] = len(saved_paths)
+        active_jobs[job_id]['files_generated']['room_assignments'] = active_jobs[job_id]['room_assignments']
+        active_jobs[job_id]['files_generated']['room_scripts'] = generate_room_scripts(
+            active_jobs[job_id]['room_assignments'],
+            property_details
+        )
         
         # Optimize images
         logger.info("Optimizing images...")
