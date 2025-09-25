@@ -739,6 +739,14 @@
             justify-content: center;
             margin-top: 30px;
         }
+
+        .results-actions {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 25px;
+        }
         
         .info-section {
             margin-top: 50px;
@@ -1170,6 +1178,7 @@
                             🎬 Generate Virtual Tour
                         </button>
                         <button class="btn secondary" id="clear-btn">Clear All</button>
+                        <button class="btn secondary" id="view-results-btn" style="display: none;">📽 View Last Result</button>
                         <button class="btn test-connection" id="test-btn">🔧 Test Connection</button>
                     </div>
                 </div>
@@ -1191,7 +1200,10 @@
                 <p id="results-message"></p>
                 <div class="video-preview" id="video-preview"></div>
                 <div class="download-buttons" id="download-buttons"></div>
-                <button class="btn" id="new-video-btn" style="margin-top: 20px;">Create Another Video</button>
+                <div class="results-actions">
+                    <button class="btn secondary" id="back-to-editor-btn">⬅️ Back to Editor</button>
+                    <button class="btn" id="new-video-btn">Start Over</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1205,17 +1217,128 @@
         const clearBtn = document.getElementById('clear-btn');
         const cancelBtn = document.getElementById('cancel-btn');
         const newVideoBtn = document.getElementById('new-video-btn');
+        const viewResultsBtn = document.getElementById('view-results-btn');
+        const backToEditorBtn = document.getElementById('back-to-editor-btn');
         const progressSection = document.getElementById('progress-section');
         const resultsSection = document.getElementById('results-section');
         const statusMessage = document.getElementById('status-message');
         const subStatus = document.getElementById('sub-status');
         const progressFill = document.getElementById('progress-fill');
+        const mainContent = document.querySelector('.main-content');
         
         let selectedFiles = [];
         let currentJobId = null;
         let statusCheckInterval = null;
         let statusCheckTimeout = null;
         let selectedQuality = 'medium';
+        let lastResultData = null;
+
+        function showResultsPanel() {
+            resultsSection.style.display = 'block';
+            progressSection.style.display = 'none';
+            if (viewResultsBtn) {
+                viewResultsBtn.style.display = 'none';
+            }
+        }
+
+        function hideResultsPanel({ preserveLast = false } = {}) {
+            resultsSection.style.display = 'none';
+            progressSection.style.display = 'none';
+            if (viewResultsBtn) {
+                viewResultsBtn.style.display = lastResultData && preserveLast ? 'inline-flex' : 'none';
+            }
+        }
+
+        function renderResultsView(resultData, jobId) {
+            if (!resultData) {
+                return;
+            }
+
+            const photoCount = resultData.images_processed || (resultData.files_generated && resultData.files_generated.image_count) || selectedFiles.length || 0;
+            let message = `Created stunning video tour with ${photoCount} photos`;
+            if (resultData.processing_time) {
+                message += ` in ${resultData.processing_time}`;
+            }
+
+            document.getElementById('results-title').textContent = resultData.status === 'failed' ? 'Processing Error' : 'Your Virtual Tour is Ready!';
+            document.querySelector('.results-icon').textContent = resultData.status === 'failed' ? '❌' : '✅';
+            document.getElementById('results-message').textContent = resultData.status === 'failed' ? (resultData.error || message) : message;
+
+            const videoPreview = document.getElementById('video-preview');
+            const primaryVideoUrl = resultData.video_url || (resultData.files_generated && resultData.files_generated.bunnynet_url) || null;
+            const previewUrl = primaryVideoUrl || `/api/virtual-tour/download/${jobId}/video`;
+
+            if (resultData.status === 'failed') {
+                videoPreview.style.display = 'none';
+            } else if (previewUrl) {
+                videoPreview.innerHTML = `
+                    <video controls autoplay muted loop>
+                        <source src="${previewUrl}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                `;
+                videoPreview.style.display = 'block';
+            } else {
+                videoPreview.style.display = 'none';
+            }
+
+            const downloadButtons = document.getElementById('download-buttons');
+            downloadButtons.innerHTML = '';
+
+            const fallbackPath = `/api/virtual-tour/download/${jobId}/video`;
+            const downloadTarget = primaryVideoUrl || fallbackPath;
+            const absoluteDownloadUrl = downloadTarget.startsWith('http') ? downloadTarget : window.location.origin.replace(/\/$/, '') + downloadTarget;
+
+            if (resultData.status !== 'failed') {
+                downloadButtons.innerHTML += `
+                    <a href="${downloadTarget}" class="btn success" target="_blank" rel="noopener" download="virtual_tour.mp4">
+                        🎬 Download MP4 Video
+                    </a>
+                `;
+                downloadButtons.innerHTML += `
+                    <button type="button" class="btn secondary" id="copy-video-link-btn">🔗 Copy Video Link</button>
+                `;
+            }
+
+            if (resultData.files_generated) {
+                if (resultData.files_generated.description) {
+                    downloadButtons.innerHTML += `
+                        <a href="/api/virtual-tour/download/${jobId}/description" class="btn" target="_blank" rel="noopener" download>
+                            📝 Property Description
+                        </a>
+                    `;
+                }
+
+                if (resultData.files_generated.script) {
+                    downloadButtons.innerHTML += `
+                        <a href="/api/virtual-tour/download/${jobId}/script" class="btn" target="_blank" rel="noopener" download>
+                            🎙️ Voiceover Script
+                        </a>
+                    `;
+                }
+            }
+
+            const copyBtn = document.getElementById('copy-video-link-btn');
+            if (copyBtn) {
+                copyBtn.addEventListener('click', async () => {
+                    try {
+                        await navigator.clipboard.writeText(absoluteDownloadUrl);
+                        copyBtn.textContent = '✅ Link Copied';
+                        setTimeout(() => { copyBtn.textContent = '🔗 Copy Video Link'; }, 2000);
+                    } catch (error) {
+                        window.prompt('Copy video link', absoluteDownloadUrl);
+                    }
+                });
+            }
+
+            if (resultData.status === 'failed') {
+                resultsSection.classList.add('error');
+            } else {
+                resultsSection.classList.remove('error');
+            }
+
+            showResultsPanel();
+        }
         
         // Debug: Verify script is loading
         console.log('Virtual Tour Generator script loaded');
@@ -1255,7 +1378,25 @@
         clearBtn.addEventListener('click', clearFiles);
         cancelBtn.addEventListener('click', cancelJob);
         newVideoBtn.addEventListener('click', resetForm);
-        
+
+        if (viewResultsBtn) {
+            viewResultsBtn.addEventListener('click', () => {
+                if (lastResultData) {
+                    renderResultsView(lastResultData.data, lastResultData.jobId);
+                    resultsSection.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        }
+
+        if (backToEditorBtn) {
+            backToEditorBtn.addEventListener('click', () => {
+                hideResultsPanel({ preserveLast: true });
+                if (mainContent) {
+                    mainContent.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        }
+
         // Add test button handler
         const testBtn = document.getElementById('test-btn');
         testBtn.addEventListener('click', async () => {
@@ -1370,8 +1511,16 @@
         
         function resetForm() {
             clearFiles();
-            resultsSection.style.display = 'none';
+            lastResultData = null;
+            hideResultsPanel({ preserveLast: false });
+            resultsSection.classList.remove('error');
             progressSection.style.display = 'none';
+            generateBtn.disabled = false;
+            statusMessage.textContent = 'Initializing...';
+            subStatus.textContent = '';
+            progressFill.style.width = '0%';
+            progressFill.textContent = '0%';
+
             document.getElementById('property-address').value = '';
             document.getElementById('property-price').value = '';
             document.getElementById('property-beds').value = '';
@@ -1381,6 +1530,10 @@
             document.getElementById('agent-phone').value = '';
             document.getElementById('agent-email').value = '';
             document.getElementById('brand-name').value = '';
+
+            if (mainContent) {
+                mainContent.scrollIntoView({ behavior: 'smooth' });
+            }
         }
         
         async function generateVirtualTour() {
@@ -1397,7 +1550,10 @@
                 alert('Please fill in required fields: Property Address, Agent Name, and Phone Number');
                 return;
             }
-            
+
+            hideResultsPanel({ preserveLast: true });
+            resultsSection.classList.remove('error');
+
             // First test if the API is reachable
             console.log('Testing API health...');
             try {
@@ -1622,104 +1778,13 @@
         
         function showSuccess(data) {
             console.log('ShowSuccess data:', data);  // Debug logging
-            progressSection.style.display = 'none';
-            resultsSection.style.display = 'block';
-            resultsSection.classList.remove('error');
             generateBtn.disabled = false;
-            
-            document.getElementById('results-title').textContent = 'Your Virtual Tour is Ready!';
-            document.querySelector('.results-icon').textContent = '✅';
-            
-            let message = `Created stunning video tour with ${data.images_processed || selectedFiles.length} photos`;
-            if (data.processing_time) {
-                message += ` in ${data.processing_time}`;
-            }
-            
-            document.getElementById('results-message').textContent = message;
-            
-            // Show video preview if available
-            const videoPreview = document.getElementById('video-preview');
-            if (data.video_url || data.github_job_id) {
-                const videoUrl = data.video_url || `/api/virtual-tour/download/${currentJobId}/video`;
-                videoPreview.innerHTML = `
-                    <video controls autoplay muted loop>
-                        <source src="${videoUrl}" type="video/mp4">
-                        Your browser does not support the video tag.
-                    </video>
-                `;
-                videoPreview.style.display = 'block';
-            } else {
-                videoPreview.style.display = 'none';
-            }
-            
-            // Create download buttons
-            const downloadButtons = document.getElementById('download-buttons');
-            downloadButtons.innerHTML = '';
-            
-            // Video download - use direct Cloudinary URL if available
-            let videoUrl = data.video_url;
-            
-            // If no video_url but we have github_job_id, construct it
-            if (!videoUrl && data.github_job_id) {
-                // Construct Cloudinary URL from github_job_id
-                const cloudName = 'dib3kbifc';  // Your Cloudinary cloud name
-                videoUrl = `https://res.cloudinary.com/${cloudName}/video/upload/tours/${data.github_job_id}.mp4`;
-                console.log('Constructed video URL from github_job_id:', videoUrl);
-            }
-            
-            if (videoUrl) {
-                // Add fl_attachment flag to force download from Cloudinary
-                const downloadUrl = videoUrl.includes('cloudinary.com') 
-                    ? videoUrl.replace('/upload/', '/upload/fl_attachment/')
-                    : videoUrl;
-                
-                downloadButtons.innerHTML += `
-                    <a href="${downloadUrl}" class="btn success" download="virtual_tour.mp4">
-                        🎬 Download MP4 Video
-                    </a>
-                `;
-            } else {
-                // Fallback to API endpoint (should rarely happen now)
-                console.warn('No video URL or github_job_id available, using fallback');
-                downloadButtons.innerHTML += `
-                    <a href="/api/virtual-tour/download/${currentJobId}/video" class="btn success" download>
-                        🎬 Download MP4 Video
-                    </a>
-                `;
-            }
-            
-            // Additional downloads
-            if (data.files_generated) {
-                if (data.files_generated.description) {
-                    downloadButtons.innerHTML += `
-                        <a href="/api/virtual-tour/download/${currentJobId}/description" class="btn" download>
-                            📝 Property Description
-                        </a>
-                    `;
-                }
-                
-                if (data.files_generated.script) {
-                    downloadButtons.innerHTML += `
-                        <a href="/api/virtual-tour/download/${currentJobId}/script" class="btn" download>
-                            🎙️ Voiceover Script
-                        </a>
-                    `;
-                }
-            }
+            const normalized = { ...data, status: 'completed' };
+            lastResultData = { data: normalized, jobId: currentJobId };
+            renderResultsView(normalized, currentJobId);
         }
         
         function showError(message) {
-            progressSection.style.display = 'none';
-            resultsSection.style.display = 'block';
-            resultsSection.classList.add('error');
-            generateBtn.disabled = false;
-            
-            document.getElementById('results-title').textContent = 'Processing Error';
-            document.querySelector('.results-icon').textContent = '❌';
-            document.getElementById('results-message').textContent = message;
-            document.getElementById('download-buttons').innerHTML = '';
-            document.getElementById('video-preview').style.display = 'none';
-            
             if (statusCheckInterval) {
                 clearInterval(statusCheckInterval);
                 statusCheckInterval = null;
@@ -1728,6 +1793,15 @@
                 clearTimeout(statusCheckTimeout);
                 statusCheckTimeout = null;
             }
+
+            generateBtn.disabled = false;
+            const errorData = {
+                status: 'failed',
+                error: message,
+                files_generated: {}
+            };
+            lastResultData = { data: errorData, jobId: currentJobId };
+            renderResultsView(errorData, currentJobId);
         }
         
         function cancelJob() {
@@ -1740,7 +1814,7 @@
                 statusCheckTimeout = null;
             }
             
-            progressSection.style.display = 'none';
+            hideResultsPanel({ preserveLast: true });
             generateBtn.disabled = false;
             
             // Optionally, send cancel request to server
@@ -1754,4 +1828,3 @@
     </script>
 </body>
 </html>
-
