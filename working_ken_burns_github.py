@@ -1,4 +1,4 @@
-﻿from flask import Blueprint, request, jsonify, send_file, redirect
+from flask import Blueprint, request, jsonify, send_file, redirect
 import os
 import tempfile
 import subprocess
@@ -11,7 +11,9 @@ import threading
 import logging
 import requests
 import json
+import re
 from pathlib import Path
+from typing import List, Optional, Dict, Any
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -20,6 +22,7 @@ logger = logging.getLogger(__name__)
 # Using storage backend (Bunny.net)
 from upload_to_storage import upload_files_to_storage, upload_video_to_storage, get_video_url_storage
 from ai_script_generator import generate_room_scripts as ai_generate_room_scripts
+from openai_tts import synthesize_speech, OpenAITTSError
 from github_actions_integration import GitHubActionsIntegration
 from PIL import Image
 import io
@@ -41,6 +44,22 @@ if not os.path.exists(TEMP_DIR):
 # In-memory job tracking with detailed status
 active_jobs = {}
 
+FFMPEG_BINARY = os.environ.get('FFMPEG_BINARY') or 'ffmpeg'
+FFPROBE_BINARY = os.environ.get('FFPROBE_BINARY')
+if not FFPROBE_BINARY:
+    default_probe = 'ffprobe'
+    if isinstance(FFMPEG_BINARY, str) and 'ffmpeg' in FFMPEG_BINARY.lower():
+        default_probe = FFMPEG_BINARY.lower().replace('ffmpeg', 'ffprobe')
+    FFPROBE_BINARY = default_probe
+if isinstance(FFPROBE_BINARY, str) and not (Path(FFPROBE_BINARY).exists() or shutil.which(FFPROBE_BINARY)):
+    try:
+        import imageio_ffmpeg
+        FFPROBE_BINARY = imageio_ffmpeg.get_ffmpeg_exe().replace('ffmpeg', 'ffprobe')
+    except Exception:
+        FFPROBE_BINARY = 'ffprobe'
+SLIDE_DURATION_SECONDS = int(os.environ.get('SLIDE_DURATION_SECONDS', '8'))
+
+
 ROOM_LABELS = {
     'front': 'Front',
     'primary_bedroom': 'Primary Bedroom',
@@ -61,6 +80,273 @@ ROOM_LABELS = {
     'other': 'Other'
 }
 
+
+def _build_job_payload(job_id: str) -> Optional[Dict[str, Any]]:
+    job = active_jobs.get(job_id)
+    if not job:
+        return None
+
+    files_generated = job.get('files_generated', {})
+    payload: Dict[str, Any] = {
+        'job_id': job_id,
+        'status': job.get('status', 'unknown'),
+        'progress': job.get('progress', 0),
+        'current_step': job.get('current_step', ''),
+        'video_available': job.get('video_available', False),
+        'virtual_tour_available': job.get('virtual_tour_available', False),
+        'images_processed': job.get('images_processed', 0),
+        'processing_time': job.get('processing_time', ''),
+        'files_generated': files_generated,
+        'room_assignments': job.get('room_assignments', []),
+        'room_scripts': job.get('room_scripts', []),
+        'talk_track': job.get('talk_track', {}),
+        'github_job_id': job.get('github_job_id'),
+        'github_actions_failed': job.get('github_actions_failed', False),
+        'imagekit_video': job.get('imagekit_video', False),
+        'bunnynet_video': job.get('bunnynet_video', False),
+        'error': job.get('error'),
+        'error_details': job.get('error_details'),
+    }
+    return payload
+
+def _persist_room_scripts(job_id: str, scripts: List[str], job_dir: Path) -> None:
+    job = active_jobs.get(job_id)
+    if not job:
+        return
+
+    job_dir.mkdir(parents=True, exist_ok=True)
+
+    job['room_scripts'] = scripts
+    files_generated = job.setdefault('files_generated', {})
+    files_generated['room_scripts'] = scripts
+
+    scripts_path = job_dir / f'room_scripts_{job_id}.json'
+    scripts_path.write_text(json.dumps(scripts, indent=2), encoding='utf-8')
+    files_generated['room_scripts_file'] = str(scripts_path)
+
+    script_path = job_dir / f'voiceover_script_{job_id}.txt'
+    script_path.write_text(generate_voiceover_script(scripts), encoding='utf-8')
+    files_generated['script'] = str(script_path)
+
+def _sanitize_script_lines(scripts: List[str], expected_count: Optional[int] = None) -> List[str]:
+    cleaned: List[str] = []
+    for idx, entry in enumerate(scripts, start=1):
+        text_line = str(entry).strip()
+        if not text_line:
+            raise ValueError(f'Scene {idx} has no narration. Please add text.')
+        cleaned.append(text_line)
+
+    if expected_count is not None and len(cleaned) != expected_count:
+        raise ValueError(f'Expected {expected_count} narration lines, received {len(cleaned)}.')
+
+    return cleaned
+
+def generate_property_description(num_images: int) -> str:
+    return (
+        "STUNNING LUXURY PROPERTY - VIRTUAL TOUR\n\n"
+        f"Experience this exceptional property through our professional virtual tour featuring {num_images} carefully selected views.\n\n"
+        "PROPERTY HIGHLIGHTS:\n"
+        "- Meticulously maintained and presented\n"
+        "- Thoughtfully designed living spaces\n"
+        "- Premium finishes throughout\n"
+        "- Abundant natural light\n"
+        "- Professional photography showcasing every detail\n\n"
+        "This virtual tour captures the essence and elegance of this remarkable property. Each image has been professionally captured to highlight the unique features and characteristics that make this home truly special.\n\n"
+        "For more information or to schedule a private showing, please contact your real estate professional.\n\n"
+        f"Virtual Tour Created: {datetime.now().strftime('%B %d, %Y')}\n"
+    )
+
+def generate_voiceover_script(room_scripts: List[str]) -> str:
+    if not room_scripts:
+        return (
+            "VIRTUAL TOUR VOICEOVER SCRIPT\n\n"
+            "No narration lines are available yet.\n"
+            "Edit the narration for each slide and approve the talk track to generate audio.\n"
+        )
+
+    lines = [
+        'VIRTUAL TOUR VOICEOVER SCRIPT',
+        '',
+        f'Each scene below is timed for approximately {SLIDE_DURATION_SECONDS} seconds.',
+        'Adjust any line before approving the talk track.',
+        '',
+    ]
+
+    for index, entry in enumerate(room_scripts, start=1):
+        lines.append(f'Scene {index} ({SLIDE_DURATION_SECONDS} seconds):')
+        lines.append(entry)
+        lines.append('')
+
+    lines.append('Once finalized, approve the script to synthesize the narrated audio track.')
+    return '\n'.join(lines)
+
+def _run_subprocess(cmd: List[str]) -> subprocess.CompletedProcess:
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr or result.stdout or 'Command failed')
+    return result
+
+def _probe_audio_duration(audio_path: Path) -> float:
+    cmd = [FFPROBE_BINARY or 'ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', str(audio_path)]
+    try:
+        result = _run_subprocess(cmd)
+        return float(result.stdout.strip())
+    except Exception:
+        ffmpeg_cmd = [FFMPEG_BINARY, '-hide_banner', '-i', str(audio_path)]
+        result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
+        output = result.stderr or result.stdout or ''
+        match = re.search(r"Duration: (\d+):(\d+):(\d+\.?\d*)", output)
+        if not match:
+            raise RuntimeError(f'Unable to determine duration for {audio_path}')
+        hours, minutes, seconds = match.groups()
+        total_seconds = (int(hours) * 3600) + (int(minutes) * 60) + float(seconds)
+        return float(total_seconds)
+
+def _prepare_talk_segment(segment_path: Path, idx: int) -> Path:
+    target = SLIDE_DURATION_SECONDS
+    duration = _probe_audio_duration(segment_path)
+    if duration > target + 0.5:
+        raise ValueError(f'Scene {idx} narration is too long ({duration:.1f}s). Shorten it to fit {target} seconds.')
+
+    padded_path = segment_path.with_suffix('.wav')
+    cmd = [FFMPEG_BINARY, '-y', '-i', str(segment_path), '-ar', '48000', '-ac', '2']
+    if duration < target:
+        pad_seconds = target - duration
+        cmd += ['-af', f'apad=pad_dur={pad_seconds:.2f}', '-t', f'{target:.2f}']
+    else:
+        cmd += ['-t', f'{target:.2f}']
+    cmd.append(str(padded_path))
+    _run_subprocess(cmd)
+    return padded_path
+
+def _concat_audio_segments(segments: List[Path], output_path: Path) -> None:
+    concat_file = output_path.with_suffix('.txt')
+    with concat_file.open('w', encoding='utf-8') as handle:
+        for segment in segments:
+            escaped = str(segment).replace("'", "'\\''")
+            handle.write(f"file '{escaped}'\n")
+
+    cmd = [FFMPEG_BINARY, '-y', '-f', 'concat', '-safe', '0', '-i', str(concat_file), '-c', 'pcm_s16le', '-ar', '48000', '-ac', '2', str(output_path)]
+    _run_subprocess(cmd)
+
+def _convert_audio_to_mp3(source: Path, output: Path) -> None:
+    cmd = [FFMPEG_BINARY, '-y', '-i', str(source), '-c:a', 'libmp3lame', '-b:a', '192k', str(output)]
+    _run_subprocess(cmd)
+
+def _download_remote_video(job: Dict[str, Any], job_id: str, job_dir: Path) -> Optional[Path]:
+    files_generated = job.get('files_generated', {})
+    video_url = files_generated.get('bunnynet_url') or files_generated.get('imagekit_url') or files_generated.get('cloud_video_url')
+    if not video_url:
+        return None
+
+    target_path = job_dir / f'remote_video_{job_id}.mp4'
+    try:
+        response = requests.get(video_url, stream=True, timeout=60)
+        response.raise_for_status()
+        with target_path.open('wb') as handle:
+            for chunk in response.iter_content(chunk_size=65536):
+                if chunk:
+                    handle.write(chunk)
+        return target_path
+    except Exception as exc:
+        logger.warning(f'Unable to download remote video for merge: {exc}')
+        return None
+
+def _merge_audio_with_video(job_id: str, job_dir: Path, audio_path: Path) -> Optional[Path]:
+    job = active_jobs.get(job_id, {})
+    files_generated = job.get('files_generated', {})
+
+    local_video = files_generated.get('local_video')
+    if local_video and os.path.exists(local_video):
+        video_source = Path(local_video)
+    else:
+        candidate = job_dir / f'virtual_tour_{job_id}.mp4'
+        video_source = candidate if candidate.exists() else None
+
+    if not video_source:
+        if not job.get('video_available'):
+            logger.info('Video not yet available for job %s; skipping merge step.', job_id)
+            return None
+        video_source = _download_remote_video(job, job_id, job_dir)
+        if not video_source:
+            logger.info('Remote video could not be obtained for job %s; skipping merge.', job_id)
+            return None
+
+    output_path = job_dir / f'virtual_tour_{job_id}_narrated.mp4'
+    cmd = [
+        FFMPEG_BINARY, '-y',
+        '-i', str(video_source),
+        '-i', str(audio_path),
+        '-map', '0:v:0',
+        '-map', '1:a:0',
+        '-c:v', 'copy',
+        '-c:a', 'aac',
+        '-b:a', '192k',
+        '-shortest',
+        str(output_path)
+    ]
+    _run_subprocess(cmd)
+    return output_path
+
+def _generate_talk_track_async(job_id: str, scripts: List[str]) -> None:
+    job = active_jobs.get(job_id)
+    if not job:
+        return
+
+    job_dir = Path(STORAGE_DIR) / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+    job.setdefault('talk_track', {})
+    job['talk_track'].update({'status': 'in_progress', 'progress': 10, 'message': 'Generating narration segments'})
+
+    segments: List[Path] = []
+    try:
+        for idx, line in enumerate(scripts, start=1):
+            audio_bytes = synthesize_speech(line)
+            segment_path = job_dir / f'talk_segment_{idx:03d}.mp3'
+            segment_path.write_bytes(audio_bytes)
+            padded = _prepare_talk_segment(segment_path, idx)
+            segments.append(padded)
+            job['talk_track']['progress'] = 10 + int(idx / max(len(scripts), 1) * 35)
+
+        job['talk_track'].update({'progress': 55, 'message': 'Combining narration segments'})
+        talk_track_wav = job_dir / f'talk_track_{job_id}.wav'
+        _concat_audio_segments(segments, talk_track_wav)
+        talk_track_mp3 = job_dir / f'talk_track_{job_id}.mp3'
+        _convert_audio_to_mp3(talk_track_wav, talk_track_mp3)
+
+        files_generated = job.setdefault('files_generated', {})
+        files_generated['talk_track_audio'] = str(talk_track_mp3)
+
+        job['talk_track'].update({'progress': 75, 'message': 'Attempting to merge narration with video'})
+        merged_video = None
+        try:
+            merged_video = _merge_audio_with_video(job_id, job_dir, talk_track_mp3)
+        except Exception as merge_exc:
+            logger.warning('Talk track merge failed for job %s: %s', job_id, merge_exc)
+
+        if merged_video and merged_video.exists():
+            files_generated['talk_track_video'] = str(merged_video)
+            job['talk_track'] = {
+                'status': 'completed',
+                'progress': 100,
+                'message': 'Talk track ready and merged with video.',
+                'audio_file': talk_track_mp3.name,
+                'video_file': merged_video.name,
+            }
+        else:
+            job['talk_track'] = {
+                'status': 'completed',
+                'progress': 100,
+                'message': 'Talk track audio ready. Video merge skipped.',
+                'audio_file': talk_track_mp3.name,
+            }
+
+    except OpenAITTSError as exc:
+        logger.error('OpenAI TTS failed for job %s: %s', job_id, exc)
+        job['talk_track'] = {'status': 'failed', 'progress': 0, 'message': f'TTS failed: {exc}'}
+    except Exception as exc:
+        logger.exception('Talk track generation failed for job %s', job_id)
+        job['talk_track'] = {'status': 'failed', 'progress': 0, 'message': str(exc)}
 
 def format_room_label(room_value: str, other_label: str = "") -> str:
     if not room_value:
@@ -406,10 +692,10 @@ def upload_images():
             'virtual_tour_available': False,
             'images_processed': 0,
             'files_generated': {},
-            'room_assignments': []
+            'room_assignments': [],
+            'room_scripts': [],
+            'talk_track': {'status': 'not_started', 'progress': 0, 'message': 'Narration not generated yet.'}
         }
-        
-        storage_ok, storage_backend = test_storage_initialization()
         if not storage_ok:
             error_message = (
                 'Storage backend not configured. Configure Bunny.net credentials '
@@ -626,11 +912,17 @@ def upload_images():
             active_jobs[job_id]['saved_files'] = saved_files  # Store for potential fallback
             active_jobs[job_id]['files_generated']['image_count'] = len(saved_files)
             active_jobs[job_id]['files_generated']['room_assignments'] = active_jobs[job_id]['room_assignments']
-            active_jobs[job_id]['files_generated']['room_scripts'] = ai_generate_room_scripts(
+            room_scripts = ai_generate_room_scripts(
                 active_jobs[job_id]['room_assignments'],
                 normalized_property_details,
                 Path(job_dir)
-            )
+            ) or []
+            _persist_room_scripts(job_id, room_scripts, Path(job_dir))
+
+            description_text = generate_property_description(len(active_jobs[job_id]['room_assignments']))
+            description_path = Path(job_dir) / f'property_description_{job_id}.txt'
+            description_path.write_text(description_text, encoding='utf-8')
+            active_jobs[job_id]['files_generated']['description'] = str(description_path)
             if original_total_size > 0:
                 total_compression = (1 - compressed_total_size / original_total_size) * 100
                 active_jobs[job_id]['current_step'] = f'Compressed {len(saved_files)} images (saved {total_compression:.0f}% space)'
@@ -1091,6 +1383,13 @@ def download_file(job_id, file_type):
         logger.error(f"Download error: {e}")
         return jsonify({'error': str(e)}), 500
 
+@virtual_tour_bp.route('/job/<job_id>', methods=['GET'])
+def get_job_details(job_id):
+    payload = _build_job_payload(job_id)
+    if not payload:
+        return jsonify({'error': 'Job not found'}), 404
+    return jsonify(payload)
+
 @virtual_tour_bp.route('/job/<job_id>/status', methods=['GET'])
 def get_job_status(job_id):
     """Get status of a specific job"""
@@ -1140,44 +1439,75 @@ def get_job_status(job_id):
         except Exception as e:
             logger.debug(f"Video not ready yet for job {job_id}: {e}")
     
-    # Build response data
-    response_data = {
+    payload = _build_job_payload(job_id)
+    if not payload:
+        return jsonify({'error': 'Job not found'}), 404
+    return jsonify(payload)
+
+@virtual_tour_bp.route('/job/<job_id>/scripts', methods=['PUT'])
+def update_job_scripts(job_id):
+    job = active_jobs.get(job_id)
+    if not job:
+        return jsonify({'error': 'Job not found'}), 404
+
+    data = request.get_json(silent=True) or {}
+    scripts = data.get('scripts')
+    if not isinstance(scripts, list):
+        return jsonify({'error': 'Invalid scripts payload'}), 400
+
+    expected = len(job.get('room_assignments', [])) or None
+    try:
+        sanitized = _sanitize_script_lines(scripts, expected)
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+
+    job_dir = Path(STORAGE_DIR) / job_id
+    _persist_room_scripts(job_id, sanitized, job_dir)
+    job['talk_track'] = {'status': 'not_started', 'progress': 0, 'message': 'Narration updated. Generate talk track to apply changes.'}
+
+    payload = _build_job_payload(job_id)
+    return jsonify({
         'job_id': job_id,
-        'status': job.get('status', 'unknown'),
-        'progress': job.get('progress', 0),
-        'current_step': job.get('current_step', ''),
-        'video_available': job.get('video_available', False),
-        'virtual_tour_available': job.get('virtual_tour_available', False),
-        'images_processed': job.get('images_processed', 0),
-        'processing_time': job.get('processing_time', ''),
-        'error': job.get('error', None),
-        'github_job_id': job.get('github_job_id', None),
-        'files_generated': job.get('files_generated', {})
-    }
-    
-    # Add video URL if available from multiple sources
-    if job.get('files_generated', {}).get('cloudinary_url'):
-        response_data['video_url'] = job['files_generated']['cloudinary_url']
-    elif job.get('github_job_id'):
-        # Always construct URL if we have a GitHub job ID, regardless of status
-        github_job_id = job['github_job_id']
-        try:
-            from storage_adapter import get_storage
-            storage = get_storage()
-            video_url = storage.get_video_url(f"{github_job_id}.mp4", "tours/videos/")
-        except Exception as e:
-            logger.error(f"Failed to get video URL from storage: {e}")
-            # Fallback to ImageKit
-            imagekit_endpoint = os.environ.get('IMAGEKIT_URL_ENDPOINT', 'https://ik.imagekit.io/brianosris/')
-            if not imagekit_endpoint.endswith('/'):
-                imagekit_endpoint += '/'
-            video_url = f"{imagekit_endpoint}tours/videos/{github_job_id}.mp4"
-        response_data['video_url'] = video_url
-        # Also update the files_generated for consistency
-        response_data['files_generated']['cloudinary_url'] = video_url
-        logger.info(f"Constructed video URL for job {job_id}: {video_url}")
-    
-    return jsonify(response_data)
+        'room_scripts': sanitized,
+        'talk_track': job.get('talk_track'),
+        'files_generated': payload['files_generated'] if payload else job.get('files_generated', {})
+    })
+
+
+@virtual_tour_bp.route('/job/<job_id>/talk-track', methods=['POST'])
+def generate_talk_track(job_id):
+    job = active_jobs.get(job_id)
+    if not job:
+        return jsonify({'error': 'Job not found'}), 404
+
+    data = request.get_json(silent=True) or {}
+    scripts = data.get('scripts')
+    if scripts is None:
+        scripts = job.get('room_scripts')
+
+    if not scripts:
+        return jsonify({'error': 'No narration lines available for this job.'}), 400
+
+    expected = len(job.get('room_assignments', [])) or None
+    try:
+        sanitized = _sanitize_script_lines(scripts, expected)
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+
+    talk_track = job.get('talk_track') or {}
+    if talk_track.get('status') == 'in_progress':
+        return jsonify({'error': 'Talk track generation already in progress'}), 409
+
+    job_dir = Path(STORAGE_DIR) / job_id
+    _persist_room_scripts(job_id, sanitized, job_dir)
+
+    job['talk_track'] = {'status': 'in_progress', 'progress': 5, 'message': 'Submitting narration for synthesis'}
+    threading.Thread(target=_generate_talk_track_async, args=(job_id, sanitized), daemon=True).start()
+
+    return jsonify({'status': 'queued', 'job_id': job_id})
+
+
+
 
 def generate_virtual_tour_html(job_id, job_data):
     """Generate HTML for virtual tour viewer"""
