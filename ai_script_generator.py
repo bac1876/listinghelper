@@ -16,6 +16,7 @@ SYSTEM_PROMPT = (
 
 DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_MODEL = "gpt-4o-mini"
+CTA_FALLBACK_AGENT = "your agent"
 
 
 def _encode_image(image_path: Path) -> str:
@@ -106,7 +107,7 @@ def generate_room_scripts(assignments: List[Dict[str, Any]], property_details: D
         except Exception as exc:  # noqa: BLE001
             logger.error("AI script generation failed for %s: %s", room_label, exc)
             scripts.append(_fallback_line(idx, room_label, property_details))
-    return scripts
+    return _apply_final_slide_cta(scripts, property_details)
 
 
 def _extract_text(data: Dict[str, Any]) -> str:
@@ -132,7 +133,30 @@ def _fallback_line(index: int, room_label: str, property_details: Dict[str, Any]
 
 
 def _generate_fallback_scripts(assignments: List[Dict[str, Any]], property_details: Dict[str, Any]) -> List[str]:
-    return [
+    scripts = [
         _fallback_line(idx, assignment.get('room_label') or assignment.get('room') or 'Room', property_details)
         for idx, assignment in enumerate(assignments, start=1)
     ]
+    return _apply_final_slide_cta(scripts, property_details)
+
+
+def _apply_final_slide_cta(scripts: List[str], property_details: Dict[str, Any]) -> List[str]:
+    if not scripts:
+        return scripts
+
+    agent_name = (property_details.get('agent_name') or '').strip() or CTA_FALLBACK_AGENT.title()
+    agent_phone = (property_details.get('agent_phone') or '').strip()
+
+    if agent_phone:
+        cta_text = f"Call {agent_name} at {agent_phone} to schedule a showing!"
+    else:
+        cta_text = f"Contact {agent_name} today to schedule a showing!"
+
+    final_line = scripts[-1].strip()
+    if cta_text.lower() not in final_line.lower():
+        if final_line and final_line[-1] not in '.!?':
+            final_line += '.'
+        final_line = f"{final_line} {cta_text}"
+
+    scripts = scripts[:-1] + [final_line.strip()]
+    return scripts

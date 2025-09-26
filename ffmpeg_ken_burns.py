@@ -106,18 +106,18 @@ def create_ken_burns_video(image_paths, output_path, job_id, quality=None):
                 return create_imageio_video(image_paths, output_path, fps=60, duration_per_image=8.0)
             elif quality in ['deployment', 'medium']:
                 logger.info(f"Using {quality} imageio settings")
-                return create_imageio_video(image_paths, output_path, fps=24, duration_per_image=3.0)
+                return create_imageio_video(image_paths, output_path, fps=24, duration_per_image=8.0)
             elif not os.environ.get('RAILWAY_ENVIRONMENT'):
                 logger.info("Using premium imageio settings for best quality")
                 return create_imageio_video(image_paths, output_path, fps=60, duration_per_image=8.0)
             else:
-                return create_imageio_video(image_paths, output_path, fps=24, duration_per_image=3.0)
+                return create_imageio_video(image_paths, output_path, fps=24, duration_per_image=8.0)
         except Exception as imageio_error:
             logger.warning(f"Imageio failed, trying FFmpeg: {imageio_error}")
     
     # Video parameters
     fps = 25
-    duration_per_image = 4  # seconds
+    duration_per_image = 8  # seconds
     video_width = 1920
     video_height = 1080
     

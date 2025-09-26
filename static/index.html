@@ -1162,6 +1162,49 @@
             border: none;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
+            .script-editor textarea {
+            width: 100%;
+            min-height: 80px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            padding: 10px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            resize: vertical;
+        }
+
+        .script-editor label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .script-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .talk-track-status {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .talk-track-status.in_progress {
+            color: var(--warning);
+        }
+
+        .talk-track-status.completed {
+            color: var(--success);
+        }
+
+        .talk-track-status.failed {
+            color: var(--error);
+        }
+
     </style>
 </head>
 <body>
@@ -1327,6 +1370,7 @@
         let statusCheckTimeout = null;
         let selectedQuality = 'medium';
         let lastResultData = null;
+        let talkTrackPollTimer = null;
 
         function showResultsPanel() {
             resultsSection.style.display = 'block';
@@ -1357,6 +1401,128 @@
                 }
             }
         }
+
+        function collectScriptEdits() {
+            const fields = document.querySelectorAll('#script-summary textarea[data-script-index]');
+            return Array.from(fields).map((field) => field.value.trim());
+        }
+
+        function setScriptButtonsDisabled(disabled) {
+            const saveBtn = document.getElementById('save-scripts-btn');
+            const generateBtn = document.getElementById('generate-talk-track-btn');
+            if (saveBtn) saveBtn.disabled = disabled;
+            if (generateBtn) generateBtn.disabled = disabled;
+        }
+
+        async function saveScripts(jobId) {
+            const scripts = collectScriptEdits();
+            if (!scripts.length) {
+                alert('Please provide narration for each scene before saving.');
+                return;
+            }
+
+            const statusEl = document.getElementById('talk-track-status');
+            if (statusEl) {
+                statusEl.textContent = 'Saving narration edits...';
+                statusEl.classList.remove('failed', 'completed');
+            }
+
+            setScriptButtonsDisabled(true);
+            try {
+                const response = await fetch(`/api/virtual-tour/job/${jobId}/scripts`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ scripts })
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Unable to save narration edits.');
+                }
+                stopTalkTrackPolling();
+                await refreshJobStatus(jobId);
+                if (statusEl) {
+                    statusEl.textContent = 'Narration saved. Generate talk track when ready.';
+                    statusEl.classList.remove('failed', 'in_progress');
+                }
+            } catch (error) {
+                console.error('Save scripts failed:', error);
+                if (statusEl) {
+                    statusEl.textContent = error.message || 'Unable to save narration edits.';
+                    statusEl.classList.add('failed');
+                }
+            } finally {
+                setScriptButtonsDisabled(false);
+            }
+        }
+
+        async function approveAndGenerateTalkTrack(jobId) {
+            const scripts = collectScriptEdits();
+            if (!scripts.length) {
+                alert('Please provide narration for each scene before generating the talk track.');
+                return;
+            }
+
+            const statusEl = document.getElementById('talk-track-status');
+            if (statusEl) {
+                statusEl.textContent = 'Generating talk track...';
+                statusEl.classList.remove('failed');
+                statusEl.classList.add('in_progress');
+            }
+
+            setScriptButtonsDisabled(true);
+            try {
+                const response = await fetch(`/api/virtual-tour/job/${jobId}/talk-track`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ scripts })
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Unable to start talk track generation.');
+                }
+                startTalkTrackPolling(jobId);
+            } catch (error) {
+                console.error('Talk track generation failed:', error);
+                const statusEl = document.getElementById('talk-track-status');
+                if (statusEl) {
+                    statusEl.textContent = error.message || 'Unable to start talk track generation.';
+                    statusEl.classList.remove('in_progress');
+                    statusEl.classList.add('failed');
+                }
+                setScriptButtonsDisabled(false);
+            }
+        }
+
+        async function refreshJobStatus(jobId) {
+            try {
+                const response = await fetch(`/api/virtual-tour/job/${jobId}`);
+                if (!response.ok) {
+                    return;
+                }
+                const data = await response.json();
+                renderResultsView(data, jobId);
+                lastResultData = { data, jobId };
+            } catch (error) {
+                console.error('Job refresh failed:', error);
+            }
+        }
+
+        function startTalkTrackPolling(jobId) {
+            if (talkTrackPollTimer) {
+                clearInterval(talkTrackPollTimer);
+            }
+            talkTrackPollTimer = setInterval(() => {
+                refreshJobStatus(jobId);
+            }, 4000);
+        }
+
+        function stopTalkTrackPolling() {
+            if (talkTrackPollTimer) {
+                clearInterval(talkTrackPollTimer);
+                talkTrackPollTimer = null;
+            }
+        }
+
 
         function renderResultsView(resultData, jobId) {
             if (!resultData) {
@@ -1410,18 +1576,43 @@
             }
 
             if (resultData.files_generated) {
-                if (resultData.files_generated.description) {
+                const generated = resultData.files_generated;
+                if (generated.description) {
                     downloadButtons.innerHTML += `
                         <a href="/api/virtual-tour/download/${jobId}/description" class="btn" target="_blank" rel="noopener" download>
-                            📝 Property Description
+                            ?? Property Description
                         </a>
                     `;
                 }
 
-                if (resultData.files_generated.script) {
+                if (generated.script) {
                     downloadButtons.innerHTML += `
                         <a href="/api/virtual-tour/download/${jobId}/script" class="btn" target="_blank" rel="noopener" download>
-                            🎙️ Voiceover Script
+                            ??? Voiceover Script
+                        </a>
+                    `;
+                }
+
+                if (generated.room_scripts_file) {
+                    downloadButtons.innerHTML += `
+                        <a href="/api/virtual-tour/download/${jobId}/room_scripts" class="btn secondary" target="_blank" rel="noopener" download>
+                            ??? Script JSON
+                        </a>
+                    `;
+                }
+
+                if (generated.talk_track_audio) {
+                    downloadButtons.innerHTML += `
+                        <a href="/api/virtual-tour/download/${jobId}/talk_track" class="btn success" target="_blank" rel="noopener" download>
+                            ?? Talk Track Audio
+                        </a>
+                    `;
+                }
+
+                if (generated.silent_video) {
+                    downloadButtons.innerHTML += `
+                        <a href="/api/virtual-tour/download/${jobId}/silent_video" class="btn secondary" target="_blank" rel="noopener" download>
+                            ?? Silent Video
                         </a>
                     `;
                 }
@@ -1460,13 +1651,47 @@
             const scriptContainer = document.getElementById('script-summary');
             if (scriptContainer) {
                 const scripts = resultData.files_generated && resultData.files_generated.room_scripts;
+                const talkTrack = resultData.talk_track || {};
                 if (scripts && scripts.length) {
-                    const items = scripts.map(segment => `<li>${segment}</li>`).join('');
-                    scriptContainer.innerHTML = `<h4>Narration Script</h4><ol>${items}</ol>`;
+                    const editor = scripts.map((segment, index) => `
+                        <div class="script-line">
+                            <label>Scene ${index + 1}</label>
+                            <textarea data-script-index="${index}" rows="3">${segment}</textarea>
+                        </div>
+                    `).join('');
+                    const statusLabel = talkTrack.message || (talkTrack.status === 'completed' ? 'Talk track ready.' : 'Review or edit each narration line.');
+                    const statusClass = talkTrack.status ? `talk-track-status ${talkTrack.status}` : 'talk-track-status';
+                    scriptContainer.innerHTML = `
+                        <h4>Narration Script</h4>
+                        <div class="script-editor">${editor}</div>
+                        <div class="script-actions">
+                            <button type="button" class="btn secondary" id="save-scripts-btn">Save Changes</button>
+                            <button type="button" class="btn primary" id="generate-talk-track-btn">Approve & Generate Talk Track</button>
+                            <span id="talk-track-status" class="${statusClass}">${statusLabel}</span>
+                        </div>
+                    `;
                     scriptContainer.style.display = 'block';
+
+                    if (talkTrack.status === 'in_progress') {
+                        setScriptButtonsDisabled(true);
+                        startTalkTrackPolling(jobId);
+                    } else {
+                        setScriptButtonsDisabled(false);
+                        stopTalkTrackPolling();
+                    }
+
+                    const saveBtn = document.getElementById('save-scripts-btn');
+                    const generateTalkBtn = document.getElementById('generate-talk-track-btn');
+                    if (saveBtn) {
+                        saveBtn.addEventListener('click', () => saveScripts(jobId));
+                    }
+                    if (generateTalkBtn) {
+                        generateTalkBtn.addEventListener('click', () => approveAndGenerateTalkTrack(jobId));
+                    }
                 } else {
                     scriptContainer.innerHTML = '';
                     scriptContainer.style.display = 'none';
+                    stopTalkTrackPolling();
                 }
             }
 

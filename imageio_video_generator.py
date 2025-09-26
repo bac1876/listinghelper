@@ -17,7 +17,7 @@ except ImportError:
     IMAGEIO_AVAILABLE = False
     logger.error("imageio not available")
 
-def create_imageio_video(image_paths, output_path, fps=24, duration_per_image=3.0):
+def create_imageio_video(image_paths, output_path, fps=24, duration_per_image=8.0):
     """Create video using imageio with Ken Burns effects"""
     
     if not IMAGEIO_AVAILABLE:
