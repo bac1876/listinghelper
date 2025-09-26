@@ -28,6 +28,12 @@ from PIL import Image
 import io
 from storage_adapter import test_storage_initialization
 
+# Validate storage backend so uploads fail fast if credentials are missing
+storage_ok, storage_backend = test_storage_initialization()
+if not storage_ok:
+    logger.warning('Storage backend initialization failed; uploads will return an error until storage is configured.')
+else:
+    logger.info('Storage backend ready: %s', storage_backend)
 
 virtual_tour_bp = Blueprint('virtual_tour', __name__, url_prefix='/api/virtual-tour')
 
@@ -696,6 +702,9 @@ def upload_images():
             'room_scripts': [],
             'talk_track': {'status': 'not_started', 'progress': 0, 'message': 'Narration not generated yet.'}
         }
+        global storage_ok, storage_backend
+        if not storage_ok:
+            storage_ok, storage_backend = test_storage_initialization()
         if not storage_ok:
             error_message = (
                 'Storage backend not configured. Configure Bunny.net credentials '
