@@ -50,6 +50,119 @@ if not os.path.exists(TEMP_DIR):
 # In-memory job tracking with detailed status
 active_jobs = {}
 
+
+def _job_storage_dir(job_id: str) -> Path:
+    base = Path(STORAGE_DIR)
+    primary = base / job_id
+    legacy = base / f'job_{job_id}'
+    if primary.exists():
+        return primary
+    if legacy.exists():
+        return legacy
+    return primary
+
+
+def _load_job_from_disk(job_id: str) -> Optional[Dict[str, Any]]:
+    job_dir = _job_storage_dir(job_id)
+    if not job_dir.exists():
+        return None
+
+    job_data: Dict[str, Any] = {
+        'status': 'completed',
+        'progress': 100,
+        'current_step': 'Restored job from storage.',
+        'video_available': False,
+        'virtual_tour_available': False,
+        'images_processed': 0,
+        'files_generated': {},
+        'room_assignments': [],
+        'room_scripts': [],
+        'talk_track': {
+            'status': 'not_started',
+            'progress': 0,
+            'message': 'Narration ready for synthesis.'
+        },
+    }
+
+    files_generated = job_data['files_generated']
+
+    try:
+        room_scripts_path = job_dir / f'room_scripts_{job_id}.json'
+        if room_scripts_path.exists():
+            job_data['room_scripts'] = json.loads(room_scripts_path.read_text(encoding='utf-8'))
+            files_generated['room_scripts'] = job_data['room_scripts']
+            files_generated['room_scripts_file'] = str(room_scripts_path)
+
+        script_path = job_dir / f'voiceover_script_{job_id}.txt'
+        if script_path.exists():
+            files_generated['script'] = str(script_path)
+
+        description_path = job_dir / f'property_description_{job_id}.txt'
+        if description_path.exists():
+            files_generated['description'] = str(description_path)
+
+        local_video_path = job_dir / f'virtual_tour_{job_id}.mp4'
+        if local_video_path.exists():
+            files_generated['local_video'] = str(local_video_path)
+            job_data['video_available'] = True
+
+        narrated_video_path = job_dir / f'virtual_tour_{job_id}_narrated.mp4'
+        if narrated_video_path.exists():
+            files_generated['talk_track_video'] = str(narrated_video_path)
+
+        talk_track_mp3 = job_dir / f'talk_track_{job_id}.mp3'
+        if talk_track_mp3.exists():
+            files_generated['talk_track_audio'] = str(talk_track_mp3)
+            job_data['talk_track'] = {
+                'status': 'completed',
+                'progress': 100,
+                'message': 'Talk track audio ready.',
+                'audio_file': talk_track_mp3.name,
+            }
+            if narrated_video_path.exists():
+                job_data['talk_track']['video_file'] = narrated_video_path.name
+
+        assignments_candidates = [
+            job_dir / f'room_assignments_{job_id}.json',
+            job_dir / 'room_assignments.json'
+        ]
+        for assignments_path in assignments_candidates:
+            if assignments_path.exists():
+                try:
+                    job_data['room_assignments'] = json.loads(assignments_path.read_text(encoding='utf-8'))
+                    files_generated['room_assignments'] = job_data['room_assignments']
+                    files_generated['room_assignments_file'] = str(assignments_path)
+                    break
+                except json.JSONDecodeError:
+                    logger.warning('Failed to parse room assignments for job %s', job_id)
+
+        tour_path = Path(STORAGE_DIR) / f'{job_id}_tour.html'
+        if tour_path.exists():
+            job_data['virtual_tour_available'] = True
+            files_generated['tour_html'] = str(tour_path)
+
+        image_extensions = ('*.jpg', '*.jpeg', '*.png', '*.webp')
+        image_files = []
+        for pattern in image_extensions:
+            image_files.extend(job_dir.glob(pattern))
+        if image_files:
+            job_data['images_processed'] = len(image_files)
+            files_generated['image_count'] = len(image_files)
+
+    except Exception as exc:
+        logger.warning('Could not rebuild job %s from storage: %s', job_id, exc)
+
+    active_jobs[job_id] = job_data
+    return job_data
+
+
+def _ensure_job(job_id: str) -> Optional[Dict[str, Any]]:
+    job = active_jobs.get(job_id)
+    if job:
+        return job
+    return _load_job_from_disk(job_id)
+
+
 FFMPEG_BINARY = os.environ.get('FFMPEG_BINARY') or 'ffmpeg'
 FFPROBE_BINARY = os.environ.get('FFPROBE_BINARY')
 if not FFPROBE_BINARY:
@@ -88,7 +201,7 @@ ROOM_LABELS = {
 
 
 def _build_job_payload(job_id: str) -> Optional[Dict[str, Any]]:
-    job = active_jobs.get(job_id)
+    job = _ensure_job(job_id)
     if not job:
         return None
 
@@ -921,6 +1034,9 @@ def upload_images():
             active_jobs[job_id]['saved_files'] = saved_files  # Store for potential fallback
             active_jobs[job_id]['files_generated']['image_count'] = len(saved_files)
             active_jobs[job_id]['files_generated']['room_assignments'] = active_jobs[job_id]['room_assignments']
+            assignments_path = Path(job_dir) / f'room_assignments_{job_id}.json'
+            assignments_path.write_text(json.dumps(active_jobs[job_id]['room_assignments'], indent=2), encoding='utf-8')
+            active_jobs[job_id]['files_generated']['room_assignments_file'] = str(assignments_path)
             room_scripts = ai_generate_room_scripts(
                 active_jobs[job_id]['room_assignments'],
                 normalized_property_details,
@@ -1181,10 +1297,10 @@ def upload_images():
 def download_video(job_id):
     """Download the generated video"""
     try:
-        if job_id not in active_jobs:
+        job = _ensure_job(job_id)
+        if not job:
             return jsonify({'error': 'Job not found'}), 404
-        
-        job = active_jobs[job_id]
+
         
         # Check if video is on Bunny.net (GitHub Actions workflow)
         if job.get('bunnynet_video') and job.get('files_generated', {}).get('bunnynet_url'):
@@ -1254,10 +1370,9 @@ def download_video(job_id):
 def view_tour(job_id):
     """View the virtual tour HTML"""
     try:
-        if job_id not in active_jobs:
+        job = _ensure_job(job_id)
+        if not job:
             return jsonify({'error': 'Job not found'}), 404
-        
-        job = active_jobs[job_id]
         
         if not job.get('virtual_tour_available'):
             return jsonify({'error': 'Virtual tour not available'}), 404
@@ -1276,8 +1391,9 @@ def view_tour(job_id):
 def download_file(job_id, file_type):
     """Download generated files"""
     try:
+        job = _ensure_job(job_id)
         # First check if this is a GitHub Actions job
-        if job_id in active_jobs:
+        if job:
             job = active_jobs[job_id]
             
             # For video files from GitHub Actions
@@ -1358,14 +1474,12 @@ def download_file(job_id, file_type):
                     if os.path.exists(filepath):
                         return send_file(filepath, as_attachment=True, download_name=f'voiceover_script_{job_id}.txt')
         
-        # Fallback to job directory lookup
-        job_dir = os.path.join(STORAGE_DIR, f'job_{job_id}')
-        if not os.path.exists(job_dir):
-            # Try without job_ prefix
-            job_dir = os.path.join(STORAGE_DIR, job_id)
-            if not os.path.exists(job_dir):
-                return jsonify({'error': 'Job not found'}), 404
-        
+        # Fallback to job directory lookup using persisted storage
+        job_dir_path = _job_storage_dir(job_id)
+        if not job_dir_path.exists():
+            return jsonify({'error': 'Job not found'}), 404
+        job_dir = str(job_dir_path)
+
         # Map file types to actual filenames
         file_mapping = {
             'video': f'virtual_tour_{job_id}.mp4',
@@ -1402,18 +1516,10 @@ def get_job_details(job_id):
 @virtual_tour_bp.route('/job/<job_id>/status', methods=['GET'])
 def get_job_status(job_id):
     """Get status of a specific job"""
-    if job_id not in active_jobs:
-        # Check if job directory exists
-        job_dir = os.path.join(STORAGE_DIR, f'job_{job_id}')
-        if os.path.exists(job_dir):
-            # Job exists but not in memory (server restarted)
-            return jsonify({
-                'job_id': job_id,
-                'status': 'completed',
-                'message': 'Job completed (retrieved from storage)'
-            })
+    job = _ensure_job(job_id)
+    if not job:
         return jsonify({'error': 'Job not found'}), 404
-    
+
     job = active_jobs[job_id]
     
     # REMOVED GitHub API status checking to prevent rate limit exhaustion
@@ -1455,7 +1561,7 @@ def get_job_status(job_id):
 
 @virtual_tour_bp.route('/job/<job_id>/scripts', methods=['PUT'])
 def update_job_scripts(job_id):
-    job = active_jobs.get(job_id)
+    job = _ensure_job(job_id)
     if not job:
         return jsonify({'error': 'Job not found'}), 404
 
@@ -1471,6 +1577,7 @@ def update_job_scripts(job_id):
         return jsonify({'error': str(exc)}), 400
 
     job_dir = Path(STORAGE_DIR) / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
     _persist_room_scripts(job_id, sanitized, job_dir)
     job['talk_track'] = {'status': 'not_started', 'progress': 0, 'message': 'Narration updated. Generate talk track to apply changes.'}
 
@@ -1485,7 +1592,7 @@ def update_job_scripts(job_id):
 
 @virtual_tour_bp.route('/job/<job_id>/talk-track', methods=['POST'])
 def generate_talk_track(job_id):
-    job = active_jobs.get(job_id)
+    job = _ensure_job(job_id)
     if not job:
         return jsonify({'error': 'Job not found'}), 404
 
